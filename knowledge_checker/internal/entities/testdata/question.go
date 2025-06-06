@@ -12,7 +12,7 @@ package testdata
 import (
 	reflect "reflect"
 
-	entities "github.com/parta4ok/study_platform/knowledge_checker/internal/entities"
+	entities "github.com/parta4ok/kvs/knowledge_checker/internal/entities"
 	gomock "go.uber.org/mock/gomock"
 )
 

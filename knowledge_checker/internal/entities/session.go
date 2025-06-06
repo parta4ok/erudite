@@ -11,6 +11,7 @@ const (
 	ExpiredState   = "expired state"
 )
 
+//go:generate mockgen -source=session.go -destination=./testdata/session.go -package=testdata
 type SessionState interface {
 	SetSessionID(session *Session, sessionID uint64) error
 	SetQuestions(session *Session, qestions map[uint64]Question) error

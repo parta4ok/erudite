@@ -12,6 +12,7 @@ package testdata
 import (
 	reflect "reflect"
 
+	entities "github.com/parta4ok/study_platform/knowledge_checker/internal/entities"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,10 +41,10 @@ func (m *MockQuestion) EXPECT() *MockQuestionMockRecorder {
 }
 
 // CorrectAnswer mocks base method.
-func (m *MockQuestion) CorrectAnswer() []byte {
+func (m *MockQuestion) CorrectAnswer() map[string]struct{} {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CorrectAnswer")
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(map[string]struct{})
 	return ret0
 }
 
@@ -68,10 +69,10 @@ func (mr *MockQuestionMockRecorder) ID() *gomock.Call {
 }
 
 // Payload mocks base method.
-func (m *MockQuestion) Payload() []byte {
+func (m *MockQuestion) Payload() any {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Payload")
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(any)
 	return ret0
 }
 
@@ -96,10 +97,10 @@ func (mr *MockQuestionMockRecorder) Topic() *gomock.Call {
 }
 
 // Type mocks base method.
-func (m *MockQuestion) Type() string {
+func (m *MockQuestion) Type() entities.QuestionType {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Type")
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(entities.QuestionType)
 	return ret0
 }
 
@@ -107,18 +108,4 @@ func (m *MockQuestion) Type() string {
 func (mr *MockQuestionMockRecorder) Type() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Type", reflect.TypeOf((*MockQuestion)(nil).Type))
-}
-
-// UserAnswer mocks base method.
-func (m *MockQuestion) UserAnswer() []byte {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UserAnswer")
-	ret0, _ := ret[0].([]byte)
-	return ret0
-}
-
-// UserAnswer indicates an expected call of UserAnswer.
-func (mr *MockQuestionMockRecorder) UserAnswer() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserAnswer", reflect.TypeOf((*MockQuestion)(nil).UserAnswer))
 }

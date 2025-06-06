@@ -5,5 +5,6 @@ import (
 )
 
 var (
-	ErrInvalidParam = errors.New("invalid param")
+	ErrInvalidParam        = errors.New("invalid param")
+	ErrUnprocessibleEntity = errors.New("unprocessible entity")
 )

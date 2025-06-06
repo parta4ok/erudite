@@ -1,4 +1,4 @@
-module github.com/parta4ok/study_platform
+module github.com/parta4ok/kvs
 
 go 1.24.3
 

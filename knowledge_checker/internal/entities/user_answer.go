@@ -3,8 +3,8 @@ package entities
 import "github.com/pkg/errors"
 
 type UserAnswer struct {
-	id     uint64
-	answer []string
+	questionID uint64
+	answer     []string
 }
 
 func NewUserAnswer(id uint64, answer []string) (*UserAnswer, error) {
@@ -13,7 +13,7 @@ func NewUserAnswer(id uint64, answer []string) (*UserAnswer, error) {
 	}
 
 	return &UserAnswer{
-		id:     id,
-		answer: answer,
+		questionID: id,
+		answer:     answer,
 	}, nil
 }

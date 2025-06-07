@@ -14,20 +14,7 @@ type CompletedSessionState struct {
 	session *Session
 }
 
-func NewCompletedSessionState(
-	userID uint64,
-	sessionID uint64,
-	topics []string,
-	questions map[uint64]Question,
-	answers []UserAnswer,
-) *CompletedSessionState {
-	session := &Session{
-		userID:    userID,
-		sessionID: sessionID,
-		topics:    topics,
-		questions: questions,
-		answers:   answers,
-	}
+func NewCompletedSessionState(session *Session) *CompletedSessionState {
 	return &CompletedSessionState{
 		session: session,
 	}
@@ -62,7 +49,7 @@ func (state *CompletedSessionState) GetSessionResult(session *Session) (*Session
 		return sessionResult, nil
 	}
 
-	percent := float32(len(session.questions)) / correctUserAnswers
+	percent := (correctUserAnswers / float32(len(session.questions))) * 100
 	if percent > 70.0 {
 		sessionResult.Done = true
 	}

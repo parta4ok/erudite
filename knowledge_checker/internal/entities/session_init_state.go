@@ -30,13 +30,12 @@ func NewInitSessionState(topics []string, userID uint64) *InitSessionState {
 }
 
 func (state *InitSessionState) GetStatus() string {
-	return ActiveState
+	return InitState
 }
 
 func (state *InitSessionState) SetQuestions(session *Session, qestions map[uint64]Question) error {
 	session.questions = qestions
-	session.state = NewActiveSessionState(session.userID, session.topics,
-		session.duration, session.questions)
+	session.state = NewActiveSessionState(session)
 
 	return nil
 }
@@ -45,8 +44,8 @@ func (state *InitSessionState) SetUserAnswer(_ *Session, _ []UserAnswer) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetUserAnswer`", state.GetStatus())
 }
 
-func (state *InitSessionState) SetSessionID(session *Session, sessessionID uint64) error {
-	session.sessionID = sessessionID
+func (state *InitSessionState) SetSessionID(session *Session, sessionID uint64) error {
+	session.sessionID = sessionID
 	state.session = session
 	return nil
 }

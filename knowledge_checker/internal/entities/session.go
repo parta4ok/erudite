@@ -2,6 +2,8 @@ package entities
 
 import (
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -34,4 +36,40 @@ type Session struct {
 type SessionResult struct {
 	Done           bool
 	SuccessPercent string
+}
+
+func (s *Session) SetSessionID(session *Session, sessionID uint64) error {
+	if session == nil {
+		return errors.Wrap(ErrInvalidParam, "session is nil")
+	}
+
+	return s.state.SetSessionID(session, sessionID)
+}
+
+func (s *Session) SetQuestions(session *Session, qestions map[uint64]Question) error {
+	if session == nil {
+		return errors.Wrap(ErrInvalidParam, "session is nil")
+	}
+
+	return s.state.SetQuestions(session, qestions)
+}
+
+func (s *Session) SetUserAnswer(session *Session, answers []UserAnswer) error {
+	if session == nil {
+		return errors.Wrap(ErrInvalidParam, "session is nil")
+	}
+
+	return s.state.SetUserAnswer(session, answers)
+}
+
+func (s *Session) GetStatus() string {
+	return s.state.GetStatus()
+}
+
+func (s *Session) GetSessionResult(session *Session) (*SessionResult, error) {
+	if session == nil {
+		return nil, errors.Wrap(ErrInvalidParam, "session is nil")
+	}
+
+	return s.state.GetSessionResult(session)
 }

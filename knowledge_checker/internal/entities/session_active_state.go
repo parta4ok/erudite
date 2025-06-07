@@ -14,22 +14,14 @@ type ActiveSessionState struct {
 	session *Session
 }
 
-func NewActiveSessionState(userID uint64, topics []string, duration time.Duration,
-	questions map[uint64]Question) *ActiveSessionState {
-	session := &Session{
-		userID:    userID,
-		topics:    topics,
-		duration:  duration,
-		questions: questions,
-		startedAt: time.Now().UTC(),
-	}
+func NewActiveSessionState(session *Session) *ActiveSessionState {
 	return &ActiveSessionState{
 		session: session,
 	}
 }
 
 func (state *ActiveSessionState) GetStatus() string {
-	return InitState
+	return ActiveState
 }
 
 func (state *ActiveSessionState) SetQuestions(_ *Session, _ map[uint64]Question) error {
@@ -42,13 +34,8 @@ func (state *ActiveSessionState) SetUserAnswer(session *Session, answers []UserA
 		return nil
 	}
 
-	session.state = NewCompletedSessionState(
-		session.userID,
-		session.sessionID,
-		session.topics,
-		session.questions,
-		session.answers,
-	)
+	session.answers = append(session.answers, answers...)
+	session.state = NewCompletedSessionState(session)
 
 	return nil
 }

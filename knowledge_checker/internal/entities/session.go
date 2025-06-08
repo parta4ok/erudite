@@ -2,36 +2,75 @@ package entities
 
 import (
 	"time"
-)
 
-const (
-	InitState      = "init state"
-	ActiveState    = "active state"
-	CompletedState = "completed state"
-	ExpiredState   = "expired state"
+	"github.com/pkg/errors"
 )
-
-//go:generate mockgen -source=session.go -destination=./testdata/session.go -package=testdata
-type SessionState interface {
-	SetSessionID(session *Session, sessionID uint64) error
-	SetQuestions(session *Session, qestions map[uint64]Question) error
-	SetUserAnswer(session *Session, answers []UserAnswer) error
-	GetStatus() string
-	GetSessionResult(session *Session) (*SessionResult, error)
-}
 
 type Session struct {
-	sessionID uint64
 	userID    uint64
+	sessionID uint64
 	topics    []string
-	state     SessionState
-	startedAt time.Time
-	duration  time.Duration
-	questions map[uint64]Question
-	answers   []UserAnswer
+
+	state SessionState
+}
+
+func NewSession(userID uint64, topics []string, generator IDGenerator) (*Session, error) {
+	if userID == 0 {
+		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
+	}
+
+	if generator == nil {
+		return nil, errors.Wrap(ErrInvalidParam, "id generator not set")
+	}
+
+	if len(topics) == 0 {
+		return nil, errors.Wrap(ErrInvalidParam, "topics was not selected")
+	}
+
+	sessionID := generator.GenerateID()
+
+	session := &Session{
+		userID:    userID,
+		sessionID: sessionID,
+		topics:    topics,
+	}
+
+	state := NewInitSessionState(session)
+	session.ChangeState(state)
+
+	return session, nil
+}
+
+func NewSessionWithCustomState(userID uint64, topics []string, sessionID uint64, state SessionState) *Session {
+	return &Session{
+		userID:    userID,
+		sessionID: sessionID,
+		topics:    topics,
+		state:     state,
+	}
 }
 
 type SessionResult struct {
-	Done           bool
-	SuccessPercent string
+	IsSuccess bool
+	Grade     string
+}
+
+func (s *Session) ChangeState(state SessionState) {
+	s.state = state
+}
+
+func (s *Session) SetQuestions(qestions map[uint64]Question, duration time.Duration) error {
+	return s.state.SetQuestions(qestions, duration)
+}
+
+func (s *Session) SetUserAnswer(answers []UserAnswer) error {
+	return s.state.SetUserAnswer(answers)
+}
+
+func (s *Session) GetStatus() string {
+	return s.state.GetStatus()
+}
+
+func (s *Session) GetSessionResult() (*SessionResult, error) {
+	return s.state.GetSessionResult()
 }

@@ -19,7 +19,7 @@ func NewSession(userID uint64, topics []string, generator IDGenerator) (*Session
 		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
 	}
 
-	if generator == nil || generator == IDGenerator(nil) {
+	if generator == nil {
 		return nil, errors.Wrap(ErrInvalidParam, "id generator not set")
 	}
 

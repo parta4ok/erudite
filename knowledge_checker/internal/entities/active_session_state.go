@@ -17,7 +17,8 @@ type ActiveSessionState struct {
 	duration  time.Duration
 }
 
-func NewActiveSessionState(questions map[uint64]Question, holder StateHolder, duration time.Duration) *ActiveSessionState {
+func NewActiveSessionState(questions map[uint64]Question, holder StateHolder,
+	duration time.Duration) *ActiveSessionState {
 	state := &ActiveSessionState{
 		holder:    holder,
 		questions: questions,
@@ -32,7 +33,8 @@ func (state *ActiveSessionState) GetStatus() string {
 	return ActiveState
 }
 
-func (state *ActiveSessionState) SetQuestions(qestions map[uint64]Question, duration time.Duration) error {
+func (state *ActiveSessionState) SetQuestions(qestions map[uint64]Question,
+	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
 

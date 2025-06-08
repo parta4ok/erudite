@@ -31,7 +31,8 @@ func (state *InitSessionState) GetStatus() string {
 	return InitState
 }
 
-func (state *InitSessionState) SetQuestions(qestions map[uint64]Question, duration time.Duration) error {
+func (state *InitSessionState) SetQuestions(qestions map[uint64]Question,
+	duration time.Duration) error {
 	if len(qestions) == 0 {
 		return errors.Wrap(ErrInvalidParam, "questions for selected topics not changed")
 	}

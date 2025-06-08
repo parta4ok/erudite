@@ -41,7 +41,8 @@ func NewSession(userID uint64, topics []string, generator IDGenerator) (*Session
 	return session, nil
 }
 
-func NewSessionWithCustomState(userID uint64, topics []string, sessionID uint64, state SessionState) *Session {
+func NewSessionWithCustomState(userID uint64, topics []string, sessionID uint64,
+	state SessionState) *Session {
 	return &Session{
 		userID:    userID,
 		sessionID: sessionID,
@@ -53,6 +54,10 @@ func NewSessionWithCustomState(userID uint64, topics []string, sessionID uint64,
 type SessionResult struct {
 	IsSuccess bool
 	Grade     string
+}
+
+func (s *Session) GetSesionID() uint64 {
+	return s.sessionID
 }
 
 func (s *Session) ChangeState(state SessionState) {

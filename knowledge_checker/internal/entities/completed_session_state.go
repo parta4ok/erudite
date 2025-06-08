@@ -40,7 +40,8 @@ func (state *CompletedSessionState) GetStatus() string {
 	return CompletedState
 }
 
-func (state *CompletedSessionState) SetQuestions(qestions map[uint64]Question, duration time.Duration) error {
+func (state *CompletedSessionState) SetQuestions(qestions map[uint64]Question,
+	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
 

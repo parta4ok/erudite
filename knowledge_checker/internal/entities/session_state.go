@@ -14,7 +14,7 @@ const (
 type SessionState interface {
 	GetStatus() string
 	SetQuestions(qestions map[uint64]Question, duration time.Duration) error
-	SetUserAnswer(answers []UserAnswer) error
+	SetUserAnswer(answers []*UserAnswer) error
 	GetSessionResult() (*SessionResult, error)
 }
 

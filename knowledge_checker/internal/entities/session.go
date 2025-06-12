@@ -68,7 +68,7 @@ func (s *Session) SetQuestions(qestions map[uint64]Question, duration time.Durat
 	return s.state.SetQuestions(qestions, duration)
 }
 
-func (s *Session) SetUserAnswer(answers []UserAnswer) error {
+func (s *Session) SetUserAnswer(answers []*UserAnswer) error {
 	return s.state.SetUserAnswer(answers)
 }
 

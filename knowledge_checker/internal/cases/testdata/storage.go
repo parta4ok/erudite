@@ -42,10 +42,10 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // GetQuesions mocks base method.
-func (m *MockStorage) GetQuesions(ctx context.Context, topics []string) ([]*entities.Question, error) {
+func (m *MockStorage) GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQuesions", ctx, topics)
-	ret0, _ := ret[0].([]*entities.Question)
+	ret0, _ := ret[0].([]entities.Question)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -57,18 +57,33 @@ func (mr *MockStorageMockRecorder) GetQuesions(ctx, topics any) *gomock.Call {
 }
 
 // GetSessionBySessionID mocks base method.
-func (m *MockStorage) GetSessionBySessionID(ctx context.Context) (*entities.Session, error) {
+func (m *MockStorage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSessionBySessionID", ctx)
+	ret := m.ctrl.Call(m, "GetSessionBySessionID", ctx, sessionID)
 	ret0, _ := ret[0].(*entities.Session)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSessionBySessionID indicates an expected call of GetSessionBySessionID.
-func (mr *MockStorageMockRecorder) GetSessionBySessionID(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetSessionBySessionID(ctx, sessionID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionBySessionID", reflect.TypeOf((*MockStorage)(nil).GetSessionBySessionID), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSessionBySessionID", reflect.TypeOf((*MockStorage)(nil).GetSessionBySessionID), ctx, sessionID)
+}
+
+// GetTopics mocks base method.
+func (m *MockStorage) GetTopics(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTopics", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTopics indicates an expected call of GetTopics.
+func (mr *MockStorageMockRecorder) GetTopics(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTopics", reflect.TypeOf((*MockStorage)(nil).GetTopics), ctx)
 }
 
 // StoreSession mocks base method.

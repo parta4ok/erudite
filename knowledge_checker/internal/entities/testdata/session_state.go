@@ -85,7 +85,7 @@ func (mr *MockSessionStateMockRecorder) SetQuestions(qestions, duration any) *go
 }
 
 // SetUserAnswer mocks base method.
-func (m *MockSessionState) SetUserAnswer(answers []entities.UserAnswer) error {
+func (m *MockSessionState) SetUserAnswer(answers []*entities.UserAnswer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetUserAnswer", answers)
 	ret0, _ := ret[0].(error)

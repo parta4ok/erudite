@@ -8,4 +8,5 @@ var (
 	ErrInvalidParam        = errors.New("invalid param")
 	ErrUnprocessibleEntity = errors.New("unprocessible entity")
 	ErrInvalidState        = errors.New("invalid state")
+	ErrInternalError       = errors.New("internal error")
 )

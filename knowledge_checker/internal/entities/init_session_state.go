@@ -43,7 +43,7 @@ func (state *InitSessionState) SetQuestions(qestions map[uint64]Question,
 	return nil
 }
 
-func (state *InitSessionState) SetUserAnswer(_ []UserAnswer) error {
+func (state *InitSessionState) SetUserAnswer(_ []*UserAnswer) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetUserAnswer`", state.GetStatus())
 }
 

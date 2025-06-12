@@ -1,0 +1,8 @@
+BEGIN;
+
+DROP TABLE IF EXISTS kvs.questions;
+DROP TABLE IF EXISTS kvs.topics;
+DROP TABLE IF EXISTS kvs.question_types;
+DROP SCHEMA IF EXISTS kvs;
+
+END;

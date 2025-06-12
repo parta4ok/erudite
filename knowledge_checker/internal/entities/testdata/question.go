@@ -40,20 +40,6 @@ func (m *MockQuestion) EXPECT() *MockQuestionMockRecorder {
 	return m.recorder
 }
 
-// CorrectAnswer mocks base method.
-func (m *MockQuestion) CorrectAnswer() map[string]struct{} {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CorrectAnswer")
-	ret0, _ := ret[0].(map[string]struct{})
-	return ret0
-}
-
-// CorrectAnswer indicates an expected call of CorrectAnswer.
-func (mr *MockQuestionMockRecorder) CorrectAnswer() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CorrectAnswer", reflect.TypeOf((*MockQuestion)(nil).CorrectAnswer))
-}
-
 // ID mocks base method.
 func (m *MockQuestion) ID() uint64 {
 	m.ctrl.T.Helper()
@@ -68,18 +54,32 @@ func (mr *MockQuestionMockRecorder) ID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockQuestion)(nil).ID))
 }
 
-// Payload mocks base method.
-func (m *MockQuestion) Payload() any {
+// IsAnswerCorrect mocks base method.
+func (m *MockQuestion) IsAnswerCorrect(ans *entities.UserAnswer) bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Payload")
-	ret0, _ := ret[0].(any)
+	ret := m.ctrl.Call(m, "IsAnswerCorrect", ans)
+	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// Payload indicates an expected call of Payload.
-func (mr *MockQuestionMockRecorder) Payload() *gomock.Call {
+// IsAnswerCorrect indicates an expected call of IsAnswerCorrect.
+func (mr *MockQuestionMockRecorder) IsAnswerCorrect(ans any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Payload", reflect.TypeOf((*MockQuestion)(nil).Payload))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsAnswerCorrect", reflect.TypeOf((*MockQuestion)(nil).IsAnswerCorrect), ans)
+}
+
+// Subject mocks base method.
+func (m *MockQuestion) Subject() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subject")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// Subject indicates an expected call of Subject.
+func (mr *MockQuestionMockRecorder) Subject() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subject", reflect.TypeOf((*MockQuestion)(nil).Subject))
 }
 
 // Topic mocks base method.
@@ -108,4 +108,18 @@ func (m *MockQuestion) Type() entities.QuestionType {
 func (mr *MockQuestionMockRecorder) Type() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Type", reflect.TypeOf((*MockQuestion)(nil).Type))
+}
+
+// Variants mocks base method.
+func (m *MockQuestion) Variants() []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Variants")
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Variants indicates an expected call of Variants.
+func (mr *MockQuestionMockRecorder) Variants() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Variants", reflect.TypeOf((*MockQuestion)(nil).Variants))
 }

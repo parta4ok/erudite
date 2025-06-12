@@ -33,12 +33,12 @@ func (state *ActiveSessionState) GetStatus() string {
 	return ActiveState
 }
 
-func (state *ActiveSessionState) SetQuestions(qestions map[uint64]Question,
+func (state *ActiveSessionState) SetQuestions(_ map[uint64]Question,
 	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
 
-func (state *ActiveSessionState) SetUserAnswer(answers []UserAnswer) error {
+func (state *ActiveSessionState) SetUserAnswer(answers []*UserAnswer) error {
 	isExpired := time.Now().UTC().After(state.startedAt.Add(state.duration))
 
 	completedState := NewCompletedSessionState(state.questions, state.holder, answers, isExpired)

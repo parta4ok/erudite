@@ -1,0 +1,30 @@
+version: "3"
+
+tasks:
+  lint:
+    cmds:
+      - golangci-lint run -c ./.golangci.yml ./...
+  postgres:up:
+    desc: Run Postgres service
+    cmds:
+      - docker-compose up -d postgres
+
+  postgres:restart:
+    desc: Restart Postgres service
+    cmds:
+      - docker-compose restart postgres
+
+  postgres:stop:
+    desc: Stop Postgres service
+    cmds:
+      - docker-compose stop postgres
+
+  postgres:migrate:up:
+    desc: Apply all up migrations to Postgres
+    cmds:
+      - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable" up
+
+  postgres:migrate:down:
+    desc: Revert all migrations (down) on Postgres
+    cmds:
+      - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable" down

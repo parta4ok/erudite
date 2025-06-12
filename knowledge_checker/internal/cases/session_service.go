@@ -84,7 +84,12 @@ func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
 		return 0, nil, errors.Wrap(err, "GetQuesions")
 	}
 
-	if err = session.SetQuestions(questions, srv.topicDuration); err != nil {
+	questionsMap := make(map[uint64]entities.Question, len(questions))
+	for _, question := range questions {
+		questionsMap[question.ID()] = question
+	}
+
+	if err = session.SetQuestions(questionsMap, srv.topicDuration); err != nil {
 		slog.Error(err.Error())
 		return 0, nil, errors.Wrap(err, "SetQuestions")
 	}
@@ -95,7 +100,7 @@ func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
 	}
 
 	slog.Info("CreateService completed")
-	return session.GetSesionID(), questions, nil
+	return session.GetSesionID(), questionsMap, nil
 }
 
 func (srv *SessionService) CompleteSession(

@@ -17,7 +17,7 @@ const (
 
 type CompletedSessionState struct {
 	questions map[uint64]Question
-	answers   []UserAnswer
+	answers   []*UserAnswer
 	holder    StateHolder
 	isExpired bool
 }
@@ -25,7 +25,7 @@ type CompletedSessionState struct {
 func NewCompletedSessionState(
 	questions map[uint64]Question,
 	holder StateHolder,
-	answers []UserAnswer,
+	answers []*UserAnswer,
 	isExpired bool,
 ) *CompletedSessionState {
 	return &CompletedSessionState{
@@ -40,12 +40,12 @@ func (state *CompletedSessionState) GetStatus() string {
 	return CompletedState
 }
 
-func (state *CompletedSessionState) SetQuestions(qestions map[uint64]Question,
+func (state *CompletedSessionState) SetQuestions(_ map[uint64]Question,
 	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
 
-func (state *CompletedSessionState) SetUserAnswer(answers []UserAnswer) error {
+func (state *CompletedSessionState) SetUserAnswer(_ []*UserAnswer) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetUserAnswer`", state.GetStatus())
 }
 
@@ -83,19 +83,6 @@ func (state *CompletedSessionState) processingResult() (*SessionResult, error) {
 	}, nil
 }
 
-func (state *CompletedSessionState) isAnswerCorrect(qusetion Question, answer UserAnswer) bool {
-	correctAnswer := qusetion.CorrectAnswer()
-	userAnswer := answer.answer
-
-	if len(correctAnswer) != len(userAnswer) {
-		return false
-	}
-
-	for _, selection := range userAnswer {
-		if _, ok := correctAnswer[selection]; !ok {
-			return false
-		}
-	}
-
-	return true
+func (state *CompletedSessionState) isAnswerCorrect(qusetion Question, answer *UserAnswer) bool {
+	return qusetion.IsAnswerCorrect(answer)
 }

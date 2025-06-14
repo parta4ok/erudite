@@ -17,3 +17,11 @@ func NewUserAnswer(id uint64, answer []string) (*UserAnswer, error) {
 		answer:     answer,
 	}, nil
 }
+
+func (ans *UserAnswer) GetQuestionID() uint64 {
+	return ans.questionID
+}
+
+func (ans *UserAnswer) GetSelections() []string {
+	return ans.answer
+}

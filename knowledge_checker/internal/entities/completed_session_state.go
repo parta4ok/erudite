@@ -74,7 +74,7 @@ func (state *CompletedSessionState) processingResult() (*SessionResult, error) {
 		}
 	}
 
-	percent := float64(countOfCorrectUserAnswers) / float64(len(state.questions))
+	percent := float64(countOfCorrectUserAnswers) / float64(len(state.questions)) * 100
 	usersCorrectAnswersPercent := fmt.Sprintf("%.2f percents", percent)
 
 	return &SessionResult{
@@ -85,4 +85,31 @@ func (state *CompletedSessionState) processingResult() (*SessionResult, error) {
 
 func (state *CompletedSessionState) isAnswerCorrect(qusetion Question, answer *UserAnswer) bool {
 	return qusetion.IsAnswerCorrect(answer)
+}
+
+func (state *CompletedSessionState) GetSessionDurationLimit() (time.Duration, error) {
+	return time.Duration(0), errors.Wrapf(
+		ErrInvalidState, "%s not support `GetSessionDurationLimit`", state.GetStatus())
+}
+
+func (state *CompletedSessionState) IsExpired() (bool, error) {
+	return state.isExpired, nil
+}
+
+func (state *CompletedSessionState) GetQuestions() ([]Question, error) {
+	questionsList := make([]Question, 0, len(state.questions))
+	for _, question := range state.questions {
+		questionsList = append(questionsList, question)
+	}
+
+	return questionsList, nil
+}
+
+func (state *CompletedSessionState) GetStartedAt() (time.Time, error) {
+	return time.Time{}, errors.Wrapf(
+		ErrInvalidState, "%s not support `GetStartedAt`", state.GetStatus())
+}
+
+func (state *CompletedSessionState) GetUserAnswers() ([]*UserAnswer, error) {
+	return state.answers, nil
 }

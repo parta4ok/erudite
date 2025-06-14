@@ -3,6 +3,7 @@ module github.com/parta4ok/kvs
 go 1.24.3
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.10.0

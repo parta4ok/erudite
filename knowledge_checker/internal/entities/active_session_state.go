@@ -18,7 +18,7 @@ type ActiveSessionState struct {
 }
 
 func NewActiveSessionState(questions map[uint64]Question, holder StateHolder,
-	duration time.Duration) *ActiveSessionState {
+	duration time.Duration, opts ...ActiveSessionStateOption) *ActiveSessionState {
 	state := &ActiveSessionState{
 		holder:    holder,
 		questions: questions,
@@ -26,7 +26,23 @@ func NewActiveSessionState(questions map[uint64]Question, holder StateHolder,
 		duration:  duration,
 	}
 
+	state.setOptions(opts...)
+
 	return state
+}
+
+type ActiveSessionStateOption func(*ActiveSessionState)
+
+func WithStartedAt(startedAt time.Time) ActiveSessionStateOption {
+	return func(state *ActiveSessionState) {
+		state.startedAt = startedAt
+	}
+}
+
+func (state *ActiveSessionState) setOptions(opts ...ActiveSessionStateOption) {
+	for _, opt := range opts {
+		opt(state)
+	}
 }
 
 func (state *ActiveSessionState) GetStatus() string {
@@ -49,4 +65,31 @@ func (state *ActiveSessionState) SetUserAnswer(answers []*UserAnswer) error {
 
 func (state *ActiveSessionState) GetSessionResult() (*SessionResult, error) {
 	return nil, errors.Wrapf(ErrInvalidState, "%s not support `GetSessionResult`", state.GetStatus())
+}
+
+func (state *ActiveSessionState) GetSessionDurationLimit() (time.Duration, error) {
+	return state.duration, nil
+}
+
+func (state *ActiveSessionState) IsExpired() (bool, error) {
+	return false, errors.Wrapf(
+		ErrInvalidState, "%s not support `IsExpired`", state.GetStatus())
+}
+
+func (state *ActiveSessionState) GetQuestions() ([]Question, error) {
+	questionsList := make([]Question, 0, len(state.questions))
+	for _, question := range state.questions {
+		questionsList = append(questionsList, question)
+	}
+
+	return questionsList, nil
+}
+
+func (state *ActiveSessionState) GetStartedAt() (time.Time, error) {
+	return state.startedAt, nil
+}
+
+func (state *ActiveSessionState) GetUserAnswers() ([]*UserAnswer, error) {
+	return nil, errors.Wrapf(
+		ErrInvalidState, "%s not support `GetUserAnswers`", state.GetStatus())
 }

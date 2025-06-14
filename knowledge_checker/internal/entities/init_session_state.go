@@ -50,3 +50,28 @@ func (state *InitSessionState) SetUserAnswer(_ []*UserAnswer) error {
 func (state *InitSessionState) GetSessionResult() (*SessionResult, error) {
 	return nil, errors.Wrapf(ErrInvalidState, "%s not support `GetSessionResult`", state.GetStatus())
 }
+
+func (state *InitSessionState) GetSessionDurationLimit() (time.Duration, error) {
+	return time.Duration(0), errors.Wrapf(
+		ErrInvalidState, "%s not support `GetSessionDurationLimit`", state.GetStatus())
+}
+
+func (state *InitSessionState) IsExpired() (bool, error) {
+	return false, errors.Wrapf(
+		ErrInvalidState, "%s not support `IsExpired`", state.GetStatus())
+}
+
+func (state *InitSessionState) GetQuestions() ([]Question, error) {
+	return nil, errors.Wrapf(
+		ErrInvalidState, "%s not support `GetQuestions`", state.GetStatus())
+}
+
+func (state *InitSessionState) GetStartedAt() (time.Time, error) {
+	return time.Time{}, errors.Wrapf(
+		ErrInvalidState, "%s not support `GetStartedAt`", state.GetStatus())
+}
+
+func (state *InitSessionState) GetUserAnswers() ([]*UserAnswer, error) {
+	return nil, errors.Wrapf(
+		ErrInvalidState, "%s not support `GetUserAnswers`", state.GetStatus())
+}

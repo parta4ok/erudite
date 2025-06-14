@@ -16,6 +16,11 @@ type SessionState interface {
 	SetQuestions(qestions map[uint64]Question, duration time.Duration) error
 	SetUserAnswer(answers []*UserAnswer) error
 	GetSessionResult() (*SessionResult, error)
+	GetSessionDurationLimit() (time.Duration, error)
+	IsExpired() (bool, error)
+	GetQuestions() ([]Question, error)
+	GetStartedAt() (time.Time, error)
+	GetUserAnswers() ([]*UserAnswer, error)
 }
 
 type StateHolder interface {

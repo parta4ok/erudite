@@ -19,6 +19,12 @@ CREATE TABLE IF NOT EXISTS kvs.topics (
     name VARCHAR(255) NOT NULL UNIQUE
 );
 
+INSERT INTO kvs.topics (topic_id, name)
+VALUES
+    (1, 'Базы данных'),
+    (2, 'Базовые типы в Go'),
+    (3, 'Составные типы в Go');
+
 CREATE TABLE IF NOT EXISTS kvs.questions (
     id BIGSERIAL PRIMARY KEY,
     question_id SERIAL NOT NULL UNIQUE,

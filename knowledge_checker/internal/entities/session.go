@@ -60,6 +60,13 @@ func (s *Session) GetSesionID() uint64 {
 	return s.sessionID
 }
 
+func (s *Session) GetUserID() uint64 {
+	return s.userID
+}
+func (s *Session) GetTopics() []string {
+	return s.topics
+}
+
 func (s *Session) ChangeState(state SessionState) {
 	s.state = state
 }
@@ -78,4 +85,24 @@ func (s *Session) GetStatus() string {
 
 func (s *Session) GetSessionResult() (*SessionResult, error) {
 	return s.state.GetSessionResult()
+}
+
+func (s *Session) GetSessionDurationLimit() (time.Duration, error) {
+	return s.state.GetSessionDurationLimit()
+}
+
+func (s *Session) IsExpired() (bool, error) {
+	return s.state.IsExpired()
+}
+
+func (s *Session) GetQuestions() ([]Question, error) {
+	return s.state.GetQuestions()
+}
+
+func (s *Session) GetStartedAt() (time.Time, error) {
+	return s.state.GetStartedAt()
+}
+
+func (s *Session) GetUserAnswers() ([]*UserAnswer, error) {
+	return s.state.GetUserAnswers()
 }

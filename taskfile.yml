@@ -28,3 +28,11 @@ tasks:
     desc: Revert all migrations (down) on Postgres
     cmds:
       - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable" down
+  l1_test:
+    desc: Run L1 test with container infrastructure
+    cmds:
+      - task: postgres:up
+      - cmd: sleep 10
+      - task: postgres:migrate:up
+      - go test -v -tags=KVS_TEST_L1 ./...
+      - task: postgres:stop

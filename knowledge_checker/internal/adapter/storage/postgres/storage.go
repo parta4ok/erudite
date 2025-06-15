@@ -80,13 +80,15 @@ func (s *Storage) Close() {
 
 func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	slog.Info("GetTopics started")
-	query := `SELECT kvs.name FROM kvs.topics`
+	query := `SELECT t.name FROM kvs.topics t`
 
 	rows, err := s.db.Query(ctx, query)
 	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "getting topic names failure: %v", err)
 		slog.Error(err.Error())
-		return nil, errors.Wrapf(entities.ErrInternalError, "getting topic names failure: %v", err)
+		return nil, err
 	}
+	defer rows.Close()
 
 	topics := make([]string, 0)
 
@@ -97,11 +99,12 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "rows err: %v", err)
 		slog.Error(err.Error())
-		return nil, errors.Wrapf(entities.ErrInternalError, "rows err: %v", err)
+		return nil, err
 	}
-	slog.Info("GetTopics completed")
 
+	slog.Info("GetTopics completed")
 	return topics, nil
 }
 
@@ -156,16 +159,15 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 
 	rows, errDB := s.db.Query(ctx, query, params...)
 	if errDB != nil {
-		err := errors.Wrapf(entities.ErrInternalError,
-			"get questions from db failure: %s", errDB.Error())
+		err := errors.Wrapf(entities.ErrInternal, "get questions from db failure: %v", errDB)
 		slog.Error(err.Error())
 		return nil, err
 	}
+	defer rows.Close()
 
 	questions, err := s.processingQuestionsRows(ctx, rows)
 	if err != nil {
-		err := errors.Wrap(err,
-			"processingQuestionsRows failure")
+		err := errors.Wrap(err, "processingQuestionsRows")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -201,16 +203,14 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 
 		startedAt, err := session.GetStartedAt()
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"get startedAt from session state: %v", err)
+			err := errors.Wrap(err, "session GetStartedAt failure")
 			slog.Error(err.Error())
 			return err
 		}
 
 		duration, err := session.GetSessionDurationLimit()
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"get duration limit from session state: %v", err)
+			err := errors.Wrap(err, "session GetSessionDurationLimit failure")
 			slog.Error(err.Error())
 			return err
 		}
@@ -222,14 +222,14 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 
 		questionsIDs, err := s.getQuestionsIDs(session)
 		if err != nil {
+			err := errors.Wrap(err, "getQuestionsIDs failure")
 			slog.Error(err.Error())
 			return err
 		}
 
 		userAnswers, err := session.GetUserAnswers()
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"get user answers from session state: %v", err)
+			err := errors.Wrap(err, "session GetUserAnswers failure")
 			slog.Error(err.Error())
 			return err
 		}
@@ -245,24 +245,21 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		userAnswersList := dto.UserAnswersListDTO{AnswersList: userAnswersDTO}
 		answersListJSON, err := json.Marshal(userAnswersList)
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"marshalling failure: %v", err)
+			err := errors.Wrapf(entities.ErrInternal, "marshalling failure: %v", err)
 			slog.Error(err.Error())
 			return err
 		}
 
 		isExpired, err := session.IsExpired()
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"get session expired status failure: %v", err)
+			err := errors.Wrap(err, "session IsExpired failure")
 			slog.Error(err.Error())
 			return err
 		}
 
 		sesseionResult, err := session.GetSessionResult()
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"get session result status failure: %v", err)
+			err := errors.Wrap(err, "session GetSessionResult failure")
 			slog.Error(err.Error())
 			return err
 		}
@@ -273,18 +270,17 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 
 	_, err := s.db.Exec(ctx, query, parameters...)
 	if err != nil {
-		err = errors.Wrapf(entities.ErrInternalError, "store session finished with failure: %v", err)
+		err = errors.Wrapf(entities.ErrInternal, "store session finished with failure: %v", err)
 		slog.Error(err.Error())
 		return err
 	}
 
 	slog.Info("StoreSession completed")
-
 	return nil
 }
 
 func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session, error) {
-	slog.Info("GetSessionBySessionID")
+	slog.Info("GetSessionBySessionID started")
 
 	query := `
 	SELECT 
@@ -317,7 +313,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 
 	if err := row.Scan(&userID, &stateName, &topics, &questionsIDs, &answersRaw,
 		&createdAt, &duration_limit, &isExpired); err != nil {
-		err = errors.Wrapf(entities.ErrInternalError, "scan session data failure: %v", err)
+		err = errors.Wrapf(entities.ErrInternal, "scan session data failure: %v", err)
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -328,7 +324,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		generator.NewUint64Generator(),
 		entities.WithSessionID(sessionID))
 	if err != nil {
-		err = errors.Wrap(err, "creating new session with sessionID failure")
+		err = errors.Wrap(err, "creating new session with sessionID option failure")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -337,6 +333,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 	switch stateName {
 	case entities.InitState:
 		state = entities.NewInitSessionState(session)
+
 	case entities.ActiveState:
 		questions, err := s.getQuestionsByID(ctx, questionsIDs)
 		if err != nil {
@@ -350,6 +347,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 			questionsMap[question.ID()] = question
 		}
 		state = entities.NewActiveSessionState(questionsMap, session, time.Microsecond*time.Duration(duration_limit))
+
 	case entities.CompletedState:
 		questions, err := s.getQuestionsByID(ctx, questionsIDs)
 		if err != nil {
@@ -365,10 +363,11 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 
 		var answersListDTO dto.UserAnswersListDTO
 		if err := json.Unmarshal(answersRaw, &answersListDTO); err != nil {
-			err = errors.Wrapf(entities.ErrInternalError, "unmarshaling failure: %v", err)
+			err = errors.Wrapf(entities.ErrInternal, "unmarshaling failure: %v", err)
 			slog.Error(err.Error())
 			return nil, err
 		}
+
 		answers := make([]*entities.UserAnswer, 0, len(answersListDTO.AnswersList))
 		for _, answerDTO := range answersListDTO.AnswersList {
 			answer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
@@ -385,12 +384,14 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 
 	restoredSession := entities.NewSessionWithCustomState(sessionID, userID, topics, state)
 
+	slog.Info("GetSessionBySessionID completed")
 	return restoredSession, nil
 }
 
 func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
 	[]entities.Question, error) {
 	slog.Info("getQuestionsByID strarted")
+	
 	query := `
 	SELECT 
     q.question_id,
@@ -412,20 +413,21 @@ func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
 
 	rows, errDB := s.db.Query(ctx, query, params...)
 	if errDB != nil {
-		err := errors.Wrapf(entities.ErrInternalError,
+		err := errors.Wrapf(entities.ErrInternal,
 			"get questions from db failure: %s", errDB.Error())
 		slog.Error(err.Error())
 		return nil, err
 	}
+	defer rows.Close()
 
 	questions, err := s.processingQuestionsRows(ctx, rows)
 	if err != nil {
-		err := errors.Wrap(err,
-			"processingQuestionsRows failure")
+		err := errors.Wrap(err, "processingQuestionsRows failure")
 		slog.Error(err.Error())
 		return nil, err
 	}
 
+	slog.Info("getQuestionsByID completed")
 	return questions, nil
 }
 
@@ -444,19 +446,14 @@ func (s *Storage) processingQuestionsRows(_ context.Context, rows pgx.Rows) ([]e
 			variants      []string
 			correctAnswer []string
 		)
-		if err := rows.Scan(
-			&questionID,
-			&questionType,
-			&topic,
-			&subject,
-			&variants,
-			&correctAnswer,
-		); err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"scan questions data failure: %v", err)
+
+		err := rows.Scan(&questionID, &questionType, &topic, &subject, &variants, &correctAnswer)
+		if err != nil {
+			err := errors.Wrapf(entities.ErrInternal, "scan questions data failure: %v", err)
 			slog.Error(err.Error())
 			return nil, err
 		}
+
 		var qt entities.QuestionType
 		switch questionType {
 		case "single selection":
@@ -469,14 +466,14 @@ func (s *Storage) processingQuestionsRows(_ context.Context, rows pgx.Rows) ([]e
 		question, err := s.questionFactory.NewQuestion(questionID, qt, topic, subject, variants,
 			correctAnswer)
 		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"creating questions failure")
+			err := errors.Wrapf(entities.ErrInternal, "creating questions failure")
 			slog.Error(err.Error())
 			return nil, err
 		}
 
 		questions = append(questions, question)
 	}
+
 	slog.Info("processingQuestionsRows completed")
 	return questions, nil
 }
@@ -502,7 +499,7 @@ func (s *Storage) makeCompletedStateSessionQuery() string {
 func (s *Storage) getQuestionsIDs(session *entities.Session) ([]uint64, error) {
 	questions, err := session.GetQuestions()
 	if err != nil {
-		err := errors.Wrapf(entities.ErrInternalError,
+		err := errors.Wrapf(entities.ErrInternal,
 			"get questions from session state: %v", err)
 		slog.Error(err.Error())
 		return nil, err

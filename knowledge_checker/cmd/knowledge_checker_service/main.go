@@ -1,73 +1,76 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"time"
 
-	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
-	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/storage/postgres"
-	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
+	envsettings "github.com/parta4ok/kvs/knowledge_checker/pkg/env_settings"
 )
 
 func main() {
-	pg, err := postgres.NewStorage("postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
+	fmt.Println(envsettings.Getenv("KVS_TEST_PG_CONN_STR"))
 
-	q, err := pg.GetQuesions(context.TODO(), []string{"Базы данных"})
-	if err != nil {
-		panic(err)
-	}
+	// _ = godotenv.Load()
 
-	session, err := entities.NewSession(1, []string{"Базы данных"}, generator.NewUint64Generator())
-	if err != nil {
-		panic(err)
-	}
+	// connStr := os.Getenv("TESTPGCONN")
+	// fmt.Println(connStr)
 
-	if err := pg.StoreSession(context.TODO(), session); err != nil {
-		panic(err)
-	}
+	// pg, err := postgres.NewStorage(connStr)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	questionsMap := make(map[uint64]entities.Question, len(q))
-	for _, question := range q {
-		questionsMap[question.ID()] = question
-	}
+	// q, err := pg.GetQuesions(context.TODO(), []string{"Базы данных"})
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	if err := session.SetQuestions(questionsMap, time.Minute*5); err != nil {
-		panic(err)
-	}
+	// session, err := entities.NewSession(1, []string{"Базы данных"}, generator.NewUint64Generator())
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	if err := pg.StoreSession(context.TODO(), session); err != nil {
-		panic(err)
-	}
+	// if err := pg.StoreSession(context.TODO(), session); err != nil {
+	// 	panic(err)
+	// }
 
-	answers := make([]*entities.UserAnswer, 0, len(questionsMap))
+	// questionsMap := make(map[uint64]entities.Question, len(q))
+	// for _, question := range q {
+	// 	questionsMap[question.ID()] = question
+	// }
 
-	for id, question := range questionsMap {
-		answer, err := entities.NewUserAnswer(id, []string{question.Variants()[0]})
-		if err != nil {
-			panic(err)
-		}
+	// if err := session.SetQuestions(questionsMap, time.Minute*5); err != nil {
+	// 	panic(err)
+	// }
 
-		answers = append(answers, answer)
-	}
+	// if err := pg.StoreSession(context.TODO(), session); err != nil {
+	// 	panic(err)
+	// }
 
-	if err := session.SetUserAnswer(answers); err != nil {
-		panic(err)
-	}
+	// answers := make([]*entities.UserAnswer, 0, len(questionsMap))
 
-	if err := pg.StoreSession(context.TODO(), session); err != nil {
-		panic(err)
-	}
+	// for id, question := range questionsMap {
+	// 	answer, err := entities.NewUserAnswer(id, []string{question.Variants()[0]})
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-	fmt.Println(session.GetStatus())
+	// 	answers = append(answers, answer)
+	// }
 
-	recoveredSession, err := pg.GetSessionBySessionID(context.TODO(), session.GetSesionID())
-	if err != nil {
-		panic(err)
-	}
-	res, _ := session.GetSessionResult()
-	fmt.Println(recoveredSession.GetStatus(), session.GetTopics(), res)
+	// if err := session.SetUserAnswer(answers); err != nil {
+	// 	panic(err)
+	// }
+
+	// if err := pg.StoreSession(context.TODO(), session); err != nil {
+	// 	panic(err)
+	// }
+
+	// fmt.Println(session.GetStatus())
+
+	// recoveredSession, err := pg.GetSessionBySessionID(context.TODO(), session.GetSesionID())
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// res, _ := session.GetSessionResult()
+	// fmt.Println(recoveredSession.GetStatus(), session.GetTopics(), res)
 }

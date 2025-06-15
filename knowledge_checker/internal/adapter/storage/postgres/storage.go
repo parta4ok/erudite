@@ -94,7 +94,11 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 
 	for rows.Next() {
 		var topicName string
-		rows.Scan(&topicName)
+		if err := rows.Scan(&topicName); err != nil {
+			err := errors.Wrapf(entities.ErrInternal, "scan topic name failure: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
 		topics = append(topics, topicName)
 	}
 
@@ -279,7 +283,8 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 	return nil
 }
 
-func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session, error) {
+func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session,
+	error) {
 	slog.Info("GetSessionBySessionID started")
 
 	query := `
@@ -346,7 +351,8 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		for _, question := range questions {
 			questionsMap[question.ID()] = question
 		}
-		state = entities.NewActiveSessionState(questionsMap, session, time.Microsecond*time.Duration(duration_limit))
+		state = entities.NewActiveSessionState(questionsMap, session,
+			time.Microsecond*time.Duration(duration_limit))
 
 	case entities.CompletedState:
 		questions, err := s.getQuestionsByID(ctx, questionsIDs)
@@ -391,7 +397,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
 	[]entities.Question, error) {
 	slog.Info("getQuestionsByID strarted")
-	
+
 	query := `
 	SELECT 
     q.question_id,

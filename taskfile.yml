@@ -32,7 +32,7 @@ tasks:
     desc: Run L1 test with container infrastructure
     cmds:
       - task: postgres:up
-      - cmd: sleep 10
+      - cmd: sleep 1
       - task: postgres:migrate:up
       - go test -v -tags=KVS_TEST_L1 ./...
       - task: postgres:stop

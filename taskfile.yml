@@ -35,4 +35,4 @@ tasks:
       - cmd: sleep 1
       - task: postgres:migrate:up
       - go test -v -tags=KVS_TEST_L1 ./...
-      - task: postgres:stop
+      # - task: postgres:stop

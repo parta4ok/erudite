@@ -6,10 +6,13 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
+	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/cases"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
 	"github.com/parta4ok/kvs/knowledge_checker/pkg/dto"
@@ -159,49 +162,12 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 		return nil, err
 	}
 
-	questions := make([]entities.Question, 0)
-
-	for rows.Next() {
-		var (
-			questionID    uint64
-			questionType  string
-			topic         string
-			subject       string
-			variants      []string
-			correctAnswer []string
-		)
-		if err := rows.Scan(
-			&questionID,
-			&questionType,
-			&topic,
-			&subject,
-			&variants,
-			&correctAnswer,
-		); err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"scan questions data failure: %v", errDB)
-			slog.Error(err.Error())
-			return nil, err
-		}
-		var qt entities.QuestionType
-		switch questionType {
-		case "single selection":
-			qt = entities.SingleSelection
-		case "multi selection":
-			qt = entities.MultiSelection
-		case "true or false":
-			qt = entities.TrueOrFalse
-		}
-		question, err := s.questionFactory.NewQuestion(questionID, qt, topic, subject, variants,
-			correctAnswer)
-		if err != nil {
-			err := errors.Wrapf(entities.ErrInternalError,
-				"creating questions failure: %v", errDB)
-			slog.Error(err.Error())
-			return nil, err
-		}
-
-		questions = append(questions, question)
+	questions, err := s.processingQuestionsRows(ctx, rows)
+	if err != nil {
+		err := errors.Wrap(err,
+			"processingQuestionsRows failure")
+		slog.Error(err.Error())
+		return nil, err
 	}
 
 	slog.Info("GetQuesions completed")
@@ -301,7 +267,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 			return err
 		}
 
-		parameters = append(parameters, questionsIDs, answersListJSON, isExpired, 
+		parameters = append(parameters, questionsIDs, answersListJSON, isExpired,
 			sesseionResult.IsSuccess, sesseionResult.Grade)
 	}
 
@@ -312,11 +278,207 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		return err
 	}
 
+	slog.Info("StoreSession completed")
+
 	return nil
 }
 
 func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session, error) {
-	return nil, nil
+	slog.Info("GetSessionBySessionID")
+
+	query := `
+	SELECT 
+    s.user_id,
+    s.state,
+    s.topics,
+    s.questions,
+    s.answers,
+    s.created_at,
+    s.duration_limit,
+    s.is_expired
+	FROM kvs.sessions s 
+	WHERE s.session_id = $1
+	ORDER BY s.updated_at DESC
+	LIMIT 1;
+	`
+	sessionParameters := []interface{}{sessionID}
+
+	row := s.db.QueryRow(ctx, query, sessionParameters...)
+	var (
+		userID         uint64
+		stateName      string
+		topics         []string
+		questionsIDs   []uint64
+		answersRaw     []byte
+		createdAt      *time.Time
+		duration_limit uint64
+		isExpired      *bool
+	)
+
+	if err := row.Scan(&userID, &stateName, &topics, &questionsIDs, &answersRaw,
+		&createdAt, &duration_limit, &isExpired); err != nil {
+		err = errors.Wrapf(entities.ErrInternalError, "scan session data failure: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	session, err := entities.NewSession(
+		userID,
+		topics,
+		generator.NewUint64Generator(),
+		entities.WithSessionID(sessionID))
+	if err != nil {
+		err = errors.Wrap(err, "creating new session with sessionID failure")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	var state entities.SessionState
+	switch stateName {
+	case entities.InitState:
+		state = entities.NewInitSessionState(session)
+	case entities.ActiveState:
+		questions, err := s.getQuestionsByID(ctx, questionsIDs)
+		if err != nil {
+			err = errors.Wrap(err, "getQuestionsByID failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		questionsMap := make(map[uint64]entities.Question, len(questions))
+		for _, question := range questions {
+			questionsMap[question.ID()] = question
+		}
+		state = entities.NewActiveSessionState(questionsMap, session, time.Microsecond*time.Duration(duration_limit))
+	case entities.CompletedState:
+		questions, err := s.getQuestionsByID(ctx, questionsIDs)
+		if err != nil {
+			err = errors.Wrap(err, "getQuestionsByID failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		questionsMap := make(map[uint64]entities.Question, len(questions))
+		for _, question := range questions {
+			questionsMap[question.ID()] = question
+		}
+
+		var answersListDTO dto.UserAnswersListDTO
+		if err := json.Unmarshal(answersRaw, &answersListDTO); err != nil {
+			err = errors.Wrapf(entities.ErrInternalError, "unmarshaling failure: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
+		answers := make([]*entities.UserAnswer, 0, len(answersListDTO.AnswersList))
+		for _, answerDTO := range answersListDTO.AnswersList {
+			answer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
+			if err != nil {
+				err = errors.Wrap(err, "creating user answer failure")
+				slog.Error(err.Error())
+				return nil, err
+			}
+			answers = append(answers, answer)
+		}
+
+		state = entities.NewCompletedSessionState(questionsMap, session, answers, *isExpired)
+	}
+
+	restoredSession := entities.NewSessionWithCustomState(sessionID, userID, topics, state)
+
+	return restoredSession, nil
+}
+
+func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
+	[]entities.Question, error) {
+	slog.Info("getQuestionsByID strarted")
+	query := `
+	SELECT 
+    q.question_id,
+    qt.name AS question_type_name,
+    t.name AS topic_name,
+    q.subject,
+    q.variants,
+    q.correct_answers
+	FROM 
+    kvs.questions q
+	JOIN kvs.question_types qt ON q.question_type_id = qt.id
+	JOIN kvs.topics t ON q.topic_id = t.topic_id
+	WHERE 
+    q.topic_id = ANY($1::bigint[])
+	ORDER BY 
+    q.question_id;
+	`
+	params := []interface{}{questionsIDs}
+
+	rows, errDB := s.db.Query(ctx, query, params...)
+	if errDB != nil {
+		err := errors.Wrapf(entities.ErrInternalError,
+			"get questions from db failure: %s", errDB.Error())
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	questions, err := s.processingQuestionsRows(ctx, rows)
+	if err != nil {
+		err := errors.Wrap(err,
+			"processingQuestionsRows failure")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	return questions, nil
+}
+
+func (s *Storage) processingQuestionsRows(_ context.Context, rows pgx.Rows) ([]entities.Question,
+	error) {
+	slog.Info("processingQuestionsRows started")
+
+	questions := make([]entities.Question, 0)
+
+	for rows.Next() {
+		var (
+			questionID    uint64
+			questionType  string
+			topic         string
+			subject       string
+			variants      []string
+			correctAnswer []string
+		)
+		if err := rows.Scan(
+			&questionID,
+			&questionType,
+			&topic,
+			&subject,
+			&variants,
+			&correctAnswer,
+		); err != nil {
+			err := errors.Wrapf(entities.ErrInternalError,
+				"scan questions data failure: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
+		var qt entities.QuestionType
+		switch questionType {
+		case "single selection":
+			qt = entities.SingleSelection
+		case "multi selection":
+			qt = entities.MultiSelection
+		case "true or false":
+			qt = entities.TrueOrFalse
+		}
+		question, err := s.questionFactory.NewQuestion(questionID, qt, topic, subject, variants,
+			correctAnswer)
+		if err != nil {
+			err := errors.Wrapf(entities.ErrInternalError,
+				"creating questions failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		questions = append(questions, question)
+	}
+	slog.Info("processingQuestionsRows completed")
+	return questions, nil
 }
 
 func (s *Storage) makeInitStateSessionQuery() string {

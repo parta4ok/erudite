@@ -35,7 +35,7 @@ func main() {
 		questionsMap[question.ID()] = question
 	}
 
-	if err := session.SetQuestions(questionsMap, time.Millisecond*200); err != nil {
+	if err := session.SetQuestions(questionsMap, time.Minute*5); err != nil {
 		panic(err)
 	}
 
@@ -53,7 +53,7 @@ func main() {
 
 		answers = append(answers, answer)
 	}
-	time.Sleep(time.Second)
+
 	if err := session.SetUserAnswer(answers); err != nil {
 		panic(err)
 	}
@@ -62,7 +62,12 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(session.GetSessionResult())
+	fmt.Println(session.GetStatus())
 
-	// println(q)
+	recoveredSession, err := pg.GetSessionBySessionID(context.TODO(), session.GetSesionID())
+	if err != nil {
+		panic(err)
+	}
+	res, _ := session.GetSessionResult()
+	fmt.Println(recoveredSession.GetStatus(), session.GetTopics(), res)
 }

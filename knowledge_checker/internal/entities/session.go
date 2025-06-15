@@ -14,7 +14,22 @@ type Session struct {
 	state SessionState
 }
 
-func NewSession(userID uint64, topics []string, generator IDGenerator) (*Session, error) {
+type SessionOption func(*Session)
+
+func WithSessionID(sessionID uint64) SessionOption {
+	return func(s *Session) {
+		s.sessionID = sessionID
+	}
+}
+
+func (s *Session) setOptions(opts ...SessionOption) {
+	for _, opt := range opts {
+		opt(s)
+	}
+}
+
+func NewSession(userID uint64, topics []string, generator IDGenerator,
+	opts ...SessionOption) (*Session, error) {
 	if userID == 0 {
 		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
 	}
@@ -35,13 +50,15 @@ func NewSession(userID uint64, topics []string, generator IDGenerator) (*Session
 		topics:    topics,
 	}
 
+	session.setOptions(opts...)
+
 	state := NewInitSessionState(session)
 	session.ChangeState(state)
 
 	return session, nil
 }
 
-func NewSessionWithCustomState(userID uint64, topics []string, sessionID uint64,
+func NewSessionWithCustomState(sessionID uint64, userID uint64, topics []string,
 	state SessionState) *Session {
 	return &Session{
 		userID:    userID,

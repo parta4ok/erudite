@@ -34,5 +34,5 @@ tasks:
       - task: postgres:up
       - cmd: sleep 1
       - task: postgres:migrate:up
-      - go test -v -tags=KVS_TEST_L1 ./...
+      - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
       # - task: postgres:stop

@@ -117,7 +117,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	slog.Info("GetQuesions started")
 
 	params := make([]interface{}, 0)
-	params = append(params, topics, 3)
+	params = append(params, topics, s.questionsLimits)
 
 	query := `
 	WITH ranked_questions AS (
@@ -140,7 +140,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	to_update AS (
     	SELECT question_id
     	FROM ranked_questions
-    	WHERE rn <= 2
+    	WHERE rn <= $2
 	),
 	updated AS (
     	UPDATE kvs.questions

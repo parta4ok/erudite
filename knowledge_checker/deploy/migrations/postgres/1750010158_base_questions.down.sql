@@ -1,0 +1,3 @@
+TRUNCATE TABLE kvs.questions CASCADE;
+TRUNCATE TABLE kvs.topics CASCADE;
+TRUNCATE TABLE kvs.question_types CASCADE;

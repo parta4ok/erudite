@@ -1,13 +1,9 @@
 package main
 
 import (
-	"fmt"
-
-	envsettings "github.com/parta4ok/kvs/knowledge_checker/pkg/env_settings"
 )
 
 func main() {
-	fmt.Println(envsettings.Getenv("KVS_TEST_PG_CONN_STR"))
 
 	// _ = godotenv.Load()
 

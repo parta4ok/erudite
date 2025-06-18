@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,13 +23,19 @@ func WithSessionID(sessionID uint64) SessionOption {
 	}
 }
 
+func WithNilState() SessionOption {
+	return func(s *Session) {
+		s.state = nil
+	}
+}
+
 func (s *Session) setOptions(opts ...SessionOption) {
 	for _, opt := range opts {
 		opt(s)
 	}
 }
 
-func NewSession(userID uint64, topics []string, generator IDGenerator,
+func NewSession(userID uint64, topics []string, generator IDGenerator, sessionStorage SessionStorage,
 	opts ...SessionOption) (*Session, error) {
 	if userID == 0 {
 		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
@@ -50,10 +57,10 @@ func NewSession(userID uint64, topics []string, generator IDGenerator,
 		topics:    topics,
 	}
 
-	session.setOptions(opts...)
-
-	state := NewInitSessionState(session)
+	state := NewInitSessionState(session, sessionStorage)
 	session.ChangeState(state)
+
+	session.setOptions(opts...)
 
 	return session, nil
 }
@@ -85,6 +92,7 @@ func (s *Session) GetTopics() []string {
 }
 
 func (s *Session) ChangeState(state SessionState) {
+	s.state = nil
 	s.state = state
 }
 
@@ -122,4 +130,9 @@ func (s *Session) GetStartedAt() (time.Time, error) {
 
 func (s *Session) GetUserAnswers() ([]*UserAnswer, error) {
 	return s.state.GetUserAnswers()
+}
+
+func (s *Session) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+	topics []string) (bool, error) {
+	return s.state.IsDailySessionLimitReached(ctx, userID, topics)
 }

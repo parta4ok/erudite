@@ -19,7 +19,8 @@ import (
 )
 
 var (
-	_ cases.Storage = (*Storage)(nil)
+	_ cases.Storage           = (*Storage)(nil)
+	_ entities.SessionStorage = (*Storage)(nil)
 )
 
 const (
@@ -323,23 +324,42 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		return nil, err
 	}
 
-	session, err := entities.NewSession(
-		userID,
-		topics,
-		generator.NewUint64Generator(),
-		entities.WithSessionID(sessionID))
-	if err != nil {
-		err = errors.Wrap(err, "creating new session with sessionID option failure")
-		slog.Error(err.Error())
-		return nil, err
-	}
+	slog.Info("GetSessionBySessionID completed")
+	return s.recoverSession(ctx, sessionID, stateName, userID, topics, questionsIDs,
+		duration_limit, answersRaw, createdAt, isExpired)
+}
 
-	var state entities.SessionState
+func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateName string,
+	userID uint64, topics []string, questionsIDs []uint64, duration_limit uint64, answersRaw []byte,
+	createdAt *time.Time, isExpired *bool) (*entities.Session, error) {
+	slog.Info("recoverSession started")
+
 	switch stateName {
 	case entities.InitState:
-		state = entities.NewInitSessionState(session)
+		initSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
+			entities.WithSessionID(sessionID),
+			entities.WithNilState())
+		if err != nil {
+			err = errors.Wrap(err, "creating new session with sessionID option failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		state := entities.NewInitSessionState(initSession, s)
+		initSession.ChangeState(state)
+
+		slog.Info("recoverSession completed")
+		return initSession, nil
 
 	case entities.ActiveState:
+		activeSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
+			entities.WithSessionID(sessionID), entities.WithNilState())
+		if err != nil {
+			err = errors.Wrap(err, "creating new session with sessionID option failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
 		questions, err := s.getQuestionsByID(ctx, questionsIDs)
 		if err != nil {
 			err = errors.Wrap(err, "getQuestionsByID failure")
@@ -351,10 +371,22 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		for _, question := range questions {
 			questionsMap[question.ID()] = question
 		}
-		state = entities.NewActiveSessionState(questionsMap, session,
-			time.Microsecond*time.Duration(duration_limit))
+		state := entities.NewActiveSessionState(questionsMap, activeSession,
+			time.Microsecond*time.Duration(duration_limit), entities.WithStartedAt(*createdAt))
+		activeSession.ChangeState(state)
+
+		slog.Info("recoverSession completed")
+		return activeSession, nil
 
 	case entities.CompletedState:
+		completedSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
+			entities.WithSessionID(sessionID), entities.WithNilState())
+		if err != nil {
+			err = errors.Wrap(err, "creating new session with sessionID option failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
 		questions, err := s.getQuestionsByID(ctx, questionsIDs)
 		if err != nil {
 			err = errors.Wrap(err, "getQuestionsByID failure")
@@ -385,13 +417,16 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 			answers = append(answers, answer)
 		}
 
-		state = entities.NewCompletedSessionState(questionsMap, session, answers, *isExpired)
+		state := entities.NewCompletedSessionState(questionsMap, completedSession, answers, *isExpired)
+		completedSession.ChangeState(state)
+
+		slog.Info("recoverSession completed")
+		return completedSession, nil
 	}
 
-	restoredSession := entities.NewSessionWithCustomState(sessionID, userID, topics, state)
-
-	slog.Info("GetSessionBySessionID completed")
-	return restoredSession, nil
+	err := errors.Wrapf(entities.ErrInternal, "unknown session state: %s", stateName)
+	slog.Error(err.Error())
+	return nil, err
 }
 
 func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
@@ -411,7 +446,7 @@ func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
 	JOIN kvs.question_types qt ON q.question_type_id = qt.id
 	JOIN kvs.topics t ON q.topic_id = t.topic_id
 	WHERE 
-    q.topic_id = ANY($1::bigint[])
+    q.question_id =  ANY($1::BIGINT[])
 	ORDER BY 
     q.question_id;
 	`
@@ -517,4 +552,56 @@ func (s *Storage) getQuestionsIDs(session *entities.Session) ([]uint64, error) {
 	}
 
 	return questionsIDs, nil
+}
+
+func (s *Storage) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+	topics []string) (bool, error) {
+	slog.Info("IsDailySessionLimitReached started")
+
+	query := `
+SELECT 
+    s.user_id,
+    s.topics,
+    COUNT(*) AS completed_sessions_today
+FROM 
+    kvs.sessions s
+WHERE
+    s.user_id = $1
+    AND
+    s.state = 'completed state'
+    AND
+    s.updated_at::date >= CURRENT_DATE
+    AND
+    $2::text[] && s.topics
+GROUP BY 
+    s.user_id, 
+    s.topics
+ORDER BY 
+    completed_sessions_today DESC,
+    user_id ASC;
+	`
+	parameters := []interface{}{userID, topics}
+
+	row := s.db.QueryRow(ctx, query, parameters...)
+	var (
+		uid uint64
+		t   []string
+		cnt int
+	)
+	if err := row.Scan(&uid, &t, &cnt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Info("IsDailySessionLimitReached completed")
+			return false, nil
+		}
+		err := errors.Wrapf(entities.ErrInternal, "scan failure: %v", err)
+		slog.Error(err.Error())
+		return false, err
+	}
+
+	slog.Info("IsDailySessionLimitReached completed")
+	if cnt >= 1 {
+		return true, nil
+	}
+
+	return false, nil
 }

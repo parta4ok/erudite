@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -112,4 +113,10 @@ func (state *CompletedSessionState) GetStartedAt() (time.Time, error) {
 
 func (state *CompletedSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 	return state.answers, nil
+}
+
+func (state *CompletedSessionState) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+	topics []string) (bool, error) {
+	return false, errors.Wrapf(
+		ErrInvalidState, "%s not support `IsDailySessionLimitReached`", state.GetStatus())
 }

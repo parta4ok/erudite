@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"context"
 	"time"
 )
 
@@ -13,14 +14,15 @@ const (
 //go:generate mockgen -source=session_state.go -destination=./testdata/session_state.go -package=testdata
 type SessionState interface {
 	GetStatus() string
+	GetQuestions() ([]Question, error)
+	GetStartedAt() (time.Time, error)
+	GetUserAnswers() ([]*UserAnswer, error)
 	SetQuestions(qestions map[uint64]Question, duration time.Duration) error
 	SetUserAnswer(answers []*UserAnswer) error
 	GetSessionResult() (*SessionResult, error)
 	GetSessionDurationLimit() (time.Duration, error)
 	IsExpired() (bool, error)
-	GetQuestions() ([]Question, error)
-	GetStartedAt() (time.Time, error)
-	GetUserAnswers() ([]*UserAnswer, error)
+	IsDailySessionLimitReached(ctx context.Context, userID uint64, topics []string) (bool, error)
 }
 
 type StateHolder interface {

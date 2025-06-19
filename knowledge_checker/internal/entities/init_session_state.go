@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,15 +16,15 @@ var (
 )
 
 type InitSessionState struct {
-	stateHolder StateHolder
+	stateHolder    StateHolder
+	sessionStorage SessionStorage
 }
 
-func NewInitSessionState(
-	stateHolder StateHolder,
-) *InitSessionState {
+func NewInitSessionState(stateHolder StateHolder, sessionStorage SessionStorage) *InitSessionState {
 
 	return &InitSessionState{
-		stateHolder: stateHolder,
+		stateHolder:    stateHolder,
+		sessionStorage: sessionStorage,
 	}
 }
 
@@ -74,4 +75,9 @@ func (state *InitSessionState) GetStartedAt() (time.Time, error) {
 func (state *InitSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 	return nil, errors.Wrapf(
 		ErrInvalidState, "%s not support `GetUserAnswers`", state.GetStatus())
+}
+
+func (state *InitSessionState) IsDailySessionLimitReached(ctx context.Context,
+	userID uint64, topics []string) (bool, error) {
+	return state.sessionStorage.IsDailySessionLimitReached(ctx, userID, topics)
 }

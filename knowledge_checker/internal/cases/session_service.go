@@ -15,15 +15,20 @@ const (
 )
 
 type SessionService struct {
-	storage       Storage
-	generator     entities.IDGenerator
-	topicDuration time.Duration
+	storage        Storage
+	sessionStorage entities.SessionStorage
+	generator      entities.IDGenerator
+	topicDuration  time.Duration
 }
 
-func NewSessionService(storage Storage, generator entities.IDGenerator,
-	opts ...SessionServiceOption) (*SessionService, error) {
+func NewSessionService(storage Storage, sessionStorage entities.SessionStorage,
+	generator entities.IDGenerator, opts ...SessionServiceOption) (*SessionService, error) {
 	if storage == nil {
 		return nil, errors.Wrapf(entities.ErrInvalidParam, "storage not set")
+	}
+
+	if sessionStorage == nil {
+		return nil, errors.Wrapf(entities.ErrInvalidParam, "session storage not set")
 	}
 
 	if generator == nil {
@@ -31,9 +36,10 @@ func NewSessionService(storage Storage, generator entities.IDGenerator,
 	}
 
 	service := &SessionService{
-		storage:       storage,
-		generator:     generator,
-		topicDuration: defaultTopicDuration,
+		storage:        storage,
+		sessionStorage: sessionStorage,
+		generator:      generator,
+		topicDuration:  defaultTopicDuration,
 	}
 
 	service.setOptions(opts...)
@@ -72,10 +78,20 @@ func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
 	topics []string) (uint64, map[uint64]entities.Question, error) {
 	slog.Info("CreateSession started")
 
-	session, err := entities.NewSession(userID, topics, srv.generator)
+	session, err := entities.NewSession(userID, topics, srv.generator, srv.sessionStorage)
 	if err != nil {
 		slog.Error(err.Error())
 		return 0, nil, errors.Wrap(err, "NewSession")
+	}
+
+	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics)
+	if err != nil {
+		slog.Error(err.Error())
+		return 0, nil, errors.Wrap(err, "IsDailySessionLimitReached")
+	}
+
+	if forbidded {
+		return 0, nil, errors.Wrap(entities.ErrForbidden, "creating new session for this user")
 	}
 
 	questions, err := srv.storage.GetQuesions(ctx, topics)

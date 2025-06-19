@@ -5,6 +5,7 @@
 package testdata
 
 import (
+	context "context"
 	reflect "reflect"
 	time "time"
 
@@ -122,6 +123,21 @@ func (m *MockSessionState) GetUserAnswers() ([]*entities.UserAnswer, error) {
 func (mr *MockSessionStateMockRecorder) GetUserAnswers() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserAnswers", reflect.TypeOf((*MockSessionState)(nil).GetUserAnswers))
+}
+
+// IsDailySessionLimitReached mocks base method.
+func (m *MockSessionState) IsDailySessionLimitReached(ctx context.Context, userID uint64, topics []string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsDailySessionLimitReached", ctx, userID, topics)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsDailySessionLimitReached indicates an expected call of IsDailySessionLimitReached.
+func (mr *MockSessionStateMockRecorder) IsDailySessionLimitReached(ctx, userID, topics interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsDailySessionLimitReached", reflect.TypeOf((*MockSessionState)(nil).IsDailySessionLimitReached), ctx, userID, topics)
 }
 
 // IsExpired mocks base method.

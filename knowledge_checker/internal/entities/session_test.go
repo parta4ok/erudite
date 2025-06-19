@@ -1,6 +1,7 @@
 package entities_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -18,20 +19,26 @@ func TestNewSession(t *testing.T) {
 	defer func() {
 		t.Cleanup(ctrl.Finish)
 	}()
+	ctx := context.TODO()
+	userID := uint64(1)
+	topics := []string{"1"}
 
 	generator := testdata.NewMockIDGenerator(ctrl)
 	generator.EXPECT().GenerateID().Return(uint64(2))
+	storage := testdata.NewMockSessionStorage(ctrl)
+	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics).Return(false, nil)
 
 	question := testdata.NewMockQuestion(ctrl)
 
-	userID := 1
-	topics := []string{"1"}
-
-	session, err := entities.NewSession(uint64(userID), topics, generator)
+	session, err := entities.NewSession(uint64(userID), topics, generator, storage)
 	require.NoError(t, err)
 	require.NotNil(t, session)
 
 	require.Equal(t, entities.InitState, session.GetStatus())
+
+	forbidden, err := session.IsDailySessionLimitReached(ctx, uint64(userID), topics)
+	require.False(t, forbidden)
+	require.NoError(t, err)
 
 	quesionMap := map[uint64]entities.Question{3: question}
 

@@ -180,5 +180,51 @@ func compareSession(t *testing.T, originalSession, recoveredSession *entities.Se
 }
 
 func TestStorage_IsDailySessionLimitReached(t *testing.T) {
-	
+	db := makeDB(t)
+	defer db.Close()
+
+	userID := uint64(time.Now().UTC().Unix())
+	topics := []string{"Базы данных"}
+	ctx := context.TODO()
+
+	session, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), db)
+	require.NoError(t, err)
+
+	forbidden, err := session.IsDailySessionLimitReached(ctx, session.GetUserID(), session.GetTopics())
+	require.NoError(t, err)
+	require.False(t, forbidden)
+
+	questions, err := db.GetQuesions(ctx, topics)
+	require.NoError(t, err)
+
+	questionsMap := make(map[uint64]entities.Question, len(questions))
+
+	for _, q := range questions {
+		questionsMap[q.ID()] = q
+	}
+
+	session.SetQuestions(questionsMap, time.Minute*time.Duration(len(questions)))
+	answers := make([]*entities.UserAnswer, 0, len(questions))
+
+	for qid, q := range questionsMap {
+		answer, err := entities.NewUserAnswer(qid, q.Variants()[:1])
+		require.NoError(t, err)
+
+		answers = append(answers, answer)
+	}
+
+	session.SetUserAnswer(answers)
+	require.Equal(t, entities.CompletedState, session.GetStatus())
+
+	err = db.StoreSession(ctx, session)
+	require.NoError(t, err)
+
+	secondSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), db)
+	require.NoError(t, err)
+
+	require.Equal(t, entities.InitState, secondSession.GetStatus())
+
+	forbidden, err = secondSession.IsDailySessionLimitReached(ctx, secondSession.GetUserID(), secondSession.GetTopics())
+	require.NoError(t, err)
+	require.True(t, forbidden)
 }

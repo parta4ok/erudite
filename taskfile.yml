@@ -35,4 +35,9 @@ tasks:
       - cmd: sleep 1
       - task: postgres:migrate:up
       - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
-      # - task: postgres:stop
+      - task: postgres:stop
+  swag_gen:
+    desc: Generate swagger specification (JSON only)
+    cmds:
+      - swag init -g ./knowledge_checker/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+      - cp docs/swagger.json knowledge_checker/api/http/public/swagger.json

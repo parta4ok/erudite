@@ -137,5 +137,10 @@ func (srv *SessionService) CompleteSession(
 		return nil, errors.Wrap(err, "GetSessionResult")
 	}
 
+	if err = srv.storage.StoreSession(ctx, session); err != nil {
+		slog.Error(err.Error())
+		return nil, errors.Wrap(err, "StoreSession")
+	}
+
 	return sessionResult, nil
 }

@@ -1,6 +1,13 @@
 package dto
 
 type ErrorDTO struct {
-	StatusCode int    `json:"status_code"`
-	ErrMsg     string `json:"error_message,omitempty"`
+	// HTTP status code
+	// required: true
+	// example: 404
+	StatusCode int `json:"status_code"`
+
+	// error message
+	// required: false
+	// example: topic not set: not found
+	ErrMsg string `json:"error_message,omitempty"`
 }

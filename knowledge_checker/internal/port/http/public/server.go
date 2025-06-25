@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -17,8 +18,10 @@ import (
 )
 
 const (
-	basePath   = "v1/knowledge-platform/"
-	topicsPath = "topics"
+	basePath            = "kvs/v1/"
+	topicsPath          = "topics"
+	startSessionPath    = "/start_session"
+	completeSessionPath = "/complete_session"
 )
 
 type Server struct {
@@ -119,8 +122,21 @@ func (s *Server) Stop() {
 
 func (s *Server) registerRoutes() {
 	s.router.Get(basePath+topicsPath, s.GetTopics)
+	s.router.Post(basePath+"{user_id}"+startSessionPath, s.StartSession)
+	s.router.Post(basePath+"{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
 }
 
+// Get lists of all existing topics
+//
+// @Summary      Get all topics
+// @Description  Retrieves a list of all available topics in the system
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  dto.TopicsDTO  "Successfully retrieved list of topics"
+// @Failure      400  {object}  dto.ErrorDTO   "Invalid request parameters"
+// @Failure      404  {object}  dto.ErrorDTO   "No topics found"
+// @Failure      500  {object}  dto.ErrorDTO   "Internal server error"
+// @Router       /topics [get]
 func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetTopics started")
 	resp.Header().Set("Content-Type", "application/json")
@@ -149,6 +165,161 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 		s.errProcessing(resp, err)
 		return
 	}
+}
+
+// StartSession creates a new testing session for user with selected topics
+//
+// @Summary      Create new session
+// @Description  Starts a new testing session with questions from selected topics
+// @Accept       json
+// @Produce      json
+// @Param        user_id path int true "User ID"
+// @Param        request body dto.TopicsDTO true "Selected topics"
+// @Success      201 {object} dto.SessionDTO "Successfully created session"
+// @Failure      400 {object} dto.ErrorDTO "Invalid parameters"
+// @Failure      404 {object} dto.ErrorDTO "Topics not found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /{user_id}/sessions [post]
+func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("StartSession started")
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	userID := chi.URLParam(req, "user_id")
+
+	uid, err := strconv.Atoi(userID)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInvalidParam, "userID invalid: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var topicsRaw []byte
+	if _, err := req.Body.Read(topicsRaw); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "read body of request failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var topicsDTO dto.TopicsDTO
+	if err := json.Unmarshal(topicsRaw, &topicsDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "unmarshal data to topicsDTO failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	sessionID, questions, err := s.service.CreateSession(req.Context(), uint64(uid),
+		topicsDTO.Topics)
+	if err != nil {
+		err := errors.Wrap(err, "CreateSession failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	data, err := json.Marshal(dto.SessionDTO{
+		SessionID: sessionID,
+		Topics:    topicsDTO.Topics,
+		Questions: questions,
+	})
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusCreated)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// CompleteSession completes a testing session with user answers
+//
+// @Summary      Complete session
+// @Description  Completes a testing session by submitting user answers and returns the session result
+// @Accept       json
+// @Produce      json
+// @Param        user_id path int true "User ID"
+// @Param        session_id path int true "Session ID"
+// @Param        request body dto.UserAnswersListDTO true "User answers"
+// @Success      200 {object} dto.SessionResultDTO "Successfully completed session"
+// @Failure      400 {object} dto.ErrorDTO "Invalid parameters"
+// @Failure      404 {object} dto.ErrorDTO "Session not found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /{user_id}/{session_id}/complete_session [post]
+func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("CompleteSession started")
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	sessionID := chi.URLParam(req, "session_id")
+
+	sid, err := strconv.Atoi(sessionID)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInvalidParam, "sessionID invalid: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var userAnswersListDTO dto.UserAnswersListDTO
+	if err := json.NewDecoder(req.Body).Decode(&userAnswersListDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "decode request body to userAnswersListDTO failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	userAnswers := make([]entities.UserAnswer, 0, len(userAnswersListDTO.AnswersList))
+	for _, answerDTO := range userAnswersListDTO.AnswersList {
+		userAnswer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
+		if err != nil {
+			err := errors.Wrapf(entities.ErrInvalidParam, "create user answer failure: %v", err)
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+		userAnswers = append(userAnswers, *userAnswer)
+	}
+
+	sessionResult, err := s.service.CompleteSession(req.Context(), uint64(sid), userAnswers)
+	if err != nil {
+		err := errors.Wrap(err, "CompleteSession failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resultDTO := dto.SessionResultDTO{
+		IsSuccess: sessionResult.IsSuccess,
+		Grade:     sessionResult.Grade,
+	}
+
+	data, err := json.Marshal(resultDTO)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	slog.Info("CompleteSession completed successfully")
 }
 
 func (s *Server) errProcessing(resp http.ResponseWriter, err error) {

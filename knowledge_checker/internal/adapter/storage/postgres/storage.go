@@ -15,6 +15,7 @@ import (
 	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/cases"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
+	_ "github.com/parta4ok/kvs/knowledge_checker/internal/port/http/public"
 	"github.com/parta4ok/kvs/knowledge_checker/pkg/dto"
 )
 

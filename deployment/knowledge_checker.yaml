@@ -1,0 +1,9 @@
+kvs:
+  http:
+    public:
+      port: 8080
+      timeout: 30s
+  storage:
+    type: postgres
+postgres:
+  connection: postgresql://postgres:password@localhost:5432/knowledge

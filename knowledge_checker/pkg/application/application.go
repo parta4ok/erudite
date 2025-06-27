@@ -225,10 +225,6 @@ func (app *App) Stop() {
 	}
 }
 
-func (app *App) startPublicPort(server public.Server) {
-	server.Start()
-}
-
 func (app *App) panic(err error, args ...any) {
 	slog.Error(err.Error(), args...)
 	os.Exit(1)

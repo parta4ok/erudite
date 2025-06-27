@@ -170,7 +170,6 @@ func (app *App) startWithGracefulShutdown() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
-	// Запускаем HTTP сервер в отдельной горутине
 	app.wg.Add(1)
 	go func() {
 		defer app.wg.Done()

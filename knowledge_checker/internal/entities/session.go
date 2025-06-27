@@ -35,8 +35,8 @@ func (s *Session) setOptions(opts ...SessionOption) {
 	}
 }
 
-func NewSession(userID uint64, topics []string, generator IDGenerator, sessionStorage SessionStorage,
-	opts ...SessionOption) (*Session, error) {
+func NewSession(userID uint64, topics []string, generator IDGenerator,
+	sessionStorage SessionStorage, opts ...SessionOption) (*Session, error) {
 	if userID == 0 {
 		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
 	}

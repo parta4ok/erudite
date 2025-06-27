@@ -28,6 +28,25 @@ tasks:
     desc: Revert all migrations (down) on Postgres
     cmds:
       - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable" down
+  
+  services:up:
+    desc: Run all services containers with force rebuild and clean start
+    cmds:
+      - docker-compose --profile services down -v 
+      - docker-compose --profile services up -d --build --force-recreate
+
+  services:down:
+    desc: Stop and remove all services containers with volumes
+    cmds:
+      - docker-compose --profile services down -v
+  
+  
+  
+  
+  
+  
+  
+  
   l1_test:
     desc: Run L1 test with container infrastructure
     cmds:
@@ -35,6 +54,17 @@ tasks:
       - cmd: sleep 1
       - task: postgres:migrate:up
       - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
+      - task: postgres:stop
+  l2_test:
+    desc: Run L2 integration tests with service and container infrastructure
+    cmds:
+      - task: postgres:up
+      - cmd: sleep 2
+      - task: postgres:migrate:up
+      - cmd: KVS_CONFIG_PATH=./deployment/knowledge_checker.yaml go run ./knowledge_checker/cmd/knowledge_checker_service/main.go &
+      - cmd: sleep 5
+      - cmd: go test -v -tags=KVS_TEST_L2 ./knowledge_checker/test/l2/...
+      - cmd: pkill -f "go run.*knowledge_checker_service"
       - task: postgres:stop
   swag_gen:
     desc: Generate swagger specification (JSON only)

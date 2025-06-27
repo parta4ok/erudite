@@ -13,4 +13,4 @@ kvs:
     format: json
     add_source: true
 postgres:
-  connection: postgresql://postgres:password@localhost:5432/knowledge
+  connection: postgresql://postgres:password@postgres:5432/knowledge

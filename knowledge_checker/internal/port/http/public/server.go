@@ -244,7 +244,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 // CompleteSession completes a testing session with user answers
 //
 // @Summary      Complete session
-// @Description  Completes a testing session by submitting user answers and returns the session result
+// @Description  Completes a testing session by submitting user answers and returns session result
 // @Accept       json
 // @Produce      json
 // @Param        user_id path int true "User ID"
@@ -272,7 +272,8 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 
 	var userAnswersListDTO dto.UserAnswersListDTO
 	if err := json.NewDecoder(req.Body).Decode(&userAnswersListDTO); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "decode request body to userAnswersListDTO failure: %v", err)
+		err := errors.Wrapf(entities.ErrInternal,
+			"decode request body to userAnswersListDTO failure: %v", err)
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -345,5 +346,5 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	}
 
 	resp.WriteHeader(errDTO.StatusCode)
-	resp.Write(errDtoData)
+	resp.Write(errDtoData) //nolint:errcheck //ok
 }

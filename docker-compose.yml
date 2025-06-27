@@ -17,6 +17,25 @@ services:
     profiles:
       - services
       - l1
+      - l2
+  kvs_app:
+    container_name: knowledge_validation_system_app
+    build:
+      context: .
+      dockerfile: knowledge_checker/dockerfile
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - service_network
+    profiles:
+      - services
+      - l1
+      - l2
+
 
 networks:
   service_network:

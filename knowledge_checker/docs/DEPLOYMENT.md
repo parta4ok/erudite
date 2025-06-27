@@ -60,11 +60,17 @@ psql -h localhost -p 5432 -U postgres -d knowledge
 # Сборка приложения
 go build -o bin/kvs ./cmd/knowledge_checker_service
 
-# Запуск сервиса
-./bin/kvs
+# Запуск сервиса (различные способы)
+./bin/kvs                                    # Использует конфигурацию по умолчанию
+./bin/kvs -config /path/to/config.yaml      # Указание пути к конфигурации
+./bin/kvs -help                             # Показать справку
+
+# Через переменную окружения
+KVS_CONFIG_PATH=/path/to/config.yaml ./bin/kvs
 
 # Или через go run
 go run ./cmd/knowledge_checker_service/main.go
+go run ./cmd/knowledge_checker_service/main.go -config ./deployment/knowledge_checker.yaml
 ```
 
 ### 4. Проверка работоспособности
@@ -213,10 +219,35 @@ spec:
 
 ## 🔧 Конфигурация
 
+### Конфигурационный файл
+
+Приложение использует YAML файл для конфигурации. По умолчанию ищется файл `deployment/knowledge_checker.yaml`.
+
+#### Структура конфигурации
+
+```yaml
+kvs:
+  http:
+    public:
+      port: :8080
+      timeout: 30s
+  storage:
+    type: postgres
+postgres:
+  connection: postgresql://postgres:password@localhost:5432/knowledge
+```
+
+#### Способы указания конфигурации
+
+1. **По умолчанию**: `deployment/knowledge_checker.yaml`
+2. **Флаг командной строки**: `-config /path/to/config.yaml`
+3. **Переменная окружения**: `KVS_CONFIG_PATH=/path/to/config.yaml`
+
 ### Переменные окружения
 
 | Переменная | Описание | По умолчанию |
 |------------|----------|--------------|
+| `KVS_CONFIG_PATH` | Путь к конфигурационному файлу | `deployment/knowledge_checker.yaml` |
 | `DB_HOST` | Хост базы данных | `localhost` |
 | `DB_PORT` | Порт базы данных | `5432` |
 | `DB_USER` | Пользователь БД | `postgres` |

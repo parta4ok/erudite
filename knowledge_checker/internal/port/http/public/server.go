@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	basePath            = "kvs/v1/"
-	topicsPath          = "topics"
+	basePath            = "/kvs/v1"
+	topicsPath          = "/topics"
 	startSessionPath    = "/start_session"
 	completeSessionPath = "/complete_session"
 )
@@ -32,7 +32,7 @@ type Server struct {
 }
 
 type ServerCfg struct {
-	port string
+	Port string
 }
 
 type ServerOption func(*Server)
@@ -76,7 +76,7 @@ func New(opts ...ServerOption) (*Server, error) {
 		return nil, err
 	}
 
-	if serv.cfg.port == "" {
+	if serv.cfg.Port == "" {
 		err := errors.Wrap(entities.ErrInternal, "port not set")
 		slog.Error(err.Error())
 		return nil, err
@@ -89,7 +89,7 @@ func (s *Server) Start() {
 	s.registerRoutes()
 
 	s.server = &http.Server{
-		Addr:    s.cfg.port,
+		Addr:    s.cfg.Port,
 		Handler: s.router,
 	}
 

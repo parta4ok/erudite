@@ -41,3 +41,7 @@ tasks:
     cmds:
       - swag init -g ./knowledge_checker/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
       - cp docs/swagger.json knowledge_checker/api/http/public/swagger.json
+  run_service_local:
+    desc: Run service locally with local config
+    cmds:
+      - KVS_CONFIG_PATH=./deployment/knowledge_checker.yaml go run ./knowledge_checker/cmd/knowledge_checker_service/main.go

@@ -1,0 +1,16 @@
+kvs:
+  http:
+    public:
+      port: :8080
+      timeout: 30s
+  storage:
+    type: postgres
+  logging:
+    service_name: knowledge-validation-service
+    service_version: 1.0.0
+    version: 1.0.0
+    level: info
+    format: json
+    add_source: true
+postgres:
+  connection: postgresql://postgres:password@localhost:5432/knowledge

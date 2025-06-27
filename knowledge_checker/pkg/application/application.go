@@ -167,8 +167,8 @@ func (app *App) startWithGracefulShutdown() {
 	ctx, cancel := context.WithCancel(context.Background())
 	app.cancel = cancel
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	sigOSChan := make(chan os.Signal, 1)
+	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	app.wg.Add(1)
 	go func() {
@@ -178,8 +178,8 @@ func (app *App) startWithGracefulShutdown() {
 	}()
 
 	select {
-	case sig := <-sigChan:
-		slog.Info("Received shutdown signal", "signal", sig.String())
+	case sig := <-sigOSChan:
+		slog.Info("Received os shutdown signal", "signal", sig.String())
 		app.shutdown()
 	case <-ctx.Done():
 		slog.Info("Application context cancelled")

@@ -45,6 +45,10 @@ func NewSession(userID uint64, topics []string, generator IDGenerator,
 		return nil, errors.Wrap(ErrInvalidParam, "id generator not set")
 	}
 
+	if sessionStorage == nil{
+		return nil, errors.Wrap(ErrInvalidParam, "session storage not set")
+	}
+
 	if len(topics) == 0 {
 		return nil, errors.Wrap(ErrInvalidParam, "topics was not selected")
 	}

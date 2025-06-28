@@ -41,3 +41,45 @@ func TestNewMultiSelectionQuestion(t *testing.T) {
 	require.Equal(t, variants, question.Variants())
 	require.Equal(t, entities.MultiSelection, question.Type())
 }
+
+func TestMultiSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+		[]string{"A", "B", "C"}, []string{"A", "B"})
+
+	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(emptyAnswer)
+
+	require.False(t, result)
+}
+
+func TestMultiSelectionQuestion_IsAnswerCorrect_PartialCorrect(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+		[]string{"A", "B", "C", "D"}, []string{"A", "B", "C"})
+
+	partialAnswer, err := entities.NewUserAnswer(question.ID(), []string{"A", "B"})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(partialAnswer)
+
+	require.False(t, result)
+}
+
+func TestMultiSelectionQuestion_IsAnswerCorrect_ExtraAnswers(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+		[]string{"A", "B", "C", "D"}, []string{"A", "B"})
+
+	extraAnswer, err := entities.NewUserAnswer(question.ID(), []string{"A", "B", "C"})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(extraAnswer)
+
+	require.False(t, result)
+}

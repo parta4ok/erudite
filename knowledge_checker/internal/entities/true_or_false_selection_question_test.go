@@ -40,3 +40,42 @@ func TestNewTrueOrFalseQuestion(t *testing.T) {
 	require.Equal(t, variants, question.Variants())
 	require.Equal(t, entities.TrueOrFalse, question.Type())
 }
+
+func TestTrueOrFalseQuestion_FalseAnswer(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", false)
+
+	correctAnswer, err := entities.NewUserAnswer(question.ID(), []string{"false"})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(correctAnswer)
+
+	require.True(t, result)
+}
+
+func TestTrueOrFalseQuestion_EmptyAnswer(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", true)
+
+	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(emptyAnswer)
+
+	require.False(t, result)
+}
+
+func TestTrueOrFalseQuestion_MultipleAnswers(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", true)
+
+	multipleAnswers, err := entities.NewUserAnswer(question.ID(), []string{"true", "false"})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(multipleAnswers)
+
+	require.False(t, result)
+}

@@ -55,8 +55,6 @@ func (q *TrueOrFalseSelectionQuestion) IsAnswerCorrect(ans *UserAnswer) bool {
 
 	case "false":
 		userAns = false
-	default:
-		return false
 	}
 
 	return q.correctAnswer == userAns

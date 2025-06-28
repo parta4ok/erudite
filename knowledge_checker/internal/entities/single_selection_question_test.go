@@ -39,3 +39,29 @@ func TestNewSingleSelectionQuestion(t *testing.T) {
 	require.Equal(t, variants, question.Variants())
 	require.Equal(t, entities.SingleSelection, question.Type())
 }
+
+func TestSingleSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewSingleSelectionQuestion(1, "topic", "subject", []string{"A", "B"}, "A")
+
+	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(emptyAnswer)
+
+	require.False(t, result)
+}
+
+func TestSingleSelectionQuestion_IsAnswerCorrect_MultipleAnswers(t *testing.T) {
+	t.Parallel()
+
+	question := entities.NewSingleSelectionQuestion(1, "topic", "subject", []string{"A", "B"}, "A")
+
+	multipleAnswers, err := entities.NewUserAnswer(question.ID(), []string{"A", "B"})
+	require.NoError(t, err)
+
+	result := question.IsAnswerCorrect(multipleAnswers)
+
+	require.False(t, result)
+}

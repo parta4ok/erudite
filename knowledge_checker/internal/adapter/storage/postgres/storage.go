@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
-	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
+	cryptoprocessing "github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator/crypto_processing"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/cases"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
 	_ "github.com/parta4ok/kvs/knowledge_checker/internal/port/http/public"
@@ -337,8 +337,8 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 
 	switch stateName {
 	case entities.InitState:
-		initSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
-			entities.WithSessionID(sessionID),
+		initSession, err := entities.NewSession(userID, topics,
+			cryptoprocessing.NewUint64Generator(), s, entities.WithSessionID(sessionID),
 			entities.WithNilState())
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
@@ -353,8 +353,9 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 		return initSession, nil
 
 	case entities.ActiveState:
-		activeSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
-			entities.WithSessionID(sessionID), entities.WithNilState())
+		activeSession, err := entities.NewSession(userID, topics,
+			cryptoprocessing.NewUint64Generator(), s, entities.WithSessionID(sessionID),
+			entities.WithNilState())
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
@@ -380,8 +381,9 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 		return activeSession, nil
 
 	case entities.CompletedState:
-		completedSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), s,
-			entities.WithSessionID(sessionID), entities.WithNilState())
+		completedSession, err := entities.NewSession(userID, topics,
+			cryptoprocessing.NewUint64Generator(), s, entities.WithSessionID(sessionID),
+			entities.WithNilState())
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
@@ -418,7 +420,8 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 			answers = append(answers, answer)
 		}
 
-		state := entities.NewCompletedSessionState(questionsMap, completedSession, answers, *isExpired)
+		state := entities.NewCompletedSessionState(questionsMap, completedSession,
+			answers, *isExpired)
 		completedSession.ChangeState(state)
 
 		slog.Info("recoverSession completed")

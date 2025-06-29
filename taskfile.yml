@@ -28,25 +28,18 @@ tasks:
     desc: Revert all migrations (down) on Postgres
     cmds:
       - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable" down
-  
+
   services:up:
     desc: Run all services containers with force rebuild and clean start
     cmds:
-      - docker-compose --profile services down -v 
+      - docker-compose --profile services down -v
       - docker-compose --profile services up -d --build --force-recreate
 
   services:down:
     desc: Stop and remove all services containers with volumes
     cmds:
       - docker-compose --profile services down -v
-  
-  
-  
-  
-  
-  
-  
-  
+
   l1_test:
     desc: Run L1 test with container infrastructure
     cmds:

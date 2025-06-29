@@ -60,7 +60,8 @@ func TestQuestionFactory_NewQuestion_SingleSelection_Success(t *testing.T) {
 	variants := []string{"Language", "Game", "Tool", "Framework"}
 	correctAnswer := []string{"Language"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.NoError(t, err)
 	require.NotNil(t, question)
@@ -81,7 +82,8 @@ func TestQuestionFactory_NewQuestion_MultiSelection_Success(t *testing.T) {
 	variants := []string{"Go", "Python", "HTML", "JavaScript"}
 	correctAnswer := []string{"Go", "Python", "JavaScript"}
 
-	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject, variants,
+		correctAnswer)
 
 	require.NoError(t, err)
 	require.NotNil(t, question)
@@ -131,7 +133,8 @@ func TestQuestionFactory_NewQuestion_InvalidID(t *testing.T) {
 	variants := []string{"Language"}
 	correctAnswer := []string{"Language"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants,
+		correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -148,7 +151,8 @@ func TestQuestionFactory_NewQuestion_EmptyTopic(t *testing.T) {
 	variants := []string{"Language"}
 	correctAnswer := []string{"Language"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -165,7 +169,8 @@ func TestQuestionFactory_NewQuestion_EmptySubject(t *testing.T) {
 	variants := []string{"Language"}
 	correctAnswer := []string{"Language"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants,
+		correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -182,7 +187,8 @@ func TestQuestionFactory_NewQuestion_SingleSelection_TooManyVariants(t *testing.
 	variants := []string{"A", "B", "C", "D", "E"}
 	correctAnswer := []string{"A"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -199,7 +205,8 @@ func TestQuestionFactory_NewQuestion_SingleSelection_MultipleCorrectAnswers(t *t
 	variants := []string{"A", "B", "C", "D"}
 	correctAnswer := []string{"A", "B"}
 
-	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.SingleSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -216,7 +223,8 @@ func TestQuestionFactory_NewQuestion_MultiSelection_NoCorrectAnswers(t *testing.
 	variants := []string{"A", "B", "C", "D"}
 	correctAnswer := []string{}
 
-	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -249,7 +257,8 @@ func TestQuestionFactory_NewQuestion_UnknownType(t *testing.T) {
 	variants := []string{"A"}
 	correctAnswer := []string{"A"}
 
-	question, err := factory.NewQuestion(id, entities.QuestionType(999), topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.QuestionType(999), topic, subject,
+		variants, correctAnswer)
 
 	require.Error(t, err)
 	require.Nil(t, question)
@@ -266,7 +275,8 @@ func TestQuestionFactory_NewQuestion_InvalidVariants(t *testing.T) {
 	variants := []string{"A", "B", "C", "D", "E"}
 	correctAnswer := []string{"A"}
 
-	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject, variants, correctAnswer)
+	question, err := factory.NewQuestion(id, entities.MultiSelection, topic, subject,
+		variants, correctAnswer)
 
 	require.ErrorIs(t, err, entities.ErrInvalidParam)
 	require.Nil(t, question)

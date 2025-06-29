@@ -36,7 +36,7 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // CompleteSession mocks base method.
-func (m *MockService) CompleteSession(ctx context.Context, sessionID uint64, answers []entities.UserAnswer) (*entities.SessionResult, error) {
+func (m *MockService) CompleteSession(ctx context.Context, sessionID uint64, answers []*entities.UserAnswer) (*entities.SessionResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CompleteSession", ctx, sessionID, answers)
 	ret0, _ := ret[0].(*entities.SessionResult)

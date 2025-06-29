@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/config"
-	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
+	cryptoprocessing "github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator/crypto_processing"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/cases"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
@@ -126,7 +126,7 @@ func (app *App) initStorage(cfg *config.Config) (cases.Storage, entities.Session
 func (app *App) initGenerator() entities.IDGenerator {
 	slog.Info("init generator started")
 	var gen entities.IDGenerator
-	g := generator.NewUint64Generator()
+	g := cryptoprocessing.NewUint64Generator()
 	gen = g
 
 	return gen

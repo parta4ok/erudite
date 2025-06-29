@@ -1,7 +1,8 @@
-package generator
+package cryptoprocessing
 
 import (
-	"time"
+	"crypto/rand"
+	"encoding/binary"
 
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
 )
@@ -17,5 +18,8 @@ func NewUint64Generator() *Uint64Generator {
 }
 
 func (gen *Uint64Generator) GenerateID() uint64 {
-	return uint64(time.Now().UTC().UnixNano())
+	var buf [8]byte
+	rand.Read(buf[:]) //nolint:errcheck // ok
+
+	return binary.BigEndian.Uint64(buf[:])
 }

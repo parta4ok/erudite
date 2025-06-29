@@ -122,13 +122,18 @@ func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
 func (srv *SessionService) CompleteSession(
 	ctx context.Context,
 	sessionID uint64,
-	answers []entities.UserAnswer) (*entities.SessionResult, error) {
+	answers []*entities.UserAnswer) (*entities.SessionResult, error) {
 	slog.Info("CompleteSession started")
 
 	session, err := srv.storage.GetSessionBySessionID(ctx, sessionID)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, errors.Wrap(err, "GetSessionBySessionID")
+	}
+
+	if err := session.SetUserAnswer(answers); err != nil {
+		slog.Error(err.Error())
+		return nil, errors.Wrap(err, "SetUserAnswer")
 	}
 
 	sessionResult, err := session.GetSessionResult()

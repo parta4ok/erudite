@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator"
+	cryptoprocessing "github.com/parta4ok/kvs/knowledge_checker/internal/adapter/generator/crypto_processing"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities"
 	"github.com/parta4ok/kvs/knowledge_checker/internal/entities/testdata"
@@ -72,7 +72,8 @@ func TestStorage_GetSession(t *testing.T) {
 
 	SessionStorage := testdata.NewMockSessionStorage(ctrl)
 
-	session, err := entities.NewSession(userID, testTopics, generator.NewUint64Generator(), SessionStorage)
+	session, err := entities.NewSession(userID, testTopics, cryptoprocessing.NewUint64Generator(),
+		SessionStorage)
 	require.NoError(t, err)
 	require.Equal(t, session.GetStatus(), entities.InitState)
 
@@ -187,7 +188,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	topics := []string{"Базы данных"}
 	ctx := context.TODO()
 
-	session, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), db)
+	session, err := entities.NewSession(userID, topics, cryptoprocessing.NewUint64Generator(), db)
 	require.NoError(t, err)
 
 	forbidden, err := session.IsDailySessionLimitReached(ctx, session.GetUserID(), session.GetTopics())
@@ -219,12 +220,14 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	err = db.StoreSession(ctx, session)
 	require.NoError(t, err)
 
-	secondSession, err := entities.NewSession(userID, topics, generator.NewUint64Generator(), db)
+	secondSession, err := entities.NewSession(userID, topics,
+		cryptoprocessing.NewUint64Generator(), db)
 	require.NoError(t, err)
 
 	require.Equal(t, entities.InitState, secondSession.GetStatus())
 
-	forbidden, err = secondSession.IsDailySessionLimitReached(ctx, secondSession.GetUserID(), secondSession.GetTopics())
+	forbidden, err = secondSession.IsDailySessionLimitReached(ctx, secondSession.GetUserID(),
+		secondSession.GetTopics())
 	require.NoError(t, err)
 	require.True(t, forbidden)
 }

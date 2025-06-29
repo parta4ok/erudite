@@ -1,5 +1,7 @@
 package dto
 
+// ErrorDTO represents error response
+// swagger:model ErrorDTO
 type ErrorDTO struct {
 	// HTTP status code
 	// required: true

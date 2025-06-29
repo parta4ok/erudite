@@ -122,8 +122,11 @@ func (s *Server) Stop() {
 
 func (s *Server) registerRoutes() {
 	s.router.Get(basePath+topicsPath, s.GetTopics)
-	s.router.Post(basePath+"{user_id}"+startSessionPath, s.StartSession)
-	s.router.Post(basePath+"{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
+
+	s.router.Route(basePath, func(r chi.Router) {
+		r.Post("/{user_id}"+startSessionPath, s.StartSession)
+		r.Post("/{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
+	})
 }
 
 // Get lists of all existing topics
@@ -179,7 +182,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 // @Failure      400 {object} dto.ErrorDTO "Invalid parameters"
 // @Failure      404 {object} dto.ErrorDTO "Topics not found"
 // @Failure      500 {object} dto.ErrorDTO "Internal server error"
-// @Router       /{user_id}/sessions [post]
+// @Router       /{user_id}/start_session [post]
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
 
@@ -187,7 +190,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 
 	userID := chi.URLParam(req, "user_id")
 
-	uid, err := strconv.Atoi(userID)
+	uid, err := strconv.ParseUint(userID, 10, 64)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "userID invalid: %v", err)
 		slog.Error(err.Error())
@@ -195,17 +198,9 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var topicsRaw []byte
-	if _, err := req.Body.Read(topicsRaw); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "read body of request failure: %v", err)
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
 	var topicsDTO dto.TopicsDTO
-	if err := json.Unmarshal(topicsRaw, &topicsDTO); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "unmarshal data to topicsDTO failure: %v", err)
+	if err := json.NewDecoder(req.Body).Decode(&topicsDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "decode req body to topicsDTO failure: %v", err)
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -220,11 +215,24 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	data, err := json.Marshal(dto.SessionDTO{
+	questionsDTO := make([]dto.QuestionDTO, 0, len(questions))
+	for _, question := range questions {
+		questionsDTO = append(questionsDTO, dto.QuestionDTO{
+			ID:           question.ID(),
+			QuestionType: question.Type().String(),
+			Topic:        question.Topic(),
+			Subject:      question.Subject(),
+			Variants:     question.Variants(),
+		})
+	}
+
+	sessionDTO := dto.SessionDTO{
 		SessionID: sessionID,
 		Topics:    topicsDTO.Topics,
-		Questions: questions,
-	})
+		Questions: questionsDTO,
+	}
+
+	data, err := json.Marshal(sessionDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
@@ -262,7 +270,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 
 	sessionID := chi.URLParam(req, "session_id")
 
-	sid, err := strconv.Atoi(sessionID)
+	sid, err := strconv.ParseUint(sessionID, 10, 64)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "sessionID invalid: %v", err)
 		slog.Error(err.Error())
@@ -279,7 +287,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userAnswers := make([]entities.UserAnswer, 0, len(userAnswersListDTO.AnswersList))
+	userAnswers := make([]*entities.UserAnswer, 0, len(userAnswersListDTO.AnswersList))
 	for _, answerDTO := range userAnswersListDTO.AnswersList {
 		userAnswer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
 		if err != nil {
@@ -288,7 +296,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 			s.errProcessing(resp, err)
 			return
 		}
-		userAnswers = append(userAnswers, *userAnswer)
+		userAnswers = append(userAnswers, userAnswer)
 	}
 
 	sessionResult, err := s.service.CompleteSession(req.Context(), uint64(sid), userAnswers)

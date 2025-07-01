@@ -10,4 +10,5 @@ var (
 	ErrInvalidState        = errors.New("invalid state")
 	ErrInternal            = errors.New("internal error")
 	ErrForbidden           = errors.New("forbidden")
+	ErrNotFound            = errors.New("not found")
 )

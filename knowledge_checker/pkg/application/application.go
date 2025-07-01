@@ -149,11 +149,13 @@ func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service
 	slog.Info("init public port started")
 
 	port := cfg.GetPublicPort()
+	timeout := cfg.GetPublicTimeout()
 
 	server, err := public.New(
 		public.WithService(sessionService),
 		public.WithConfig(&public.ServerCfg{
-			Port: port,
+			Port:    port,
+			Timeout: timeout,
 		}))
 	if err != nil {
 		err := errors.Wrap(err, "new public port init failure")

@@ -32,7 +32,8 @@ type Server struct {
 }
 
 type ServerCfg struct {
-	Port string
+	Port    string
+	Timeout time.Duration
 }
 
 type ServerOption func(*Server)
@@ -89,8 +90,11 @@ func (s *Server) Start() {
 	s.registerRoutes()
 
 	s.server = &http.Server{
-		Addr:    s.cfg.Port,
-		Handler: s.router,
+		Addr:              s.cfg.Port,
+		Handler:           s.router,
+		ReadHeaderTimeout: s.cfg.Timeout,
+		WriteTimeout:      s.cfg.Timeout,
+		IdleTimeout:       s.cfg.Timeout,
 	}
 
 	done := make(chan os.Signal, 1)
@@ -121,6 +125,8 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) registerRoutes() {
+	s.router.Use(s.timeoutMiddleware)
+
 	s.router.Get(basePath+topicsPath, s.GetTopics)
 
 	s.router.Route(basePath, func(r chi.Router) {
@@ -357,4 +363,14 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 
 	resp.WriteHeader(errDTO.StatusCode)
 	resp.Write(errDtoData) //nolint:errcheck //ok
+}
+
+func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(req.Context(), s.cfg.Timeout)
+		defer cancel()
+
+		req = req.WithContext(ctx)
+		next.ServeHTTP(resp, req)
+	})
 }

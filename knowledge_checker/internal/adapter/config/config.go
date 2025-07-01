@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -64,4 +65,18 @@ func (cfg *Config) GetServiceStorageType() string {
 
 func (cfg *Config) GetStorageConnStr(storageType string) string {
 	return cfg.viper.GetString(fmt.Sprintf("%s.connection", storageType))
+}
+
+func (cfg *Config) GetPublicTimeout() time.Duration {
+	timeoutStr := cfg.viper.GetString("kvs.http.public.timeout")
+	if timeoutStr == "" {
+		return 30 * time.Second
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return 30 * time.Second
+	}
+
+	return timeout
 }

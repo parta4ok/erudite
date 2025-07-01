@@ -2,7 +2,7 @@ kvs:
   http:
     public:
       port: :8080
-      timeout: 30s
+      timeout: 5s
   storage:
     type: postgres
   logging:

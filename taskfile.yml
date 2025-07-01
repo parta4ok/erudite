@@ -34,6 +34,7 @@ tasks:
     cmds:
       - docker-compose --profile services down -v
       - docker-compose --profile services up -d --build --force-recreate
+      - task: postgres:migrate:up
 
   services:down:
     desc: Stop and remove all services containers with volumes

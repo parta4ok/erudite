@@ -200,7 +200,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 
 	var topicsDTO dto.TopicsDTO
 	if err := json.NewDecoder(req.Body).Decode(&topicsDTO); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "decode req body to topicsDTO failure: %v", err)
+		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to topicsDTO failure: %v", err)
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -280,7 +280,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 
 	var userAnswersListDTO dto.UserAnswersListDTO
 	if err := json.NewDecoder(req.Body).Decode(&userAnswersListDTO); err != nil {
-		err := errors.Wrapf(entities.ErrInternal,
+		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode request body to userAnswersListDTO failure: %v", err)
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
@@ -343,6 +343,8 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 		errDTO.StatusCode = http.StatusBadRequest
 	case errors.Is(err, entities.ErrForbidden):
 		errDTO.StatusCode = http.StatusForbidden
+	case errors.Is(err, entities.ErrNotFound):
+		errDTO.StatusCode = http.StatusNotFound
 	}
 
 	errDtoData, err := json.Marshal(&errDTO)

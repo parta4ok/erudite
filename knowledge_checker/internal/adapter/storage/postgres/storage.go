@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -117,6 +118,10 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	[]entities.Question, error) {
 	slog.Info("GetQuesions started")
+
+	if err := s.checkTopics(ctx, topics); err != nil {
+		return nil, err
+	}
 
 	params := make([]interface{}, 0)
 	params = append(params, topics, s.questionsLimits)
@@ -318,8 +323,14 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		isExpired      *bool
 	)
 
-	if err := row.Scan(&userID, &stateName, &topics, &questionsIDs, &answersRaw,
-		&createdAt, &duration_limit, &isExpired); err != nil {
+	err := row.Scan(&userID, &stateName, &topics, &questionsIDs, &answersRaw,
+		&createdAt, &duration_limit, &isExpired)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = errors.Wrapf(entities.ErrNotFound, "not found session with requested id: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
 		err = errors.Wrapf(entities.ErrInternal, "scan session data failure: %v", err)
 		slog.Error(err.Error())
 		return nil, err
@@ -608,4 +619,21 @@ ORDER BY
 	}
 
 	return false, nil
+}
+
+func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) error {
+	slog.Info("checkTopics started")
+
+	existsTopic, err := s.GetTopics(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, requestedTopic := range requestdTopics {
+		if !slices.Contains(existsTopic, requestedTopic) {
+			return errors.Wrapf(entities.ErrNotFound,
+				"requested topic: %s not included in existings topics", requestedTopic)
+		}
+	}
+	return nil
 }

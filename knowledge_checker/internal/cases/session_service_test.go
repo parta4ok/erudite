@@ -16,7 +16,6 @@ import (
 )
 
 func TestNewSessionService_Success(t *testing.T) {
-
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -33,7 +32,6 @@ func TestNewSessionService_Success(t *testing.T) {
 }
 
 func TestNewSessionService_WithCustomDuration(t *testing.T) {
-
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -106,7 +104,6 @@ func TestNewSessionService_ValidationErrors(t *testing.T) {
 }
 
 func TestSessionService_ShowTopics(t *testing.T) {
-
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)

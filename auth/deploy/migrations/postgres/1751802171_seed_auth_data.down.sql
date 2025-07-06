@@ -1,0 +1,5 @@
+BEGIN;
+
+TRUNCATE TABLE auth.users CASCADE;
+
+COMMIT;

@@ -47,14 +47,14 @@ func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 		return nil, err
 	}
 
-	introspectedUser, err := command.jwtProvider.Introspect(command.jwt)
+	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
 		err = errors.Wrap(err, "Introspect")
 		slog.Error(err.Error())
 		return nil, err
 	}
 
-	for _, reqRight := range introspectedUser.Rights {
+	for _, reqRight := range userClaims.Rights {
 		if !slices.Contains(user.Rights, reqRight) {
 			err := errors.Wrapf(entities.ErrForbidden, "not enough rights")
 			slog.Error(err.Error())
@@ -62,5 +62,12 @@ func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 		}
 	}
 
+	if userClaims.Subject != command.userID {
+		err := errors.Wrapf(entities.ErrForbidden, "user ID mismatch")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("IntrospectCommand exec completed")
 	return &entities.CommandResult{Success: true}, nil
 }

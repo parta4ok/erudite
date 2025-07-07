@@ -22,4 +22,4 @@ INSERT INTO auth.users (name, password_hash, rights, contacts) VALUES
      ARRAY['admin', 'user:create', 'user:read', 'user:update', 'user:delete', 'system:admin'],
      '{"email": "admin@example.com", "phone": "+7-900-000-00-00"}');
 
-COMMIT;
+END;

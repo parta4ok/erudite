@@ -1,6 +1,8 @@
 BEGIN;
 
+
 CREATE SCHEMA IF NOT EXISTS auth;
+
 
 CREATE TABLE IF NOT EXISTS auth.users (
     id BIGSERIAL PRIMARY KEY,
@@ -9,6 +11,7 @@ CREATE TABLE IF NOT EXISTS auth.users (
     rights TEXT[] NOT NULL DEFAULT '{}',
     contacts JSON,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+    );
 
-COMMIT;
+
+END;

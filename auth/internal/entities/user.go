@@ -5,4 +5,5 @@ type User struct {
 	Username     string
 	PasswordHash string
 	Rights       []string
+	Contacts     map[string]string
 }

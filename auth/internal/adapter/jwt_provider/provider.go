@@ -6,8 +6,13 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/pkg/errors"
+)
+
+var (
+	_ common.JWTProvider = (*Provider)(nil)
 )
 
 type Provider struct {

@@ -35,40 +35,40 @@ func NewConfig(path string) (*Config, error) {
 	return config, nil
 }
 
-func (cfg *Config) GetPrivatePort() string {
-	return cfg.viper.GetString("auth.grpc.private.port")
+func (cfg *Config) GetPublicPort() string {
+	return cfg.viper.GetString("kvs.http.public.port")
 }
 
 func (cfg *Config) GetLogLevel() string {
-	return cfg.viper.GetString("auth.logging.level")
+	return cfg.viper.GetString("kvs.logging.level")
 }
 
 func (cfg *Config) GetLogFormat() string {
-	return cfg.viper.GetString("auth.logging.format")
+	return cfg.viper.GetString("kvs.logging.format")
 }
 
 func (cfg *Config) GetLogAddSource() bool {
-	return cfg.viper.GetBool("auth.logging.add_source")
+	return cfg.viper.GetBool("kvs.logging.add_source")
 }
 
 func (cfg *Config) GetServiceName() string {
-	return cfg.viper.GetString("auth.logging.service_name")
+	return cfg.viper.GetString("kvs.logging.service_name")
 }
 
 func (cfg *Config) GetServiceVersion() string {
-	return cfg.viper.GetString("auth.logging.service_version")
+	return cfg.viper.GetString("kvs.logging.service_version")
 }
 
 func (cfg *Config) GetServiceStorageType() string {
-	return cfg.viper.GetString("auth.storage.type")
+	return cfg.viper.GetString("kvs.storage.type")
 }
 
 func (cfg *Config) GetStorageConnStr(storageType string) string {
 	return cfg.viper.GetString(fmt.Sprintf("%s.connection", storageType))
 }
 
-func (cfg *Config) GetPrivateTimeout() time.Duration {
-	timeoutStr := cfg.viper.GetString("auth.grpc.private.timeout")
+func (cfg *Config) GetPublicTimeout() time.Duration {
+	timeoutStr := cfg.viper.GetString("kvs.http.public.timeout")
 	if timeoutStr == "" {
 		return 30 * time.Second
 	}

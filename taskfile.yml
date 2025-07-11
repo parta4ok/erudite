@@ -4,6 +4,10 @@ tasks:
   lint:
     cmds:
       - golangci-lint run -c ./.golangci.yml ./...
+  grpc:generate:
+    desc: Generate grpc files
+    cmds:
+      - protoc --go_out=. --go-grpc_out=. ./api/grpc/v1/auth.proto
   postgres:up:
     desc: Run Postgres service
     cmds:

@@ -25,10 +25,11 @@ const (
 )
 
 type Server struct {
-	router  *chi.Mux
-	server  *http.Server
-	service Service
-	cfg     *ServerCfg
+	router       *chi.Mux
+	server       *http.Server
+	service      Service
+	introspector Introspector
+	cfg          *ServerCfg
 }
 
 type ServerCfg struct {
@@ -47,6 +48,12 @@ func WithService(srv Service) ServerOption {
 func WithConfig(cfg *ServerCfg) ServerOption {
 	return func(s *Server) {
 		s.cfg = cfg
+	}
+}
+
+func WithIntrospector(introspector Introspector) ServerOption {
+	return func(s *Server) {
+		s.introspector = introspector
 	}
 }
 

@@ -26,24 +26,24 @@ tasks:
   postgres:migrate:up:
     desc: Apply all up migrations to Postgres
     cmds:
-      - task: postgres:migrate:knowledge_checker:up
+      - task: postgres:migrate:question:up
       - task: postgres:migrate:auth:up
 
   postgres:migrate:down:
     desc: Revert all migrations (down) on Postgres
     cmds:
       - task: postgres:migrate:auth:down
-      - task: postgres:migrate:knowledge_checker:down
+      - task: postgres:migrate:question:down
 
-  postgres:migrate:knowledge_checker:up:
-    desc: Apply all up migrations of knowledge_checker to Postgres
+  postgres:migrate:question:up:
+    desc: Apply all up migrations of question to Postgres
     cmds:
-      - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" up
+      - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" up
 
-  postgres:migrate:knowledge_checker:down:
-    desc: Revert all migrations (down) of knowledge_checker on Postgres
+  postgres:migrate:question:down:
+    desc: Revert all migrations (down) of question on Postgres
     cmds:
-      - migrate -path knowledge_checker/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" down
+      - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" down
 
   postgres:migrate:auth:up:
     desc: Apply all up migrations of auth to Postgres
@@ -86,9 +86,9 @@ tasks:
   swag_gen:
     desc: Generate swagger specification (JSON only)
     cmds:
-      - swag init -g ./knowledge_checker/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
-      - cp docs/swagger.json knowledge_checker/api/http/public/swagger.json
+      - swag init -g ./question/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+      - cp docs/swagger.json question/api/http/public/swagger.json
   run_service_local:
     desc: Run service locally with local config
     cmds:
-      - KVS_CONFIG_PATH=./deployment/knowledge_checker.yaml go run ./knowledge_checker/cmd/knowledge_checker_service/main.go
+      - KVS_CONFIG_PATH=./deployment/question.yaml go run ./question/cmd/question_service/main.go

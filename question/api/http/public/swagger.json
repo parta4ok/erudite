@@ -1,0 +1,304 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a server for testing students before 1to1",
+        "title": "Knowledge Validation Service API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "email": "parta4ok@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/kvs/v1",
+    "paths": {
+        "/topics": {
+            "get": {
+                "description": "Retrieves a list of all available topics in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all topics",
+                "responses": {
+                    "200": {
+                        "description": "Successfully retrieved list of topics",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "No topics found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/{user_id}/start_session": {
+            "post": {
+                "description": "Starts a new testing session with questions from selected topics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Create new session",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Selected topics",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Successfully created session",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Topics not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/{user_id}/{session_id}/complete_session": {
+            "post": {
+                "description": "Completes a testing session by submitting user answers and returns session result",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Complete session",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Session ID",
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User answers",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully completed session",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Session not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "description": "error message\nrequired: false\nexample: topic not set: not found",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "HTTP status code\nrequired: true\nexample: 404",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.QuestionDTO": {
+            "type": "object",
+            "properties": {
+                "question_id": {
+                    "type": "integer",
+                    "example": 112441
+                },
+                "question_type": {
+                    "type": "string",
+                    "example": "1"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "К какой категории языков относится SQL?"
+                },
+                "topic": {
+                    "type": "string",
+                    "example": "Базы данных"
+                },
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Императивный",
+                        "Декларативный",
+                        "Смешной",
+                        "Противный"
+                    ]
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.SessionDTO": {
+            "type": "object",
+            "properties": {
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.QuestionDTO"
+                    }
+                },
+                "session_id": {
+                    "type": "integer",
+                    "example": 12312
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Базы данных",
+                        "Базовые типы в Go"
+                    ]
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO": {
+            "type": "object",
+            "properties": {
+                "grade": {
+                    "type": "string",
+                    "example": "75.00 percents"
+                },
+                "is_success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO": {
+            "type": "object",
+            "properties": {
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Базы данных",
+                        "Go базовые типы"
+                    ]
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.UserAnswerDTO": {
+            "type": "object",
+            "properties": {
+                "answers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "selection1",
+                        "selection2"
+                    ]
+                },
+                "question_id": {
+                    "type": "integer",
+                    "example": 1234
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO": {
+            "type": "object",
+            "properties": {
+                "user_answers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswerDTO"
+                    }
+                }
+            }
+        }
+    }
+}

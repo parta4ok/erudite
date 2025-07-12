@@ -12,5 +12,10 @@ auth:
     level: info
     format: json
     add_source: true
-  postgres:
-    connection: postgresql://postgres:password@postgres:5432/knowledge
+postgres:
+  connection: postgresql://postgres:password@localhost:5432/knowledge
+jwt:
+  secret: erudite
+  aud: [students]
+  iss: erudite
+  ttl: 24h

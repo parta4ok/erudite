@@ -80,3 +80,28 @@ func (cfg *Config) GetPrivateTimeout() time.Duration {
 
 	return timeout
 }
+
+func (cfg *Config) GetJWTSecret() []byte {
+    secret := cfg.viper.GetString("jwt.secret")
+    return []byte(secret)
+}
+
+func (cfg *Config) GetJWTAudience() []string {
+    return cfg.viper.GetStringSlice("jwt.aud")
+}
+
+func (cfg *Config) GetJWTIssuer() string {
+    return cfg.viper.GetString("jwt.iss")
+}
+
+func (cfg *Config) GetJWTTTL() time.Duration {
+    ttlStr := cfg.viper.GetString("jwt.ttl")
+    if ttlStr == "" {
+        return time.Hour
+    }
+    ttl, err := time.ParseDuration(ttlStr)
+    if err != nil {
+        return time.Hour
+    }
+    return ttl
+}

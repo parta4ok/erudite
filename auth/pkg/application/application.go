@@ -123,8 +123,10 @@ func (app *App) initStorage(cfg *config.Config) common.Storage {
 
 }
 
-func (app *App) initCommandFactory(storage common.Storage, provider common.JWTProvider) private.CommandFactory {
-	factory, err := cases.NewCommandFactory(cases.WithStorage(storage), cases.WithJWTProvider(provider))
+func (app *App) initCommandFactory(storage common.Storage,
+	provider common.JWTProvider) private.CommandFactory {
+	factory, err := cases.NewCommandFactory(cases.WithStorage(storage),
+		cases.WithJWTProvider(provider))
 	if err != nil {
 		err := errors.Wrap(err, "new command factory init failure")
 		app.panic(err)
@@ -149,7 +151,8 @@ func (app *App) initJWTProvider(cfg *config.Config) common.JWTProvider {
 	return provider
 }
 
-func (app *App) initPrivateGRPCPort(cfg *config.Config, factory private.CommandFactory) *private.Server {
+func (app *App) initPrivateGRPCPort(cfg *config.Config,
+	factory private.CommandFactory) *private.Server {
 	slog.Info("init private grpc port started")
 
 	port := cfg.GetPrivatePort()

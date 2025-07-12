@@ -18,14 +18,31 @@ services:
       - services
       - l1
       - l2
-  kvs_app:
-    container_name: knowledge_validation_system_app
+  question_app:
+    container_name: queston_app
     build:
       context: .
       dockerfile: question/dockerfile
     restart: always
     ports:
       - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - service_network
+    profiles:
+      - services
+      - l1
+      - l2
+  auth_app:
+    container_name: auth_app
+    build:
+      context: .
+      dockerfile: auth/dockerfile
+    restart: always
+    ports:
+      - "8091:8091"
     depends_on:
       postgres:
         condition: service_healthy

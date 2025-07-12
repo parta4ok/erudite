@@ -87,14 +87,16 @@ func (p *Provider) Generate(user *entities.User) (string, error) {
 func (p *Provider) Introspect(tokenString string) (*entities.UserClaims, error) {
 	slog.Info("Introspect started")
 
-	token, err := jwt.ParseWithClaims(tokenString, &UserClaimsDTO{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			err := errors.Wrapf(entities.ErrInvalidJWT, "unexpected signing method: %v", token.Header["alg"])
-			slog.Error(err.Error())
-			return nil, err
-		}
-		return p.secret, nil
-	})
+	token, err := jwt.ParseWithClaims(tokenString, &UserClaimsDTO{},
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				err := errors.Wrapf(entities.ErrInvalidJWT, "unexpected signing method: %v",
+					token.Header["alg"])
+				slog.Error(err.Error())
+				return nil, err
+			}
+			return p.secret, nil
+		})
 
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "jwt parse failure: %v", err)

@@ -1,0 +1,33 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+COPY ./.golangci.yml ./
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+
+WORKDIR /app/question
+
+RUN go test ./...
+RUN golangci-lint run -c /app/.golangci.yml
+
+
+RUN go build -o ./cmd/question_service/kvs ./cmd/question_service/main.go
+
+FROM alpine:latest AS executer
+
+WORKDIR /app
+
+RUN mkdir -p /app
+WORKDIR /app
+
+COPY --from=builder /app/question/cmd/question_service/kvs .
+COPY --from=builder /app/deployment/question.yaml .
+
+CMD ["./kvs", "--config=question.yaml"]

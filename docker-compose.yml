@@ -22,7 +22,7 @@ services:
     container_name: knowledge_validation_system_app
     build:
       context: .
-      dockerfile: knowledge_checker/dockerfile
+      dockerfile: question/dockerfile
     restart: always
     ports:
       - "8080:8080"

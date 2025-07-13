@@ -10,14 +10,14 @@ var (
 )
 
 type MultiSelectionQuestion struct {
-	id             uint64
+	id             string
 	topic          string
 	subject        string
 	variants       []string
 	correctAnswers []string
 }
 
-func NewMultiSelectionQuestion(id uint64, topic string, subject string, variants []string,
+func NewMultiSelectionQuestion(id string, topic string, subject string, variants []string,
 	correctAnswers []string) *MultiSelectionQuestion {
 	return &MultiSelectionQuestion{
 		id:             id,
@@ -28,7 +28,7 @@ func NewMultiSelectionQuestion(id uint64, topic string, subject string, variants
 	}
 }
 
-func (q *MultiSelectionQuestion) ID() uint64 {
+func (q *MultiSelectionQuestion) ID() string {
 	return q.id
 }
 

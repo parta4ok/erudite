@@ -1,6 +1,7 @@
 package entities_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 func TestNewMultiSelectionQuestion(t *testing.T) {
 	t.Parallel()
 
-	id := uint64(time.Now().UnixNano())
+	id := fmt.Sprintf("%d", uint64(time.Now().UnixNano()))
 	topic := "test topic"
 	subject := "who is your class mate?"
 	variants := []string{"John Doe", "Jack Spearrow", "Jonn Leanon", "John Travolta"}
@@ -45,7 +46,7 @@ func TestNewMultiSelectionQuestion(t *testing.T) {
 func TestMultiSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+	question := entities.NewMultiSelectionQuestion("1", "topic", "subject",
 		[]string{"A", "B", "C"}, []string{"A", "B"})
 
 	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
@@ -59,7 +60,7 @@ func TestMultiSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
 func TestMultiSelectionQuestion_IsAnswerCorrect_PartialCorrect(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+	question := entities.NewMultiSelectionQuestion("1", "topic", "subject",
 		[]string{"A", "B", "C", "D"}, []string{"A", "B", "C"})
 
 	partialAnswer, err := entities.NewUserAnswer(question.ID(), []string{"A", "B"})
@@ -73,7 +74,7 @@ func TestMultiSelectionQuestion_IsAnswerCorrect_PartialCorrect(t *testing.T) {
 func TestMultiSelectionQuestion_IsAnswerCorrect_ExtraAnswers(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewMultiSelectionQuestion(1, "topic", "subject",
+	question := entities.NewMultiSelectionQuestion("1", "topic", "subject",
 		[]string{"A", "B", "C", "D"}, []string{"A", "B"})
 
 	extraAnswer, err := entities.NewUserAnswer(question.ID(), []string{"A", "B", "C"})

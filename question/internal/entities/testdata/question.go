@@ -35,10 +35,10 @@ func (m *MockQuestion) EXPECT() *MockQuestionMockRecorder {
 }
 
 // ID mocks base method.
-func (m *MockQuestion) ID() uint64 {
+func (m *MockQuestion) ID() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ID")
-	ret0, _ := ret[0].(uint64)
+	ret0, _ := ret[0].(string)
 	return ret0
 }
 

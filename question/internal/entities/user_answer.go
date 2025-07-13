@@ -3,12 +3,12 @@ package entities
 import "github.com/pkg/errors"
 
 type UserAnswer struct {
-	questionID uint64
+	questionID string
 	answer     []string
 }
 
-func NewUserAnswer(id uint64, answer []string) (*UserAnswer, error) {
-	if id == 0 {
+func NewUserAnswer(id string, answer []string) (*UserAnswer, error) {
+	if id == "" {
 		return nil, errors.Wrap(ErrUnprocessibleEntity, "invalid id")
 	}
 
@@ -18,7 +18,7 @@ func NewUserAnswer(id uint64, answer []string) (*UserAnswer, error) {
 	}, nil
 }
 
-func (ans *UserAnswer) GetQuestionID() uint64 {
+func (ans *UserAnswer) GetQuestionID() string {
 	return ans.questionID
 }
 

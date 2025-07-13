@@ -4,6 +4,7 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -34,14 +35,14 @@ func TestStorage_GetUserByID(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.TODO()
-	var UserID uint64 = 1
+	var UserID = "1"
 
 	user, err := db.GetUserByID(ctx, UserID)
 	require.NoError(t, err)
 
 	require.Equal(t, user.Username, "Иван Петров")
 
-	UserID = uint64(time.Now().UTC().UnixNano())
+	UserID = fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano()))
 	user, err = db.GetUserByID(ctx, UserID)
 	require.ErrorIs(t, err, entities.ErrNotFound)
 
@@ -58,7 +59,7 @@ func TestStorage_GetUserByUsername(t *testing.T) {
 	user, err := db.GetUserByUsername(ctx, userName)
 	require.NoError(t, err)
 
-	require.Equal(t, user.ID, uint64(1))
+	require.Equal(t, user.ID, "1")
 
 	userName = "John Doe"
 	user, err = db.GetUserByUsername(ctx, userName)
@@ -72,8 +73,9 @@ func TestStorage_StoreUser(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.TODO()
+	id := fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano()))
 	testUser := &entities.User{
-		ID:           uint64(time.Now().UTC().UnixNano()),
+		ID:           id,
 		Username:     uuid.New().String(),
 		PasswordHash: uuid.New().String(),
 		Rights:       []string{"read", "write"},
@@ -83,7 +85,7 @@ func TestStorage_StoreUser(t *testing.T) {
 	err := db.StoreUser(ctx, testUser)
 	require.NoError(t, err)
 
-	user, err := db.GetUserByID(ctx, testUser.ID)
+	user, err := db.GetUserByID(ctx, id)
 	require.NoError(t, err)
 	require.Equal(t, testUser, user)
 }

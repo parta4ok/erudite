@@ -36,7 +36,7 @@ func TestInitSessionState_SetQuestions_Success(t *testing.T) {
 	holder := testdata.NewMockStateHolder(ctrl)
 	storage := testdata.NewMockSessionStorage(ctrl)
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	duration := time.Minute * 5
 
 	state := entities.NewInitSessionState(holder, storage)
@@ -56,7 +56,7 @@ func TestInitSessionState_SetQuestions_EmptyQuestions(t *testing.T) {
 
 	holder := testdata.NewMockStateHolder(ctrl)
 	storage := testdata.NewMockSessionStorage(ctrl)
-	questions := map[uint64]entities.Question{}
+	questions := map[string]entities.Question{}
 	duration := time.Minute * 5
 
 	state := entities.NewInitSessionState(holder, storage)
@@ -78,7 +78,7 @@ func TestInitSessionState_SetUserAnswer(t *testing.T) {
 
 	state := entities.NewInitSessionState(holder, storage)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 
 	err = state.SetUserAnswer([]*entities.UserAnswer{userAnswer})
@@ -119,7 +119,7 @@ func TestInitSessionState_GetSessionDurationLimit(t *testing.T) {
 	result, err := state.GetSessionDurationLimit()
 
 	require.Error(t, err)
-	require.Equal(t, int64(0), result.Nanoseconds())
+	require.Equal(t, uint64(0), uint64(result.Nanoseconds()))
 	require.Contains(t, err.Error(), "not support `GetSessionDurationLimit`")
 }
 
@@ -204,7 +204,7 @@ func TestInitSessionState_IsDailySessionLimitReached_Success(t *testing.T) {
 	holder := testdata.NewMockStateHolder(ctrl)
 	storage := testdata.NewMockSessionStorage(ctrl)
 	ctx := context.Background()
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 
 	state := entities.NewInitSessionState(holder, storage)
@@ -226,7 +226,7 @@ func TestInitSessionState_IsDailySessionLimitReached_LimitReached(t *testing.T) 
 	holder := testdata.NewMockStateHolder(ctrl)
 	storage := testdata.NewMockSessionStorage(ctrl)
 	ctx := context.Background()
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 
 	state := entities.NewInitSessionState(holder, storage)

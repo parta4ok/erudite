@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -73,7 +73,13 @@ func New(opts ...ServerOption) (*Server, error) {
 	serv.setOption(opts...)
 
 	if serv.service == nil {
-		err := errors.Wrap(entities.ErrInternal, "servive not set")
+		err := errors.Wrap(entities.ErrInternal, "service not set")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if serv.introspector == nil {
+		err := errors.Wrap(entities.ErrInternal, "introspector not set")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -137,8 +143,9 @@ func (s *Server) registerRoutes() {
 	s.router.Get(basePath+topicsPath, s.GetTopics)
 
 	s.router.Route(basePath, func(r chi.Router) {
-		r.Post("/{user_id}"+startSessionPath, s.StartSession)
-		r.Post("/{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
+		r.With(s.introspectMiddleware).Post("/{user_id}"+startSessionPath, s.StartSession)
+		r.With(s.introspectMiddleware).Post("/{user_id}/{session_id}"+completeSessionPath,
+			s.CompleteSession)
 	})
 }
 
@@ -203,9 +210,8 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 
 	userID := chi.URLParam(req, "user_id")
 
-	uid, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		err := errors.Wrapf(entities.ErrInvalidParam, "userID invalid: %v", err)
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -219,7 +225,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sessionID, questions, err := s.service.CreateSession(req.Context(), uint64(uid),
+	sessionID, questions, err := s.service.CreateSession(req.Context(), userID,
 		topicsDTO.Topics)
 	if err != nil {
 		err := errors.Wrap(err, "CreateSession failure")
@@ -283,9 +289,8 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 
 	sessionID := chi.URLParam(req, "session_id")
 
-	sid, err := strconv.ParseUint(sessionID, 10, 64)
-	if err != nil {
-		err := errors.Wrapf(entities.ErrInvalidParam, "sessionID invalid: %v", err)
+	if sessionID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "sessionID invalid")
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -312,7 +317,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		userAnswers = append(userAnswers, userAnswer)
 	}
 
-	sessionResult, err := s.service.CompleteSession(req.Context(), uint64(sid), userAnswers)
+	sessionResult, err := s.service.CompleteSession(req.Context(), sessionID, userAnswers)
 	if err != nil {
 		err := errors.Wrap(err, "CompleteSession failure")
 		slog.Error(err.Error())
@@ -378,6 +383,46 @@ func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
 		defer cancel()
 
 		req = req.WithContext(ctx)
+		next.ServeHTTP(resp, req)
+	})
+}
+
+func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+		authHeader := req.Header.Get("Authorization")
+		if authHeader == "" {
+			err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+
+		const prefix = "Bearer "
+		authorizationData := strings.Split(authHeader, prefix)
+		if len(authorizationData) != 2 {
+			err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+
+		jwt := authorizationData[1]
+
+		userID := chi.URLParam(req, "user_id")
+		if userID == "" {
+			err := errors.Wrap(entities.ErrInvalidParam, "invalid user_id")
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+
+		if err := s.introspector.Introspect(req.Context(), userID, jwt); err != nil {
+			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+
 		next.ServeHTTP(resp, req)
 	})
 }

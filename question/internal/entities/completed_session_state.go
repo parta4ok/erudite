@@ -17,14 +17,14 @@ const (
 )
 
 type CompletedSessionState struct {
-	questions map[uint64]Question
+	questions map[string]Question
 	answers   []*UserAnswer
 	holder    StateHolder
 	isExpired bool
 }
 
 func NewCompletedSessionState(
-	questions map[uint64]Question,
+	questions map[string]Question,
 	holder StateHolder,
 	answers []*UserAnswer,
 	isExpired bool,
@@ -41,7 +41,7 @@ func (state *CompletedSessionState) GetStatus() string {
 	return CompletedState
 }
 
-func (state *CompletedSessionState) SetQuestions(_ map[uint64]Question,
+func (state *CompletedSessionState) SetQuestions(_ map[string]Question,
 	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
@@ -68,7 +68,7 @@ func (state *CompletedSessionState) processingResult() (*SessionResult, error) {
 		question, ok := state.questions[userAnswer.questionID]
 		if !ok {
 			return nil, errors.Wrapf(ErrInvalidParam,
-				"user anwer has invalid question id: %d", userAnswer.questionID)
+				"user anwer has invalid question id: %s", userAnswer.questionID)
 		}
 		if state.isAnswerCorrect(question, userAnswer) {
 			countOfCorrectUserAnswers++
@@ -115,7 +115,7 @@ func (state *CompletedSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 	return state.answers, nil
 }
 
-func (state *CompletedSessionState) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+func (state *CompletedSessionState) IsDailySessionLimitReached(ctx context.Context, userID string,
 	topics []string) (bool, error) {
 	return false, errors.Wrapf(
 		ErrInvalidState, "%s not support `IsDailySessionLimitReached`", state.GetStatus())

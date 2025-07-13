@@ -11,7 +11,7 @@ import (
 func TestNewUserAnswer_Success(t *testing.T) {
 	t.Parallel()
 
-	questionID := uint64(123)
+	questionID := "testID"
 	answers := []string{"answer1", "answer2"}
 
 	userAnswer, err := entities.NewUserAnswer(questionID, answers)
@@ -25,7 +25,7 @@ func TestNewUserAnswer_Success(t *testing.T) {
 func TestNewUserAnswer_EmptyAnswers(t *testing.T) {
 	t.Parallel()
 
-	questionID := uint64(123)
+	questionID := "testID"
 	var answers []string
 
 	userAnswer, err := entities.NewUserAnswer(questionID, answers)
@@ -39,7 +39,7 @@ func TestNewUserAnswer_EmptyAnswers(t *testing.T) {
 func TestNewUserAnswer_InvalidID(t *testing.T) {
 	t.Parallel()
 
-	questionID := uint64(0)
+	questionID := ""
 	answers := []string{"answer1"}
 
 	userAnswer, err := entities.NewUserAnswer(questionID, answers)
@@ -52,7 +52,7 @@ func TestNewUserAnswer_InvalidID(t *testing.T) {
 func TestUserAnswer_GetQuestionID(t *testing.T) {
 	t.Parallel()
 
-	questionID := uint64(456)
+	questionID := "testID"
 	answers := []string{"test"}
 
 	userAnswer, err := entities.NewUserAnswer(questionID, answers)
@@ -66,7 +66,7 @@ func TestUserAnswer_GetQuestionID(t *testing.T) {
 func TestUserAnswer_GetSelections(t *testing.T) {
 	t.Parallel()
 
-	questionID := uint64(789)
+	questionID := "testID"
 	answers := []string{"option1", "option2", "option3"}
 
 	userAnswer, err := entities.NewUserAnswer(questionID, answers)

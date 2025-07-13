@@ -36,7 +36,7 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // GetUserByID mocks base method.
-func (m *MockStorage) GetUserByID(ctx context.Context, userID uint64) (*entities.User, error) {
+func (m *MockStorage) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserByID", ctx, userID)
 	ret0, _ := ret[0].(*entities.User)

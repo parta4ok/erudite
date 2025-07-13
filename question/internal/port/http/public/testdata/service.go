@@ -36,7 +36,7 @@ func (m *MockService) EXPECT() *MockServiceMockRecorder {
 }
 
 // CompleteSession mocks base method.
-func (m *MockService) CompleteSession(ctx context.Context, sessionID uint64, answers []*entities.UserAnswer) (*entities.SessionResult, error) {
+func (m *MockService) CompleteSession(ctx context.Context, sessionID string, answers []*entities.UserAnswer) (*entities.SessionResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CompleteSession", ctx, sessionID, answers)
 	ret0, _ := ret[0].(*entities.SessionResult)
@@ -51,11 +51,11 @@ func (mr *MockServiceMockRecorder) CompleteSession(ctx, sessionID, answers inter
 }
 
 // CreateSession mocks base method.
-func (m *MockService) CreateSession(ctx context.Context, userID uint64, topics []string) (uint64, map[uint64]entities.Question, error) {
+func (m *MockService) CreateSession(ctx context.Context, userID string, topics []string) (string, map[string]entities.Question, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSession", ctx, userID, topics)
-	ret0, _ := ret[0].(uint64)
-	ret1, _ := ret[1].(map[uint64]entities.Question)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(map[string]entities.Question)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }

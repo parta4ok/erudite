@@ -80,3 +80,7 @@ func (cfg *Config) GetPublicTimeout() time.Duration {
 
 	return timeout
 }
+
+func (cfg *Config) GetAuthConn() string {
+	return cfg.viper.GetString("auth_service.address")
+}

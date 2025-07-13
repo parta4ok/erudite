@@ -1,6 +1,7 @@
 package entities_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 func TestNewTrueOrFalseQuestion(t *testing.T) {
 	t.Parallel()
 
-	id := uint64(time.Now().UnixNano())
+	id := fmt.Sprintf("%d", uint64(time.Now().UnixNano()))
 	topic := "test topic"
 	subject := "this test writes with Go?"
 	variants := []string{"true", "false"}
@@ -44,7 +45,7 @@ func TestNewTrueOrFalseQuestion(t *testing.T) {
 func TestTrueOrFalseQuestion_FalseAnswer(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", false)
+	question := entities.NewTrueOrFalseSelectionQuestion("1", "topic", "subject", false)
 
 	correctAnswer, err := entities.NewUserAnswer(question.ID(), []string{"false"})
 	require.NoError(t, err)
@@ -57,7 +58,7 @@ func TestTrueOrFalseQuestion_FalseAnswer(t *testing.T) {
 func TestTrueOrFalseQuestion_EmptyAnswer(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", true)
+	question := entities.NewTrueOrFalseSelectionQuestion("1", "topic", "subject", true)
 
 	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
 	require.NoError(t, err)
@@ -70,7 +71,7 @@ func TestTrueOrFalseQuestion_EmptyAnswer(t *testing.T) {
 func TestTrueOrFalseQuestion_MultipleAnswers(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewTrueOrFalseSelectionQuestion(1, "topic", "subject", true)
+	question := entities.NewTrueOrFalseSelectionQuestion("1", "topic", "subject", true)
 
 	multipleAnswers, err := entities.NewUserAnswer(question.ID(), []string{"true", "false"})
 	require.NoError(t, err)

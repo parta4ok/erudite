@@ -2,8 +2,8 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS kvs.sessions (
     id SERIAL PRIMARY KEY,
-    session_id NUMERIC,
-    user_id NUMERIC NOT NULL,
+    session_id TEXT,
+    user_id TEXT NOT NULL,
     state VARCHAR(255) NOT NULL, 
     topics TEXT[] NOT NULL,
     questions INTEGER[],

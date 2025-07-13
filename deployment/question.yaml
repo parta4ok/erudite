@@ -14,3 +14,5 @@ kvs:
     add_source: true
 postgres:
   connection: postgresql://postgres:password@postgres:5432/knowledge
+auth_service:
+  address: "auth_app:8091"

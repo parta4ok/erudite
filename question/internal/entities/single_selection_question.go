@@ -5,14 +5,14 @@ var (
 )
 
 type SingleSelectionQuestion struct {
-	id            uint64
+	id            string
 	topic         string
 	subject       string
 	variants      []string
 	correctAnswer string
 }
 
-func NewSingleSelectionQuestion(id uint64, topic string, subject string, variants []string,
+func NewSingleSelectionQuestion(id string, topic string, subject string, variants []string,
 	correctAnswer string) *SingleSelectionQuestion {
 
 	return &SingleSelectionQuestion{
@@ -24,7 +24,7 @@ func NewSingleSelectionQuestion(id uint64, topic string, subject string, variant
 	}
 }
 
-func (q *SingleSelectionQuestion) ID() uint64 {
+func (q *SingleSelectionQuestion) ID() string {
 	return q.id
 }
 

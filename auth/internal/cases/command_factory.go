@@ -2,8 +2,9 @@ package cases
 
 import (
 	"context"
-	"github.com/parta4ok/kvs/auth/internal/entities"
+
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
+	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/pkg/errors"
 )
 
@@ -48,7 +49,7 @@ func NewCommandFactory(opts ...CommandFactoryOption) (*CommandFactory, error) {
 	return factory, nil
 }
 
-func (cf *CommandFactory) NewIntrospectedCommand(ctx context.Context, userID uint64, jwt string,
+func (cf *CommandFactory) NewIntrospectedCommand(ctx context.Context, userID string, jwt string,
 ) (entities.Command, error) {
 	return common.NewIntrospectCommand(ctx, userID, jwt, cf.storage, cf.jwtProvider)
 }

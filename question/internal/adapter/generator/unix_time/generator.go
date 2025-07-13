@@ -1,6 +1,7 @@
 package unixtime
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/parta4ok/kvs/question/internal/entities"
@@ -16,6 +17,6 @@ func NewUint64Generator() *Uint64Generator {
 	return &Uint64Generator{}
 }
 
-func (gen *Uint64Generator) GenerateID() uint64 {
-	return uint64(time.Now().UTC().UnixNano())
+func (gen *Uint64Generator) GenerateID() string {
+	return fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano()))
 }

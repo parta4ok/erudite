@@ -45,7 +45,7 @@ func TestTopicsEndpoint(t *testing.T) {
 func TestCreateSession(t *testing.T) {
 	t.Parallel()
 
-	userID := uint64(12345)
+	userID := "12345"
 
 	requestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
@@ -55,7 +55,7 @@ func TestCreateSession(t *testing.T) {
 	require.NoError(t, err)
 
 	client := &http.Client{Timeout: timeout}
-	url := fmt.Sprintf("%s/%d/start_session", baseURL, userID)
+	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -68,7 +68,7 @@ func TestCreateSession(t *testing.T) {
 	}
 
 	var response struct {
-		SessionID uint64        `json:"session_id"`
+		SessionID string        `json:"session_id"`
 		Topics    []string      `json:"topics"`
 		Questions []interface{} `json:"questions"`
 	}
@@ -83,7 +83,7 @@ func TestCreateSession(t *testing.T) {
 func TestCompleteSession(t *testing.T) {
 	t.Parallel()
 
-	userID := time.Now().UnixMicro()
+	userID := fmt.Sprintf("%d", time.Now().UnixMicro())
 	requestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
 	}
@@ -92,15 +92,15 @@ func TestCompleteSession(t *testing.T) {
 	require.NoError(t, err)
 
 	client := &http.Client{Timeout: timeout}
-	url := fmt.Sprintf("%s/%d/start_session", baseURL, userID)
+	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
 	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	var sessionResponse struct {
-		SessionID uint64 `json:"session_id"`
+		SessionID string `json:"session_id"`
 		Questions []struct {
-			ID           uint64   `json:"question_id"`
+			ID           string   `json:"question_id"`
 			QuestionType string   `json:"question_type"`
 			Topic        string   `json:"topic"`
 			Subject      string   `json:"subject"`
@@ -114,7 +114,7 @@ func TestCompleteSession(t *testing.T) {
 	err = json.Unmarshal(body, &sessionResponse)
 	require.NoError(t, err)
 
-	require.Greater(t, sessionResponse.SessionID, uint64(0))
+	require.NotEqual(t, sessionResponse.SessionID, "")
 
 	var answers []UserAnswerDTO
 	for _, question := range sessionResponse.Questions {
@@ -131,7 +131,7 @@ func TestCompleteSession(t *testing.T) {
 	jsonBody, err = json.Marshal(completeBody)
 	require.NoError(t, err)
 
-	url = fmt.Sprintf("%s/%d/%d/complete_session", baseURL, userID, sessionResponse.SessionID)
+	url = fmt.Sprintf("%s/%s/%s/complete_session", baseURL, userID, sessionResponse.SessionID)
 	resp, err = client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -192,9 +192,9 @@ func TestErrorCases(t *testing.T) {
 		}
 		jsonBody, _ := json.Marshal(requestBody)
 
-		userID := time.Now().UnixMilli()
-		sessionID := time.Now().UnixMilli()
-		urlSuff := fmt.Sprintf("%d/%d/complete_session", userID, sessionID)
+		userID := fmt.Sprintf("%d", time.Now().UnixMilli())
+		sessionID := fmt.Sprintf("%d", time.Now().UnixMilli())
+		urlSuff := fmt.Sprintf("%s/%s/complete_session", userID, sessionID)
 
 		resp, err := client.Post(baseURL+urlSuff, "application/json", bytes.NewBuffer(jsonBody))
 		require.NoError(t, err)
@@ -236,7 +236,7 @@ func TestConcurrentRequests(t *testing.T) {
 }
 
 type UserAnswerDTO struct {
-	QuestionID uint64   `json:"question_id"`
+	QuestionID string   `json:"question_id"`
 	Answers    []string `json:"answers"`
 }
 

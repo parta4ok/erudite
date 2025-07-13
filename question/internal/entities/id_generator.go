@@ -2,5 +2,5 @@ package entities
 
 //go:generate mockgen -source=id_generator.go -destination=./testdata/id_generator.go -package=testdata
 type IDGenerator interface {
-	GenerateID() uint64
+	GenerateID() string
 }

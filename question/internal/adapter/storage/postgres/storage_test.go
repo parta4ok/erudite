@@ -4,6 +4,7 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"testing"
@@ -63,7 +64,7 @@ func TestStorage_GetSession(t *testing.T) {
 	defer db.Close()
 
 	testTopics := []string{"Составные типы в Go"}
-	userID := uint64(12)
+	userID := "12"
 
 	ctrl := gomock.NewController(t)
 	defer t.Cleanup(func() {
@@ -90,7 +91,7 @@ func TestStorage_GetSession(t *testing.T) {
 	questions, err := db.GetQuesions(context.TODO(), testTopics)
 	require.NoError(t, err)
 
-	questionsMap := make(map[uint64]entities.Question, len(questions))
+	questionsMap := make(map[string]entities.Question, len(questions))
 	for _, q := range questions {
 		questionsMap[q.ID()] = q
 	}
@@ -184,7 +185,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	db := makeDB(t)
 	defer db.Close()
 
-	userID := uint64(time.Now().UTC().Unix())
+	userID := fmt.Sprintf("%d", time.Now().UTC().Unix())
 	topics := []string{"Базы данных"}
 	ctx := context.TODO()
 
@@ -198,7 +199,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	questions, err := db.GetQuesions(ctx, topics)
 	require.NoError(t, err)
 
-	questionsMap := make(map[uint64]entities.Question, len(questions))
+	questionsMap := make(map[string]entities.Question, len(questions))
 
 	for _, q := range questions {
 		questionsMap[q.ID()] = q

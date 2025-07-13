@@ -51,7 +51,7 @@ func (mr *MockStorageMockRecorder) GetQuesions(ctx, topics interface{}) *gomock.
 }
 
 // GetSessionBySessionID mocks base method.
-func (m *MockStorage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session, error) {
+func (m *MockStorage) GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSessionBySessionID", ctx, sessionID)
 	ret0, _ := ret[0].(*entities.Session)

@@ -182,16 +182,16 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		userID     uint64
+		userID     string
 		topics     []string
 		setupMocks func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 			*entitiesTestdata.MockIDGenerator)
-		expectedSessionID uint64
+		expectedSessionID string
 		expectedError     string
 	}{
 		{
 			name:   "success",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -199,12 +199,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
-				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), uint64(1),
+				generator.EXPECT().GenerateID().Return("123")
+				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
 					[]string{"Go"}).Return(false, nil)
 
 				mockQuestion := entitiesTestdata.NewMockQuestion(ctrl)
-				mockQuestion.EXPECT().ID().Return(uint64(1)).AnyTimes()
+				mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(
 					[]entities.Question{mockQuestion}, nil)
 
@@ -212,12 +212,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 123,
+			expectedSessionID: "123",
 			expectedError:     "",
 		},
 		{
 			name:   "daily_limit_reached",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -225,18 +225,18 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
-				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), uint64(1),
+				generator.EXPECT().GenerateID().Return("123")
+				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
 					[]string{"Go"}).Return(true, nil)
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "0",
 			expectedError:     "creating new session for this user",
 		},
 		{
 			name:   "session_storage_error",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -244,18 +244,18 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
-				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), uint64(1),
+				generator.EXPECT().GenerateID().Return("123")
+				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
 					[]string{"Go"}).Return(false, errors.New("storage error"))
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "0",
 			expectedError:     "IsDailySessionLimitReached",
 		},
 		{
 			name:   "get_questions_error",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -263,20 +263,20 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
+				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(),
-					uint64(1), []string{"Go"}).Return(false, nil)
+					"1", []string{"Go"}).Return(false, nil)
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(nil,
 					errors.New("questions error"))
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "0",
 			expectedError:     "GetQuesions",
 		},
 		{
 			name:   "store_session_error",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -284,12 +284,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
-				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), uint64(1),
+				generator.EXPECT().GenerateID().Return("123")
+				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
 					[]string{"Go"}).Return(false, nil)
 
 				mockQuestion := entitiesTestdata.NewMockQuestion(ctrl)
-				mockQuestion.EXPECT().ID().Return(uint64(1)).AnyTimes()
+				mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(
 					[]entities.Question{mockQuestion}, nil)
 				storage.EXPECT().StoreSession(gomock.Any(), gomock.Any()).Return(
@@ -297,12 +297,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "0",
 			expectedError:     "StoreSession",
 		},
 		{
 			name:   "new_session_error_invalid_user_id",
-			userID: 0,
+			userID: "",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -312,12 +312,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "",
 			expectedError:     "NewSession",
 		},
 		{
 			name:   "new_session_error_empty_topics",
-			userID: 1,
+			userID: "1",
 			topics: []string{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -327,12 +327,12 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "",
 			expectedError:     "NewSession",
 		},
 		{
 			name:   "set_questions_error",
-			userID: 1,
+			userID: "1",
 			topics: []string{"Go"},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -340,8 +340,8 @@ func TestSessionService_CreateSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				generator.EXPECT().GenerateID().Return(uint64(123))
-				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), uint64(1),
+				generator.EXPECT().GenerateID().Return("123")
+				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
 					[]string{"Go"}).Return(false, nil)
 
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(
@@ -349,7 +349,7 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 				return storage, sessionStorage, generator
 			},
-			expectedSessionID: 0,
+			expectedSessionID: "",
 			expectedError:     "SetQuestions",
 		},
 	}
@@ -370,7 +370,7 @@ func TestSessionService_CreateSession(t *testing.T) {
 			if tc.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedError)
-				require.Equal(t, uint64(0), sessionID)
+				require.Equal(t, "", sessionID)
 				require.Nil(t, questions)
 			} else {
 				require.NoError(t, err)
@@ -390,7 +390,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 
 	testCases := []struct {
 		name       string
-		sessionID  uint64
+		sessionID  string
 		answers    []*entities.UserAnswer
 		setupMocks func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 			*entitiesTestdata.MockIDGenerator)
@@ -399,7 +399,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 	}{
 		{
 			name:      "success",
-			sessionID: 123,
+			sessionID: "123",
 			answers:   []*entities.UserAnswer{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -408,14 +408,14 @@ func TestSessionService_CompleteSession(t *testing.T) {
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
 				mockState := entitiesTestdata.NewMockSessionState(ctrl)
-				session := entities.NewSessionWithCustomState(123, 1, []string{"Go"}, mockState)
+				session := entities.NewSessionWithCustomState("123", "1", []string{"Go"}, mockState)
 
 				expectedResult := &entities.SessionResult{
 					IsSuccess: true,
 					Grade:     "100%",
 				}
 
-				storage.EXPECT().GetSessionBySessionID(gomock.Any(), uint64(123)).Return(session,
+				storage.EXPECT().GetSessionBySessionID(gomock.Any(), "123").Return(session,
 					nil)
 				mockState.EXPECT().SetUserAnswer([]*entities.UserAnswer{}).Return(nil)
 				mockState.EXPECT().GetSessionResult().Return(expectedResult, nil)
@@ -431,7 +431,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 		},
 		{
 			name:      "session_not_found",
-			sessionID: 999,
+			sessionID: "999",
 			answers:   []*entities.UserAnswer{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -439,7 +439,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 				sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-				storage.EXPECT().GetSessionBySessionID(gomock.Any(), uint64(999)).Return(nil,
+				storage.EXPECT().GetSessionBySessionID(gomock.Any(), "999").Return(nil,
 					errors.New("session not found"))
 
 				return storage, sessionStorage, generator
@@ -449,7 +449,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 		},
 		{
 			name:      "get_session_result_error",
-			sessionID: 123,
+			sessionID: "123",
 			answers:   []*entities.UserAnswer{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -458,9 +458,9 @@ func TestSessionService_CompleteSession(t *testing.T) {
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
 				mockState := entitiesTestdata.NewMockSessionState(ctrl)
-				session := entities.NewSessionWithCustomState(123, 1, []string{"Go"}, mockState)
+				session := entities.NewSessionWithCustomState("123", "1", []string{"Go"}, mockState)
 
-				storage.EXPECT().GetSessionBySessionID(gomock.Any(), uint64(123)).Return(session,
+				storage.EXPECT().GetSessionBySessionID(gomock.Any(), "123").Return(session,
 					nil)
 				mockState.EXPECT().SetUserAnswer([]*entities.UserAnswer{}).Return(nil)
 				mockState.EXPECT().GetSessionResult().Return(nil,
@@ -473,7 +473,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 		},
 		{
 			name:      "store_session_error",
-			sessionID: 123,
+			sessionID: "123",
 			answers:   []*entities.UserAnswer{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -482,13 +482,13 @@ func TestSessionService_CompleteSession(t *testing.T) {
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
 				mockState := entitiesTestdata.NewMockSessionState(ctrl)
-				session := entities.NewSessionWithCustomState(123, 1, []string{"Go"}, mockState)
+				session := entities.NewSessionWithCustomState("123", "1", []string{"Go"}, mockState)
 				expectedResult := &entities.SessionResult{
 					IsSuccess: true,
 					Grade:     "100%",
 				}
 
-				storage.EXPECT().GetSessionBySessionID(gomock.Any(), uint64(123)).Return(session,
+				storage.EXPECT().GetSessionBySessionID(gomock.Any(), "123").Return(session,
 					nil)
 				mockState.EXPECT().SetUserAnswer([]*entities.UserAnswer{}).Return(nil)
 				mockState.EXPECT().GetSessionResult().Return(expectedResult, nil)
@@ -502,7 +502,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 		},
 		{
 			name:      "set_user_answer_error",
-			sessionID: 123,
+			sessionID: "123",
 			answers:   []*entities.UserAnswer{},
 			setupMocks: func() (*testdata.MockStorage, *entitiesTestdata.MockSessionStorage,
 				*entitiesTestdata.MockIDGenerator) {
@@ -511,9 +511,9 @@ func TestSessionService_CompleteSession(t *testing.T) {
 				generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
 				mockState := entitiesTestdata.NewMockSessionState(ctrl)
-				session := entities.NewSessionWithCustomState(123, 1, []string{"Go"}, mockState)
+				session := entities.NewSessionWithCustomState("123", "1", []string{"Go"}, mockState)
 
-				storage.EXPECT().GetSessionBySessionID(gomock.Any(), uint64(123)).Return(session,
+				storage.EXPECT().GetSessionBySessionID(gomock.Any(), "123").Return(session,
 					nil)
 				mockState.EXPECT().SetUserAnswer([]*entities.UserAnswer{}).Return(
 					errors.New("invalid answers"))

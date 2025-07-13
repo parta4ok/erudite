@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
-	"strconv"
 
 	"google.golang.org/grpc"
 
@@ -16,20 +15,64 @@ import (
 
 type AuthService struct {
 	authv1.UnimplementedAuthServiceServer
+	factory CommandFactory
+}
+
+func (a *AuthService) Introspect(
+	ctx context.Context,
+	req *authv1.IntrospectRequest,
+) (*authv1.IntrospectResponse, error) {
+	slog.Info("Introspect started")
+
+	token := req.Token
+	if token == "" {
+		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
+		slog.Error(err.Error())
+		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+	}
+
+	if req.UserId == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "extract userID failure")
+		slog.Error(err.Error())
+		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+	}
+	slog.Info("------", slog.String("jwt", token), slog.String("userID", req.UserId))
+	command, err := a.factory.NewIntrospectedCommand(ctx, req.UserId, token)
+	if err != nil {
+		err := errors.Wrap(err, "create introspect command failure")
+		slog.Error(err.Error())
+		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+	}
+
+	res, err := command.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "introspect command exec failure")
+		slog.Error(err.Error())
+		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+	}
+
+	if res != nil {
+		if !res.Success {
+			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
+			slog.Error(err.Error())
+			return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+		}
+	}
+
+	return &authv1.IntrospectResponse{}, nil
 }
 
 type Server struct {
-	AuthService
-	server  *grpc.Server
-	factory CommandFactory
-	port    string
+	authService *AuthService
+	server      *grpc.Server
+	port        string
 }
 
 type ServerOption func(*Server)
 
-func WithFactory(facroty CommandFactory) ServerOption {
+func WithFactory(factory CommandFactory) ServerOption {
 	return func(srv *Server) {
-		srv.factory = facroty
+		srv.authService.factory = factory
 	}
 }
 
@@ -46,15 +89,14 @@ func (srv *Server) setOptions(opts ...ServerOption) {
 }
 
 func NewServer(opts ...ServerOption) (*Server, error) {
-	authService := &AuthService{}
 	serv := &Server{
 		server:      grpc.NewServer(),
-		AuthService: *authService,
+		authService: &AuthService{},
 	}
 
 	serv.setOptions(opts...)
 
-	if serv.factory == nil {
+	if serv.authService.factory == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "factory not set")
 	}
 
@@ -75,7 +117,7 @@ func (srv *Server) StartServer() {
 		return
 	}
 
-	authv1.RegisterAuthServiceServer(srv.server, &srv.AuthService)
+	authv1.RegisterAuthServiceServer(srv.server, srv.authService)
 
 	if err := srv.server.Serve(listner); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "serve failure: %v", err)
@@ -89,42 +131,4 @@ func (srv *Server) StartServer() {
 func (srv *Server) Stop() {
 	slog.Info("stop gRPC server")
 	srv.server.Stop()
-}
-
-func (srv *Server) Introspect(
-	ctx context.Context,
-	req *authv1.IntrospectRequest,
-) (*authv1.IntrospectResponse, error) {
-	slog.Info("Introspect started")
-
-	token := req.Token
-	if token == "" {
-		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
-		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
-	}
-
-	userIDRaw := req.UserId
-	userID, err := strconv.ParseUint(userIDRaw, 10, 32)
-	if err != nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "extract userID failure")
-		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
-	}
-
-	command, err := srv.factory.NewIntrospectedCommand(ctx, userID, token)
-	if err != nil {
-		err := errors.Wrap(err, "create introspect command failure")
-		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
-	}
-
-	res, err := command.Exec()
-	if err != nil && !res.Success {
-		err := errors.Wrap(err, "introspect command exec failure")
-		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
-	}
-
-	return &authv1.IntrospectResponse{}, nil
 }

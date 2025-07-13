@@ -1,5 +1,7 @@
 package public
 
+import "context"
+
 type Introspector interface {
-	Introspect(userID, jwt string) error
+	Introspect(ctx context.Context, userID, jwt string) error
 }

@@ -9,13 +9,13 @@ var (
 )
 
 type TrueOrFalseSelectionQuestion struct {
-	id            uint64
+	id            string
 	topic         string
 	subject       string
 	correctAnswer bool
 }
 
-func NewTrueOrFalseSelectionQuestion(id uint64, topic string, subject string,
+func NewTrueOrFalseSelectionQuestion(id string, topic string, subject string,
 	correctAnswer bool) *TrueOrFalseSelectionQuestion {
 	return &TrueOrFalseSelectionQuestion{
 		id:            id,
@@ -25,7 +25,7 @@ func NewTrueOrFalseSelectionQuestion(id uint64, topic string, subject string,
 	}
 }
 
-func (q *TrueOrFalseSelectionQuestion) ID() uint64 {
+func (q *TrueOrFalseSelectionQuestion) ID() string {
 	return q.id
 }
 

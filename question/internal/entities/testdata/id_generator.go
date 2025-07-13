@@ -34,10 +34,10 @@ func (m *MockIDGenerator) EXPECT() *MockIDGeneratorMockRecorder {
 }
 
 // GenerateID mocks base method.
-func (m *MockIDGenerator) GenerateID() uint64 {
+func (m *MockIDGenerator) GenerateID() string {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GenerateID")
-	ret0, _ := ret[0].(uint64)
+	ret0, _ := ret[0].(string)
 	return ret0
 }
 

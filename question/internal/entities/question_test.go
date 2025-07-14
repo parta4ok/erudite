@@ -54,7 +54,7 @@ func TestQuestionFactory_NewQuestion_SingleSelection_Success(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"Language", "Game", "Tool", "Framework"}
@@ -76,7 +76,7 @@ func TestQuestionFactory_NewQuestion_MultiSelection_Success(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(2)
+	id := "2"
 	topic := "Programming"
 	subject := "Which are programming languages?"
 	variants := []string{"Go", "Python", "HTML", "JavaScript"}
@@ -95,7 +95,7 @@ func TestQuestionFactory_NewQuestion_TrueOrFalse_Success(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(3)
+	id := "3"
 	topic := "Go"
 	subject := "Go is compiled language"
 	correctAnswer := []string{"true"}
@@ -112,7 +112,7 @@ func TestQuestionFactory_NewQuestion_TrueOrFalse_False(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(4)
+	id := "4"
 	topic := "Go"
 	subject := "Go is interpreted language"
 	correctAnswer := []string{"false"}
@@ -127,7 +127,7 @@ func TestQuestionFactory_NewQuestion_InvalidID(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(0)
+	id := ""
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"Language"}
@@ -138,14 +138,13 @@ func TestQuestionFactory_NewQuestion_InvalidID(t *testing.T) {
 
 	require.Error(t, err)
 	require.Nil(t, question)
-	require.Contains(t, err.Error(), "id is 0")
 }
 
 func TestQuestionFactory_NewQuestion_EmptyTopic(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := ""
 	subject := "What is Go?"
 	variants := []string{"Language"}
@@ -163,7 +162,7 @@ func TestQuestionFactory_NewQuestion_EmptySubject(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := ""
 	variants := []string{"Language"}
@@ -181,7 +180,7 @@ func TestQuestionFactory_NewQuestion_SingleSelection_TooManyVariants(t *testing.
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"A", "B", "C", "D", "E"}
@@ -199,7 +198,7 @@ func TestQuestionFactory_NewQuestion_SingleSelection_MultipleCorrectAnswers(t *t
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"A", "B", "C", "D"}
@@ -217,7 +216,7 @@ func TestQuestionFactory_NewQuestion_MultiSelection_NoCorrectAnswers(t *testing.
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"A", "B", "C", "D"}
@@ -235,7 +234,7 @@ func TestQuestionFactory_NewQuestion_TrueOrFalse_MultipleCorrectAnswers(t *testi
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	correctAnswer := []string{"true", "false"}
@@ -251,7 +250,7 @@ func TestQuestionFactory_NewQuestion_UnknownType(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"A"}
@@ -269,7 +268,7 @@ func TestQuestionFactory_NewQuestion_InvalidVariants(t *testing.T) {
 	t.Parallel()
 
 	factory := &entities.QuestionFactory{}
-	id := uint64(1)
+	id := "1"
 	topic := "Go"
 	subject := "What is Go?"
 	variants := []string{"A", "B", "C", "D", "E"}

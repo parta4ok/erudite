@@ -13,12 +13,12 @@ var (
 
 type ActiveSessionState struct {
 	holder    StateHolder
-	questions map[uint64]Question
+	questions map[string]Question
 	startedAt time.Time
 	duration  time.Duration
 }
 
-func NewActiveSessionState(questions map[uint64]Question, holder StateHolder,
+func NewActiveSessionState(questions map[string]Question, holder StateHolder,
 	duration time.Duration, opts ...ActiveSessionStateOption) *ActiveSessionState {
 	state := &ActiveSessionState{
 		holder:    holder,
@@ -50,7 +50,7 @@ func (state *ActiveSessionState) GetStatus() string {
 	return ActiveState
 }
 
-func (state *ActiveSessionState) SetQuestions(_ map[uint64]Question,
+func (state *ActiveSessionState) SetQuestions(_ map[string]Question,
 	duration time.Duration) error {
 	return errors.Wrapf(ErrInvalidState, "%s not support `SetQuestions`", state.GetStatus())
 }
@@ -95,7 +95,7 @@ func (state *ActiveSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 		ErrInvalidState, "%s not support `GetUserAnswers`", state.GetStatus())
 }
 
-func (state *ActiveSessionState) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+func (state *ActiveSessionState) IsDailySessionLimitReached(ctx context.Context, userID string,
 	topics []string) (bool, error) {
 	return false, errors.Wrapf(
 		ErrInvalidState, "%s not support `IsDailySessionLimitReached`", state.GetStatus())

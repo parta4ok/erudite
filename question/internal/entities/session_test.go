@@ -20,34 +20,34 @@ func TestNewSession(t *testing.T) {
 		t.Cleanup(ctrl.Finish)
 	}()
 	ctx := context.TODO()
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"1"}
 
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(2))
+	generator.EXPECT().GenerateID().Return("2")
 	storage := testdata.NewMockSessionStorage(ctrl)
 	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics).Return(false, nil)
 
 	question := testdata.NewMockQuestion(ctrl)
 
-	session, err := entities.NewSession(uint64(userID), topics, generator, storage)
+	session, err := entities.NewSession(userID, topics, generator, storage)
 	require.NoError(t, err)
 	require.NotNil(t, session)
 
 	require.Equal(t, entities.InitState, session.GetStatus())
 
-	forbidden, err := session.IsDailySessionLimitReached(ctx, uint64(userID), topics)
+	forbidden, err := session.IsDailySessionLimitReached(ctx, userID, topics)
 	require.False(t, forbidden)
 	require.NoError(t, err)
 
-	quesionMap := map[uint64]entities.Question{3: question}
+	quesionMap := map[string]entities.Question{"3": question}
 
 	err = session.SetQuestions(quesionMap, time.Second*30)
 	require.NoError(t, err)
 
 	require.Equal(t, entities.ActiveState, session.GetStatus())
 
-	answer, err := entities.NewUserAnswer(uint64(userID), []string{"random answer"})
+	answer, err := entities.NewUserAnswer(userID, []string{"random answer"})
 	require.NoError(t, err)
 
 	err = session.SetUserAnswer([]*entities.UserAnswer{answer})
@@ -62,11 +62,11 @@ func TestSession_WithSessionID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
-	sessionID := uint64(123)
+	sessionID := "123"
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(999))
+	generator.EXPECT().GenerateID().Return("999")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage,
@@ -83,10 +83,10 @@ func TestSession_WithNilState(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage,
@@ -102,8 +102,8 @@ func TestNewSessionWithCustomState(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
-	sessionID := uint64(123)
+	userID := "1"
+	sessionID := "123"
 	topics := []string{"topic1"}
 	state := testdata.NewMockSessionState(ctrl)
 
@@ -121,10 +121,10 @@ func TestSession_GetUserID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(42)
+	userID := "42"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -141,10 +141,10 @@ func TestSession_GetTopics(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"Go", "Databases"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -161,10 +161,10 @@ func TestSession_GetSessionResult(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -188,10 +188,10 @@ func TestSession_GetSessionDurationLimit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -215,10 +215,10 @@ func TestSession_IsExpired(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -241,10 +241,10 @@ func TestSession_GetQuestions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -269,10 +269,10 @@ func TestSession_GetStartedAt(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
@@ -296,17 +296,17 @@ func TestSession_GetUserAnswers(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	userID := uint64(1)
+	userID := "1"
 	topics := []string{"topic1"}
 	generator := testdata.NewMockIDGenerator(ctrl)
-	generator.EXPECT().GenerateID().Return(uint64(1))
+	generator.EXPECT().GenerateID().Return("1")
 	storage := testdata.NewMockSessionStorage(ctrl)
 
 	session, err := entities.NewSession(userID, topics, generator, storage)
 	require.NoError(t, err)
 
 	mockState := testdata.NewMockSessionState(ctrl)
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 	expectedAnswers := []*entities.UserAnswer{userAnswer}
 	mockState.EXPECT().GetUserAnswers().Return(expectedAnswers, nil)
@@ -327,11 +327,11 @@ func Test_NewSession_Failed(t *testing.T) {
 		ctrl.Finish()
 	})
 
-	invalidUserID := uint64(0)
+	invalidUserID := "0"
 	var invalidGenerator entities.IDGenerator
 	var invalidStorage entities.SessionStorage
 
-	userID := uint64(1)
+	userID := "1"
 	generator := testdata.NewMockIDGenerator(ctrl)
 	storage := testdata.NewMockSessionStorage(ctrl)
 

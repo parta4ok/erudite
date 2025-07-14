@@ -74,45 +74,45 @@ func (srv *SessionService) ShowTopics(ctx context.Context) ([]string, error) {
 	return topics, nil
 }
 
-func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
-	topics []string) (uint64, map[uint64]entities.Question, error) {
+func (srv *SessionService) CreateSession(ctx context.Context, userID string,
+	topics []string) (string, map[string]entities.Question, error) {
 	slog.Info("CreateSession started")
 
 	session, err := entities.NewSession(userID, topics, srv.generator, srv.sessionStorage)
 	if err != nil {
 		slog.Error(err.Error())
-		return 0, nil, errors.Wrap(err, "NewSession")
+		return "", nil, errors.Wrap(err, "NewSession")
 	}
 
 	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics)
 	if err != nil {
 		slog.Error(err.Error())
-		return 0, nil, errors.Wrap(err, "IsDailySessionLimitReached")
+		return "", nil, errors.Wrap(err, "IsDailySessionLimitReached")
 	}
 
 	if forbidded {
-		return 0, nil, errors.Wrap(entities.ErrForbidden, "creating new session for this user")
+		return "", nil, errors.Wrap(entities.ErrForbidden, "creating new session for this user")
 	}
 
 	questions, err := srv.storage.GetQuesions(ctx, topics)
 	if err != nil {
 		slog.Error(err.Error())
-		return 0, nil, errors.Wrap(err, "GetQuesions")
+		return "", nil, errors.Wrap(err, "GetQuesions")
 	}
 
-	questionsMap := make(map[uint64]entities.Question, len(questions))
+	questionsMap := make(map[string]entities.Question, len(questions))
 	for _, question := range questions {
 		questionsMap[question.ID()] = question
 	}
 
 	if err = session.SetQuestions(questionsMap, srv.topicDuration); err != nil {
 		slog.Error(err.Error())
-		return 0, nil, errors.Wrap(err, "SetQuestions")
+		return "", nil, errors.Wrap(err, "SetQuestions")
 	}
 
 	if err := srv.storage.StoreSession(ctx, session); err != nil {
 		slog.Error(err.Error())
-		return 0, nil, errors.Wrap(err, "StoreSession")
+		return "", nil, errors.Wrap(err, "StoreSession")
 	}
 
 	slog.Info("CreateService completed")
@@ -121,7 +121,7 @@ func (srv *SessionService) CreateSession(ctx context.Context, userID uint64,
 
 func (srv *SessionService) CompleteSession(
 	ctx context.Context,
-	sessionID uint64,
+	sessionID string,
 	answers []*entities.UserAnswer) (*entities.SessionResult, error) {
 	slog.Info("CompleteSession started")
 

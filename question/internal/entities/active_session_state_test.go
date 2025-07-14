@@ -19,7 +19,7 @@ func TestNewActiveSessionState(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -36,7 +36,7 @@ func TestActiveSessionState_WithStartedAt(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 	startTime := time.Now()
@@ -57,7 +57,7 @@ func TestActiveSessionState_SetQuestions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -76,13 +76,13 @@ func TestActiveSessionState_SetUserAnswer(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
 	state := entities.NewActiveSessionState(questions, holder, duration)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 
 	holder.EXPECT().ChangeState(gomock.Any()).Times(1)
@@ -99,7 +99,7 @@ func TestActiveSessionState_GetSessionResult(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -119,7 +119,7 @@ func TestActiveSessionState_GetSessionDurationLimit(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -138,7 +138,7 @@ func TestActiveSessionState_IsExpired_NotSupported(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Hour
 
@@ -158,7 +158,7 @@ func TestActiveSessionState_GetQuestions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -178,7 +178,7 @@ func TestActiveSessionState_GetUserAnswers_NotSupported(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
@@ -198,13 +198,13 @@ func TestActiveSessionState_IsDailySessionLimitReached(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	duration := time.Minute * 5
 
 	state := entities.NewActiveSessionState(questions, holder, duration)
 
-	result, err := state.IsDailySessionLimitReached(context.TODO(), 1, []string{"topic"})
+	result, err := state.IsDailySessionLimitReached(context.TODO(), "1", []string{"topic"})
 
 	require.Error(t, err)
 	require.False(t, result)

@@ -3,6 +3,10 @@ auth:
     private:
       port: 8091
       timeout: 5s
+  http:
+    public:
+      port: :8090
+      timeout: 5s
   storage:
     type: postgres
   logging:
@@ -12,5 +16,10 @@ auth:
     level: info
     format: json
     add_source: true
-  postgres:
-    connection: postgresql://postgres:password@postgres:5432/knowledge
+postgres:
+  connection: postgresql://postgres:password@postgres:5432/knowledge
+jwt:
+  secret: erudite_secret
+  aud: [students]
+  iss: erudite_app
+  ttl: 24h

@@ -1,6 +1,7 @@
 package entities_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 func TestNewSingleSelectionQuestion(t *testing.T) {
 	t.Parallel()
 
-	id := uint64(time.Now().UnixNano())
+	id := fmt.Sprintf("%d", uint64(time.Now().UnixNano()))
 	topic := "test topic"
 	subject := "what is your name?"
 	variants := []string{"John Doe", "Jack Spearrow", "Jonn Leanon", "John Travolta"}
@@ -43,7 +44,7 @@ func TestNewSingleSelectionQuestion(t *testing.T) {
 func TestSingleSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewSingleSelectionQuestion(1, "topic", "subject", []string{"A", "B"}, "A")
+	question := entities.NewSingleSelectionQuestion("1", "topic", "subject", []string{"A", "B"}, "A")
 
 	emptyAnswer, err := entities.NewUserAnswer(question.ID(), []string{})
 	require.NoError(t, err)
@@ -56,7 +57,7 @@ func TestSingleSelectionQuestion_IsAnswerCorrect_EmptyAnswer(t *testing.T) {
 func TestSingleSelectionQuestion_IsAnswerCorrect_MultipleAnswers(t *testing.T) {
 	t.Parallel()
 
-	question := entities.NewSingleSelectionQuestion(1, "topic", "subject", []string{"A", "B"}, "A")
+	question := entities.NewSingleSelectionQuestion("1", "topic", "subject", []string{"A", "B"}, "A")
 
 	multipleAnswers, err := entities.NewUserAnswer(question.ID(), []string{"A", "B"})
 	require.NoError(t, err)

@@ -17,12 +17,12 @@ type SessionState interface {
 	GetQuestions() ([]Question, error)
 	GetStartedAt() (time.Time, error)
 	GetUserAnswers() ([]*UserAnswer, error)
-	SetQuestions(qestions map[uint64]Question, duration time.Duration) error
+	SetQuestions(qestions map[string]Question, duration time.Duration) error
 	SetUserAnswer(answers []*UserAnswer) error
 	GetSessionResult() (*SessionResult, error)
 	GetSessionDurationLimit() (time.Duration, error)
 	IsExpired() (bool, error)
-	IsDailySessionLimitReached(ctx context.Context, userID uint64, topics []string) (bool, error)
+	IsDailySessionLimitReached(ctx context.Context, userID string, topics []string) (bool, error)
 }
 
 type StateHolder interface {

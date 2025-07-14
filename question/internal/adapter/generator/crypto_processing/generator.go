@@ -3,6 +3,7 @@ package cryptoprocessing
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/parta4ok/kvs/question/internal/entities"
 )
@@ -17,9 +18,9 @@ func NewUint64Generator() *Uint64Generator {
 	return &Uint64Generator{}
 }
 
-func (gen *Uint64Generator) GenerateID() uint64 {
+func (gen *Uint64Generator) GenerateID() string {
 	var buf [8]byte
 	rand.Read(buf[:]) //nolint:errcheck // ok
 
-	return binary.BigEndian.Uint64(buf[:])
+	return fmt.Sprintf("%d", binary.BigEndian.Uint64(buf[:]))
 }

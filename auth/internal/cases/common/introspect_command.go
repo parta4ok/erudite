@@ -14,16 +14,17 @@ type IntrospectCommand struct {
 	jwtProvider JWTProvider
 
 	ctx    context.Context
-	userID uint64
+	userID string
 	jwt    string
 }
 
-func NewIntrospectCommand(ctx context.Context, userID uint64, jwt string, storage Storage,
+func NewIntrospectCommand(ctx context.Context, userID string, jwt string, storage Storage,
 	provider JWTProvider) (*IntrospectCommand, error) {
 	if jwt == "" {
 		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
 	}
-	if userID == 0 {
+
+	if userID == "" {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "user ID is required")
 	}
 

@@ -1,7 +1,6 @@
 package jwtprovider
 
 import (
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -45,7 +44,7 @@ func NewProvider(secret []byte, aud []string, iss string, ttl time.Duration) (*P
 
 type UserClaimsDTO struct {
 	Username string   `json:"user_name"`
-	Subject  uint64   `json:"sub"`
+	Subject  string   `json:"sub"`
 	Rights   []string `json:"rights"`
 	jwt.RegisteredClaims
 }
@@ -65,7 +64,7 @@ func (p *Provider) Generate(user *entities.User) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    p.iss,
 			Audience:  p.aud,
-			Subject:   fmt.Sprintf("%d", user.ID),
+			Subject:   user.ID,
 			ExpiresAt: jwt.NewNumericDate(now.Add(p.tokenValidityPeriod)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
@@ -87,14 +86,16 @@ func (p *Provider) Generate(user *entities.User) (string, error) {
 func (p *Provider) Introspect(tokenString string) (*entities.UserClaims, error) {
 	slog.Info("Introspect started")
 
-	token, err := jwt.ParseWithClaims(tokenString, &UserClaimsDTO{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			err := errors.Wrapf(entities.ErrInvalidJWT, "unexpected signing method: %v", token.Header["alg"])
-			slog.Error(err.Error())
-			return nil, err
-		}
-		return p.secret, nil
-	})
+	token, err := jwt.ParseWithClaims(tokenString, &UserClaimsDTO{},
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				err := errors.Wrapf(entities.ErrInvalidJWT, "unexpected signing method: %v",
+					token.Header["alg"])
+				slog.Error(err.Error())
+				return nil, err
+			}
+			return p.secret, nil
+		})
 
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "jwt parse failure: %v", err)

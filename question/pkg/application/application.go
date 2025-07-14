@@ -12,6 +12,7 @@ import (
 
 	"github.com/parta4ok/kvs/question/internal/adapter/config"
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
+	authservice "github.com/parta4ok/kvs/question/internal/adapter/introspector/auth_service"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
@@ -44,10 +45,10 @@ func (app *App) Start() {
 
 	storage, sessionStorage := app.initStorage(cfg)
 	generator := app.initGenerator()
+	authClient := app.initAuthServiceClient(cfg)
 
 	service := app.initSessionService(storage, sessionStorage, generator)
-
-	server := app.initPublicPort(cfg, service)
+	server := app.initPublicPort(cfg, service, authClient)
 	app.publicServer = server
 
 	app.startWithGracefulShutdown()
@@ -145,7 +146,30 @@ func (app *App) initSessionService(storage cases.Storage, sessionStorage entitie
 	return serv
 }
 
-func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service) *public.Server {
+func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
+	slog.Info("init auth service client started")
+
+	var authClient public.Introspector
+
+	addr := cfg.GetAuthConn()
+	if addr == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "get auth address failure")
+		app.panic(err)
+	}
+
+	client, err := authservice.NewAuthService(addr)
+	if err != nil {
+		err := errors.Wrap(entities.ErrInvalidParam, "new auth service client failure")
+		app.panic(err)
+	}
+
+	authClient = client
+
+	return authClient
+}
+
+func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service,
+	authClient public.Introspector) *public.Server {
 	slog.Info("init public port started")
 
 	port := cfg.GetPublicPort()
@@ -153,6 +177,7 @@ func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service
 
 	server, err := public.New(
 		public.WithService(sessionService),
+		public.WithIntrospector(authClient),
 		public.WithConfig(&public.ServerCfg{
 			Port:    port,
 			Timeout: timeout,

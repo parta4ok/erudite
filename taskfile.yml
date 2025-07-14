@@ -88,7 +88,11 @@ tasks:
     cmds:
       - swag init -g ./question/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
       - cp docs/swagger.json question/api/http/public/swagger.json
-  run_service_local:
-    desc: Run service locally with local config
+  run_question_local:
+    desc: Run question service locally with local config
     cmds:
       - KVS_CONFIG_PATH=./deployment/question.yaml go run ./question/cmd/question_service/main.go
+  run_auth_local:
+    desc: Run auth service locally with local config
+    cmds:
+      - AUTH_CONFIG_PATH=./deployment/auth.yaml go run ./auth/cmd/app/main.go

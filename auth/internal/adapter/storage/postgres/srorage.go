@@ -64,12 +64,12 @@ func (s *Storage) Close() {
 	})
 }
 
-func (s *Storage) GetUserByID(ctx context.Context, userID uint64) (*entities.User, error) {
+func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	slog.Info("Get user by userID started")
 
 	params := []interface{}{userID}
-	query := `SELECT id, name, password_hash, rights, contacts FROM 
-	auth.users where id = $1 LIMIT 1`
+	query := `SELECT user_id, name, password_hash, rights, contacts FROM 
+	auth.users where user_id = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
 
@@ -79,7 +79,7 @@ func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*enti
 	slog.Info("Get user by name started")
 
 	params := []interface{}{userName}
-	query := `SELECT id, name, password_hash, rights, contacts FROM 
+	query := `SELECT user_id, name, password_hash, rights, contacts FROM 
 	auth.users where name = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -89,7 +89,7 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	slog.Info("processRow started")
 
 	var (
-		id           uint64
+		id           string
 		Username     string
 		PasswordHash string
 		Rights       []string
@@ -135,7 +135,7 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	}
 
 	params := []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights, contactsRaw}
-	query := `INSERT INTO auth.users (id, name, password_hash, rights, contacts) 
+	query := `INSERT INTO auth.users (user_id, name, password_hash, rights, contacts) 
 				VALUES ($1, $2, $3, $4, $5)`
 
 	if _, err = s.db.Exec(ctx, query, params...); err != nil {

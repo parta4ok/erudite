@@ -18,9 +18,9 @@ func TestNewCompletedSessionState(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 	answers := []*entities.UserAnswer{userAnswer}
 	isExpired := false
@@ -38,7 +38,7 @@ func TestCompletedSessionState_SetQuestions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
@@ -57,13 +57,13 @@ func TestCompletedSessionState_SetUserAnswer(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
 	state := entities.NewCompletedSessionState(questions, holder, answers, false)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 
 	err = state.SetUserAnswer([]*entities.UserAnswer{userAnswer})
@@ -79,7 +79,7 @@ func TestCompletedSessionState_GetSessionResult_Expired(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 	isExpired := true
@@ -101,13 +101,13 @@ func TestCompletedSessionState_GetSessionResult_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	mockQuestion.EXPECT().ID().Return(uint64(1)).AnyTimes()
+	mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 	mockQuestion.EXPECT().IsAnswerCorrect(gomock.Any()).Return(true).Times(1)
 
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"correct"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"correct"})
 	require.NoError(t, err)
 	answers := []*entities.UserAnswer{userAnswer}
 
@@ -128,13 +128,13 @@ func TestCompletedSessionState_GetSessionResult_Failure(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	mockQuestion.EXPECT().ID().Return(uint64(1)).AnyTimes()
+	mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 	mockQuestion.EXPECT().IsAnswerCorrect(gomock.Any()).Return(false).Times(1)
 
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"wrong"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"wrong"})
 	require.NoError(t, err)
 	answers := []*entities.UserAnswer{userAnswer}
 
@@ -155,7 +155,7 @@ func TestCompletedSessionState_GetSessionDurationLimit(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
@@ -175,7 +175,7 @@ func TestCompletedSessionState_IsExpired(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
@@ -194,7 +194,7 @@ func TestCompletedSessionState_GetQuestions(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
@@ -214,7 +214,7 @@ func TestCompletedSessionState_GetStartedAt(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
@@ -234,10 +234,10 @@ func TestCompletedSessionState_GetUserAnswers(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 
-	userAnswer, err := entities.NewUserAnswer(1, []string{"answer"})
+	userAnswer, err := entities.NewUserAnswer("1", []string{"answer"})
 	require.NoError(t, err)
 	answers := []*entities.UserAnswer{userAnswer}
 
@@ -257,13 +257,13 @@ func TestCompletedSessionState_IsDailySessionLimitReached(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 	answers := []*entities.UserAnswer{}
 
 	state := entities.NewCompletedSessionState(questions, holder, answers, false)
 
-	result, err := state.IsDailySessionLimitReached(context.TODO(), 1, []string{"topic"})
+	result, err := state.IsDailySessionLimitReached(context.TODO(), "1", []string{"topic"})
 
 	require.Error(t, err)
 	require.False(t, result)
@@ -277,9 +277,9 @@ func TestCompletedSessionState_GetSessionResult_InvalidQuestionType(t *testing.T
 	defer ctrl.Finish()
 
 	mockQuestion := testdata.NewMockQuestion(ctrl)
-	questions := map[uint64]entities.Question{1: mockQuestion}
+	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
-	answer, err := entities.NewUserAnswer(2, []string{"answer"})
+	answer, err := entities.NewUserAnswer("2", []string{"answer"})
 	require.NoError(t, err)
 
 	answers := []*entities.UserAnswer{answer}

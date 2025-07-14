@@ -32,7 +32,7 @@ func (state *InitSessionState) GetStatus() string {
 	return InitState
 }
 
-func (state *InitSessionState) SetQuestions(qestions map[uint64]Question,
+func (state *InitSessionState) SetQuestions(qestions map[string]Question,
 	duration time.Duration) error {
 	if len(qestions) == 0 {
 		return errors.Wrap(ErrInvalidParam, "questions for selected topics not changed")
@@ -78,6 +78,6 @@ func (state *InitSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 }
 
 func (state *InitSessionState) IsDailySessionLimitReached(ctx context.Context,
-	userID uint64, topics []string) (bool, error) {
+	userID string, topics []string) (bool, error) {
 	return state.sessionStorage.IsDailySessionLimitReached(ctx, userID, topics)
 }

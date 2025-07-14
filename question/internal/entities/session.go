@@ -8,8 +8,8 @@ import (
 )
 
 type Session struct {
-	userID    uint64
-	sessionID uint64
+	userID    string
+	sessionID string
 	topics    []string
 
 	state SessionState
@@ -17,7 +17,7 @@ type Session struct {
 
 type SessionOption func(*Session)
 
-func WithSessionID(sessionID uint64) SessionOption {
+func WithSessionID(sessionID string) SessionOption {
 	return func(s *Session) {
 		s.sessionID = sessionID
 	}
@@ -35,9 +35,9 @@ func (s *Session) setOptions(opts ...SessionOption) {
 	}
 }
 
-func NewSession(userID uint64, topics []string, generator IDGenerator,
+func NewSession(userID string, topics []string, generator IDGenerator,
 	sessionStorage SessionStorage, opts ...SessionOption) (*Session, error) {
-	if userID == 0 {
+	if userID == "" {
 		return nil, errors.Wrap(ErrInvalidParam, "invalid userID")
 	}
 
@@ -69,7 +69,7 @@ func NewSession(userID uint64, topics []string, generator IDGenerator,
 	return session, nil
 }
 
-func NewSessionWithCustomState(sessionID uint64, userID uint64, topics []string,
+func NewSessionWithCustomState(sessionID string, userID string, topics []string,
 	state SessionState) *Session {
 	return &Session{
 		userID:    userID,
@@ -84,11 +84,11 @@ type SessionResult struct {
 	Grade     string
 }
 
-func (s *Session) GetSesionID() uint64 {
+func (s *Session) GetSesionID() string {
 	return s.sessionID
 }
 
-func (s *Session) GetUserID() uint64 {
+func (s *Session) GetUserID() string {
 	return s.userID
 }
 func (s *Session) GetTopics() []string {
@@ -100,7 +100,7 @@ func (s *Session) ChangeState(state SessionState) {
 	s.state = state
 }
 
-func (s *Session) SetQuestions(qestions map[uint64]Question, duration time.Duration) error {
+func (s *Session) SetQuestions(qestions map[string]Question, duration time.Duration) error {
 	return s.state.SetQuestions(qestions, duration)
 }
 
@@ -136,7 +136,7 @@ func (s *Session) GetUserAnswers() ([]*UserAnswer, error) {
 	return s.state.GetUserAnswers()
 }
 
-func (s *Session) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+func (s *Session) IsDailySessionLimitReached(ctx context.Context, userID string,
 	topics []string) (bool, error) {
 	return s.state.IsDailySessionLimitReached(ctx, userID, topics)
 }

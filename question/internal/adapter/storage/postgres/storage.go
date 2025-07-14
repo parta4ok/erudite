@@ -290,7 +290,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 	return nil
 }
 
-func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (*entities.Session,
+func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session,
 	error) {
 	slog.Info("GetSessionBySessionID started")
 
@@ -313,10 +313,10 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 
 	row := s.db.QueryRow(ctx, query, sessionParameters...)
 	var (
-		userID         uint64
+		userID         string
 		stateName      string
 		topics         []string
-		questionsIDs   []uint64
+		questionsIDs   []string
 		answersRaw     []byte
 		createdAt      *time.Time
 		duration_limit uint64
@@ -341,8 +341,8 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID uint64) (
 		duration_limit, answersRaw, createdAt, isExpired)
 }
 
-func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateName string,
-	userID uint64, topics []string, questionsIDs []uint64, duration_limit uint64, answersRaw []byte,
+func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateName string,
+	userID string, topics []string, questionsIDs []string, duration_limit uint64, answersRaw []byte,
 	createdAt *time.Time, isExpired *bool) (*entities.Session, error) {
 	slog.Info("recoverSession started")
 
@@ -380,7 +380,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 			return nil, err
 		}
 
-		questionsMap := make(map[uint64]entities.Question, len(questions))
+		questionsMap := make(map[string]entities.Question, len(questions))
 		for _, question := range questions {
 			questionsMap[question.ID()] = question
 		}
@@ -408,7 +408,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 			return nil, err
 		}
 
-		questionsMap := make(map[uint64]entities.Question, len(questions))
+		questionsMap := make(map[string]entities.Question, len(questions))
 		for _, question := range questions {
 			questionsMap[question.ID()] = question
 		}
@@ -444,7 +444,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID uint64, stateNam
 	return nil, err
 }
 
-func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []uint64) (
+func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []string) (
 	[]entities.Question, error) {
 	slog.Info("getQuestionsByID strarted")
 
@@ -495,7 +495,7 @@ func (s *Storage) processingQuestionsRows(_ context.Context, rows pgx.Rows) ([]e
 
 	for rows.Next() {
 		var (
-			questionID    uint64
+			questionID    string
 			questionType  string
 			topic         string
 			subject       string
@@ -552,7 +552,7 @@ func (s *Storage) makeCompletedStateSessionQuery() string {
 	`
 }
 
-func (s *Storage) getQuestionsIDs(session *entities.Session) ([]uint64, error) {
+func (s *Storage) getQuestionsIDs(session *entities.Session) ([]string, error) {
 	questions, err := session.GetQuestions()
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal,
@@ -561,7 +561,7 @@ func (s *Storage) getQuestionsIDs(session *entities.Session) ([]uint64, error) {
 		return nil, err
 	}
 
-	questionsIDs := make([]uint64, 0, len(questions))
+	questionsIDs := make([]string, 0, len(questions))
 	for _, q := range questions {
 		questionsIDs = append(questionsIDs, q.ID())
 	}
@@ -569,7 +569,7 @@ func (s *Storage) getQuestionsIDs(session *entities.Session) ([]uint64, error) {
 	return questionsIDs, nil
 }
 
-func (s *Storage) IsDailySessionLimitReached(ctx context.Context, userID uint64,
+func (s *Storage) IsDailySessionLimitReached(ctx context.Context, userID string,
 	topics []string) (bool, error) {
 	slog.Info("IsDailySessionLimitReached started")
 
@@ -599,7 +599,7 @@ ORDER BY
 
 	row := s.db.QueryRow(ctx, query, parameters...)
 	var (
-		uid uint64
+		uid string
 		t   []string
 		cnt int
 	)

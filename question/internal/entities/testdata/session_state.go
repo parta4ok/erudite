@@ -126,7 +126,7 @@ func (mr *MockSessionStateMockRecorder) GetUserAnswers() *gomock.Call {
 }
 
 // IsDailySessionLimitReached mocks base method.
-func (m *MockSessionState) IsDailySessionLimitReached(ctx context.Context, userID uint64, topics []string) (bool, error) {
+func (m *MockSessionState) IsDailySessionLimitReached(ctx context.Context, userID string, topics []string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "IsDailySessionLimitReached", ctx, userID, topics)
 	ret0, _ := ret[0].(bool)
@@ -156,7 +156,7 @@ func (mr *MockSessionStateMockRecorder) IsExpired() *gomock.Call {
 }
 
 // SetQuestions mocks base method.
-func (m *MockSessionState) SetQuestions(qestions map[uint64]entities.Question, duration time.Duration) error {
+func (m *MockSessionState) SetQuestions(qestions map[string]entities.Question, duration time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetQuestions", qestions, duration)
 	ret0, _ := ret[0].(error)

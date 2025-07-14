@@ -28,7 +28,7 @@ func (q QuestionType) String() string {
 
 //go:generate mockgen -source=question.go -destination=./testdata/question.go -package=testdata
 type Question interface {
-	ID() uint64
+	ID() string
 	Type() QuestionType
 	Topic() string
 	Subject() string
@@ -38,10 +38,10 @@ type Question interface {
 
 type QuestionFactory struct{}
 
-func (factory *QuestionFactory) NewQuestion(id uint64, questionType QuestionType,
+func (factory *QuestionFactory) NewQuestion(id string, questionType QuestionType,
 	topic string, subject string, variants []string, correctAnswer []string) (Question, error) {
-	if id == 0 {
-		return nil, errors.Wrap(ErrInvalidParam, "id is 0")
+	if id == "" {
+		return nil, errors.Wrap(ErrInvalidParam, "invalid id")
 	}
 	if topic == "" {
 		return nil, errors.Wrap(ErrInvalidParam, "topic is empty")

@@ -35,6 +35,24 @@ func NewConfig(path string) (*Config, error) {
 	return config, nil
 }
 
+func (cfg *Config) GetPublicPort() string {
+	return cfg.viper.GetString("auth.http.public.port")
+}
+
+func (cfg *Config) GetPublicTimeout() time.Duration {
+	timeoutStr := cfg.viper.GetString("auth.http.public.timeout")
+	if timeoutStr == "" {
+		return 30 * time.Second
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return 30 * time.Second
+	}
+
+	return timeout
+}
+
 func (cfg *Config) GetPrivatePort() string {
 	return cfg.viper.GetString("auth.grpc.private.port")
 }

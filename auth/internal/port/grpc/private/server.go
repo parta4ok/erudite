@@ -10,12 +10,13 @@ import (
 
 	authv1 "github.com/parta4ok/kvs/api/grpc/v1"
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/auth/internal/port"
 	"github.com/pkg/errors"
 )
 
 type AuthService struct {
 	authv1.UnimplementedAuthServiceServer
-	factory CommandFactory
+	factory port.CommandFactory
 }
 
 func (a *AuthService) Introspect(
@@ -70,7 +71,7 @@ type Server struct {
 
 type ServerOption func(*Server)
 
-func WithFactory(factory CommandFactory) ServerOption {
+func WithFactory(factory port.CommandFactory) ServerOption {
 	return func(srv *Server) {
 		srv.authService.factory = factory
 	}

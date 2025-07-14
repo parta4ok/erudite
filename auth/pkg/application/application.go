@@ -16,13 +16,16 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/cases"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/auth/internal/port"
 	"github.com/parta4ok/kvs/auth/internal/port/grpc/private"
+	"github.com/parta4ok/kvs/auth/internal/port/http/public"
 	"github.com/pkg/errors"
 )
 
 type App struct {
 	CfgPath       string
 	privateServer *private.Server
+	publicServer  *public.Server
 	cancel        context.CancelFunc
 	wg            sync.WaitGroup
 }
@@ -52,6 +55,8 @@ func (app *App) Start() {
 	server := app.initPrivateGRPCPort(cfg, commandFactory)
 	app.privateServer = server
 
+	publicServer := app.initPublicHTTPPort(cfg, commandFactory)
+	app.publicServer = publicServer
 	app.startWithGracefulShutdown()
 }
 
@@ -124,7 +129,7 @@ func (app *App) initStorage(cfg *config.Config) common.Storage {
 }
 
 func (app *App) initCommandFactory(storage common.Storage,
-	provider common.JWTProvider) private.CommandFactory {
+	provider common.JWTProvider) port.CommandFactory {
 	factory, err := cases.NewCommandFactory(cases.WithStorage(storage),
 		cases.WithJWTProvider(provider))
 	if err != nil {
@@ -151,8 +156,26 @@ func (app *App) initJWTProvider(cfg *config.Config) common.JWTProvider {
 	return provider
 }
 
+func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFactory) *public.Server {
+	slog.Info("init public http port started")
+
+	port := cfg.GetPublicPort()
+	interval := cfg.GetPublicTimeout()
+
+	server, err := public.New(
+		public.WithFactory(factory),
+		public.WithConfig(&public.ServerCfg{Port: port, Timeout: interval}),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new public http port init failure")
+		app.panic(err)
+	}
+
+	return server
+}
+
 func (app *App) initPrivateGRPCPort(cfg *config.Config,
-	factory private.CommandFactory) *private.Server {
+	factory port.CommandFactory) *private.Server {
 	slog.Info("init private grpc port started")
 
 	port := cfg.GetPrivatePort()
@@ -183,6 +206,13 @@ func (app *App) startWithGracefulShutdown() {
 		app.privateServer.StartServer()
 	}()
 
+	app.wg.Add(1)
+	go func() {
+		defer app.wg.Done()
+		slog.Info("Starting public server")
+		app.publicServer.Start()
+	}()
+
 	select {
 	case sig := <-sigOSChan:
 		slog.Info("Received os shutdown signal", "signal", sig.String())
@@ -203,6 +233,7 @@ func (app *App) shutdown() {
 	if app.privateServer != nil {
 		slog.Info("Stopping private server...")
 		app.privateServer.Stop()
+		app.publicServer.Stop()
 	}
 
 	done := make(chan struct{})

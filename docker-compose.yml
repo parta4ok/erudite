@@ -43,6 +43,7 @@ services:
     restart: always
     ports:
       - "8091:8091"
+      - "8090:8090"
     depends_on:
       postgres:
         condition: service_healthy

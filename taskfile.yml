@@ -39,22 +39,22 @@ tasks:
     desc: Apply all up migrations of question to Postgres
     cmds:
       - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" up
-
+    silent: true
   postgres:migrate:question:down:
     desc: Revert all migrations (down) of question on Postgres
     cmds:
       - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" down
-
+    silent: true
   postgres:migrate:auth:up:
     desc: Apply all up migrations of auth to Postgres
     cmds:
       - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" up
-
+    silent: true
   postgres:migrate:auth:down:
     desc: Revert all migrations (down) of auth on Postgres
     cmds:
       - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" down
-
+    silent: true
   services:up:
     desc: Run all services containers with force rebuild and clean start
     cmds:
@@ -86,8 +86,8 @@ tasks:
   swag_gen:
     desc: Generate swagger specification (JSON only)
     cmds:
-      - swag init -g ./question/internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
-      - cp docs/swagger.json question/api/http/public/swagger.json
+      - task: swag_gen_question
+      - task: swag_gen_auth
   run_question_local:
     desc: Run question service locally with local config
     cmds:
@@ -96,3 +96,17 @@ tasks:
     desc: Run auth service locally with local config
     cmds:
       - AUTH_CONFIG_PATH=./deployment/auth.yaml go run ./auth/cmd/app/main.go
+
+  swag_gen_question:
+    desc: Generate swagger specification for question service
+    cmds:
+      - cd question && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+      - mkdir -p api/http/v1/question
+      - cp question/docs/swagger.json api/http/v1/question/swagger.json
+
+  swag_gen_auth:
+    desc: Generate swagger specification for auth service
+    cmds:
+      - cd auth && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+      - mkdir -p api/http/v1/auth
+      - cp auth/docs/swagger.json api/http/v1/auth/swagger.json

@@ -33,7 +33,6 @@ services:
       - service_network
     profiles:
       - services
-      - l1
       - l2
   auth_app:
     container_name: auth_app
@@ -51,7 +50,6 @@ services:
       - service_network
     profiles:
       - services
-      - l1
       - l2
 
 

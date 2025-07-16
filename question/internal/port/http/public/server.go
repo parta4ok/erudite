@@ -207,6 +207,8 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 // @Failure      404 {object} dto.ErrorDTO "Topics not found"
 // @Failure      500 {object} dto.ErrorDTO "Internal server error"
 // @Router       /{user_id}/start_session [post]
+//
+//nolint:funlen //ok
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
 
@@ -288,6 +290,8 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 // @Failure      404 {object} dto.ErrorDTO "Session not found"
 // @Failure      500 {object} dto.ErrorDTO "Internal server error"
 // @Router       /{user_id}/{session_id}/complete_session [post]
+//
+//nolint:funlen //ok
 func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession started")
 
@@ -422,7 +426,7 @@ func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if err := s.introspector.Introspect(req.Context(), userID, jwt); err != nil {
+		if err := s.introspector.Introspect(req.Context(), jwt); err != nil {
 			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
 			slog.Error(err.Error())
 			s.errProcessing(resp, err)

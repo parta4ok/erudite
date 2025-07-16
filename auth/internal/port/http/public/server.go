@@ -141,6 +141,8 @@ func (s *Server) registerRoutes() {
 // @Failure      401  {object}  dto.ErrorDTO "Unauthorized"
 // @Failure      500  {object}  dto.ErrorDTO "Internal server error"
 // @Router       /auth/v1/signin [post]
+//
+//nolint:funlen //ok
 func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("Signin started")
 	resp.Header().Set("Content-Type", "application/json")

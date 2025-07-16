@@ -36,18 +36,18 @@ func (m *MockCommandFactory) EXPECT() *MockCommandFactoryMockRecorder {
 }
 
 // NewIntrospectedCommand mocks base method.
-func (m *MockCommandFactory) NewIntrospectedCommand(ctx context.Context, userID, jwt string) (entities.Command, error) {
+func (m *MockCommandFactory) NewIntrospectedCommand(ctx context.Context, jwt string) (entities.Command, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewIntrospectedCommand", ctx, userID, jwt)
+	ret := m.ctrl.Call(m, "NewIntrospectedCommand", ctx, jwt)
 	ret0, _ := ret[0].(entities.Command)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NewIntrospectedCommand indicates an expected call of NewIntrospectedCommand.
-func (mr *MockCommandFactoryMockRecorder) NewIntrospectedCommand(ctx, userID, jwt interface{}) *gomock.Call {
+func (mr *MockCommandFactoryMockRecorder) NewIntrospectedCommand(ctx, jwt interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewIntrospectedCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewIntrospectedCommand), ctx, userID, jwt)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewIntrospectedCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewIntrospectedCommand), ctx, jwt)
 }
 
 // NewSignInCommand mocks base method.

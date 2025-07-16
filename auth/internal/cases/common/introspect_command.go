@@ -14,18 +14,13 @@ type IntrospectCommand struct {
 	jwtProvider JWTProvider
 
 	ctx    context.Context
-	userID string
 	jwt    string
 }
 
-func NewIntrospectCommand(ctx context.Context, userID string, jwt string, storage Storage,
+func NewIntrospectCommand(ctx context.Context, jwt string, storage Storage,
 	provider JWTProvider) (*IntrospectCommand, error) {
 	if jwt == "" {
 		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
-	}
-
-	if userID == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "user ID is required")
 	}
 
 	return &IntrospectCommand{
@@ -33,7 +28,6 @@ func NewIntrospectCommand(ctx context.Context, userID string, jwt string, storag
 		jwtProvider: provider,
 
 		ctx:    ctx,
-		userID: userID,
 		jwt:    jwt,
 	}, nil
 }
@@ -41,16 +35,16 @@ func NewIntrospectCommand(ctx context.Context, userID string, jwt string, storag
 func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 	slog.Info("IntrospectCommand exec started")
 
-	user, err := command.storage.GetUserByID(command.ctx, command.userID)
+	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
-		err = errors.Wrap(err, "GetUserByID")
+		err = errors.Wrap(err, "Introspect")
 		slog.Error(err.Error())
 		return nil, err
 	}
 
-	userClaims, err := command.jwtProvider.Introspect(command.jwt)
+	user, err := command.storage.GetUserByID(command.ctx, userClaims.Subject)
 	if err != nil {
-		err = errors.Wrap(err, "Introspect")
+		err = errors.Wrap(err, "GetUserByID")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -61,12 +55,6 @@ func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 			slog.Error(err.Error())
 			return nil, err
 		}
-	}
-
-	if userClaims.Subject != command.userID {
-		err := errors.Wrapf(entities.ErrForbidden, "user ID mismatch")
-		slog.Error(err.Error())
-		return nil, err
 	}
 
 	slog.Info("IntrospectCommand exec completed")

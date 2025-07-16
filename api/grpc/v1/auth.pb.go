@@ -24,7 +24,6 @@ const (
 type IntrospectRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	UserId        string                 `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -62,13 +61,6 @@ func (*IntrospectRequest) Descriptor() ([]byte, []int) {
 func (x *IntrospectRequest) GetToken() string {
 	if x != nil {
 		return x.Token
-	}
-	return ""
-}
-
-func (x *IntrospectRequest) GetUserId() string {
-	if x != nil {
-		return x.UserId
 	}
 	return ""
 }
@@ -121,10 +113,9 @@ var File_api_grpc_v1_auth_proto protoreflect.FileDescriptor
 
 const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/grpc/v1/auth.proto\x12\x04auth\"B\n" +
+	"\x16api/grpc/v1/auth.proto\x12\x04auth\")\n" +
 	"\x11IntrospectRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"9\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"9\n" +
 	"\x12IntrospectResponse\x12#\n" +
 	"\rerror_message\x18\x01 \x01(\tR\ferrorMessage2N\n" +
 	"\vAuthService\x12?\n" +

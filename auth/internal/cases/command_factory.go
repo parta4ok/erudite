@@ -49,9 +49,9 @@ func NewCommandFactory(opts ...CommandFactoryOption) (*CommandFactory, error) {
 	return factory, nil
 }
 
-func (cf *CommandFactory) NewIntrospectedCommand(ctx context.Context, userID string, jwt string,
+func (cf *CommandFactory) NewIntrospectedCommand(ctx context.Context, jwt string,
 ) (entities.Command, error) {
-	return common.NewIntrospectCommand(ctx, userID, jwt, cf.storage, cf.jwtProvider)
+	return common.NewIntrospectCommand(ctx, jwt, cf.storage, cf.jwtProvider)
 }
 
 func (cf *CommandFactory) NewSignInCommand(ctx context.Context, userName string, password string,

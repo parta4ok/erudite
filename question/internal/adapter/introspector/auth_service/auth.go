@@ -34,26 +34,26 @@ func NewAuthService(port string) (*AuthService, error) {
 	return &AuthService{client: c}, nil
 }
 
-func (srv *AuthService) Introspect(ctx context.Context, userID string, jwt string) error {
+func (srv *AuthService) Introspect(ctx context.Context, jwt string) error {
 	slog.Info("Introspect started")
 
 	req := &authv1.IntrospectRequest{
-		Token:  jwt,
-		UserId: userID,
+		Token: jwt,
 	}
 
 	resp, err := srv.client.Introspect(ctx, req)
-	if err != nil{
+	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
 		slog.Error(err.Error())
 		return err
 	}
 
-	if resp.ErrorMessage != ""{
+	if resp.ErrorMessage != "" {
 		err := errors.New(resp.ErrorMessage)
 		slog.Error(err.Error())
 		return err
 	}
 
+	slog.Info("Introspect completed")
 	return nil
 }

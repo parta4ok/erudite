@@ -28,17 +28,12 @@ func TestNewIntrospectCommand(t *testing.T) {
 	storage := testdata.NewMockStorage(ctrl)
 	provider := testdata.NewMockJWTProvider(ctrl)
 
-	command, err := common.NewIntrospectCommand(ctx, "", "jwt", storage, provider)
-	require.ErrorIs(t, err, entities.ErrInvalidParam)
-	require.Contains(t, err.Error(), "user ID is required")
-	require.Nil(t, command)
-
-	command, err = common.NewIntrospectCommand(ctx, "user1", "", storage, provider)
+	command, err := common.NewIntrospectCommand(ctx, "", storage, provider)
 	require.ErrorIs(t, err, entities.ErrInvalidJWT)
 	require.Contains(t, err.Error(), "jwt is required")
 	require.Nil(t, command)
 
-	cmd, err := common.NewIntrospectCommand(ctx, "user1", "jwt", storage, provider)
+	cmd, err := common.NewIntrospectCommand(ctx, "jwt", storage, provider)
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }
@@ -52,7 +47,6 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		IntrospectSettings  func(t *testing.T, p *testdata.MockJWTProvider, jwt string, claims *entities.UserClaims, err error)
 		IntrospectErr       error
 		RightsProblem       bool
-		FakeSub             bool
 	}
 
 	tests := []struct {
@@ -64,8 +58,8 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		{
 			name: "1",
 			stage: stage{
-				GetUserByIDSettings: setGetUserByID,
-				GetUserByIDErr:      errTest,
+				IntrospectSettings: setIntrospect,
+				IntrospectErr:      errTest,
 			},
 			wantErr: true,
 			resErr:  errTest,
@@ -73,9 +67,9 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		{
 			name: "2",
 			stage: stage{
-				GetUserByIDSettings: setGetUserByID,
 				IntrospectSettings:  setIntrospect,
-				IntrospectErr:       errTest,
+				GetUserByIDSettings: setGetUserByID,
+				GetUserByIDErr:      errTest,
 			},
 			wantErr: true,
 			resErr:  errTest,
@@ -83,8 +77,8 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		{
 			name: "3",
 			stage: stage{
-				GetUserByIDSettings: setGetUserByID,
 				IntrospectSettings:  setIntrospect,
+				GetUserByIDSettings: setGetUserByID,
 				RightsProblem:       true,
 			},
 			wantErr: true,
@@ -93,18 +87,8 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		{
 			name: "4",
 			stage: stage{
-				GetUserByIDSettings: setGetUserByID,
 				IntrospectSettings:  setIntrospect,
-				FakeSub:             true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrForbidden,
-		},
-		{
-			name: "5",
-			stage: stage{
 				GetUserByIDSettings: setGetUserByID,
-				IntrospectSettings:  setIntrospect,
 			},
 		},
 	}
@@ -146,13 +130,10 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 				if tc.stage.RightsProblem {
 					user.Rights = []string{"another_right"}
 				}
-				if tc.stage.FakeSub {
-					claims.Subject = "2"
-				}
 				tc.stage.IntrospectSettings(it, jwtProvider, jwt, claims, tc.stage.IntrospectErr)
 			}
 
-			cmd, err := common.NewIntrospectCommand(ctx, user.ID, jwt, storage, jwtProvider)
+			cmd, err := common.NewIntrospectCommand(ctx, jwt, storage, jwtProvider)
 			require.NoError(t, err)
 			res, err := cmd.Exec()
 			if tc.wantErr {

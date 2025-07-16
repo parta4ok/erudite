@@ -32,13 +32,7 @@ func (a *AuthService) Introspect(
 		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
 	}
 
-	if req.UserId == "" {
-		err := errors.Wrap(entities.ErrInvalidParam, "extract userID failure")
-		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
-	}
-	slog.Info("------", slog.String("jwt", token), slog.String("userID", req.UserId))
-	command, err := a.factory.NewIntrospectedCommand(ctx, req.UserId, token)
+	command, err := a.factory.NewIntrospectedCommand(ctx, token)
 	if err != nil {
 		err := errors.Wrap(err, "create introspect command failure")
 		slog.Error(err.Error())

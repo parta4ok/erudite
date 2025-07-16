@@ -115,6 +115,7 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	return topics, nil
 }
 
+//nolint:funlen //ok
 func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	[]entities.Question, error) {
 	slog.Info("GetQuesions started")
@@ -187,6 +188,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	return questions, nil
 }
 
+//nolint:funlen //ok
 func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) error {
 	slog.Info("StoreSession started")
 
@@ -341,6 +343,7 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID string) (
 		duration_limit, answersRaw, createdAt, isExpired)
 }
 
+//nolint:funlen //ok
 func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateName string,
 	userID string, topics []string, questionsIDs []string, duration_limit uint64, answersRaw []byte,
 	createdAt *time.Time, isExpired *bool) (*entities.Session, error) {

@@ -10,7 +10,6 @@ service AuthService {
 
 message IntrospectRequest {
   string token = 1;
-  string user_id = 2;
 }
 
 message IntrospectResponse {

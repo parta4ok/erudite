@@ -40,7 +40,7 @@ func TestStorage_GetUserByID(t *testing.T) {
 	user, err := db.GetUserByID(ctx, UserID)
 	require.NoError(t, err)
 
-	require.Equal(t, user.Username, "Иван Петров")
+	require.Equal(t, user.Username, "admin")
 
 	UserID = fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano()))
 	user, err = db.GetUserByID(ctx, UserID)
@@ -54,7 +54,7 @@ func TestStorage_GetUserByUsername(t *testing.T) {
 	defer db.Close()
 
 	ctx := context.TODO()
-	var userName = "Иван Петров"
+	var userName = "admin"
 
 	user, err := db.GetUserByUsername(ctx, userName)
 	require.NoError(t, err)

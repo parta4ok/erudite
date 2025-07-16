@@ -155,6 +155,8 @@ func (s *Server) registerRoutes() {
 // @Description  Retrieves a list of all available topics in the system
 // @Accept       json
 // @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
 // @Success      200  {object}  dto.TopicsDTO  "Successfully retrieved list of topics"
 // @Failure      400  {object}  dto.ErrorDTO   "Invalid request parameters"
 // @Failure      404  {object}  dto.ErrorDTO   "No topics found"
@@ -196,6 +198,8 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 // @Description  Starts a new testing session with questions from selected topics
 // @Accept       json
 // @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
 // @Param        user_id path int true "User ID"
 // @Param        request body dto.TopicsDTO true "Selected topics"
 // @Success      201 {object} dto.SessionDTO "Successfully created session"
@@ -274,6 +278,8 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 // @Description  Completes a testing session by submitting user answers and returns session result
 // @Accept       json
 // @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
 // @Param        user_id path int true "User ID"
 // @Param        session_id path int true "Session ID"
 // @Param        request body dto.UserAnswersListDTO true "User answers"

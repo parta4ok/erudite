@@ -1,0 +1,101 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a server for auth and introspect",
+        "title": "Auth Service API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "email": "parta4ok@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8090",
+    "basePath": "/auth/v1",
+    "paths": {
+        "/auth/v1/signin": {
+            "post": {
+                "description": "Authenticates user with provided credentials and returns JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Sign in",
+                "parameters": [
+                    {
+                        "description": "User credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.SigninRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "JWT created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.SigninResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "description": "error message\nrequired: false\nexample: user not found",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "HTTP status code\nrequired: true\nexample: 404",
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.SigninRequestDTO": {
+            "type": "object",
+            "properties": {
+                "login": {
+                    "type": "string",
+                    "example": "user@test.ru"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "password123"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.SigninResponseDTO": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

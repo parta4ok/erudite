@@ -26,6 +26,12 @@ func NewSignInCommand(ctx context.Context, userName string, password string, sto
 	if password == "" {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "password is required")
 	}
+	if storage == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
+	}
+	if provider == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "jwt provider not set")
+	}
 
 	return &SignInCommand{
 		storage:     storage,

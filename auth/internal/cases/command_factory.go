@@ -11,6 +11,8 @@ import (
 type CommandFactory struct {
 	storage     common.Storage
 	jwtProvider common.JWTProvider
+	hasher      common.Hasher
+	idGenerator common.IDGenerator
 }
 
 type CommandFactoryOption func(*CommandFactory)
@@ -24,6 +26,18 @@ func WithStorage(storage common.Storage) CommandFactoryOption {
 func WithJWTProvider(jwtProvider common.JWTProvider) CommandFactoryOption {
 	return func(cf *CommandFactory) {
 		cf.jwtProvider = jwtProvider
+	}
+}
+
+func WithHasher(hasher common.Hasher) CommandFactoryOption {
+	return func(cf *CommandFactory) {
+		cf.hasher = hasher
+	}
+}
+
+func WithIDGenerator(generator common.IDGenerator) CommandFactoryOption {
+	return func(cf *CommandFactory) {
+		cf.idGenerator = generator
 	}
 }
 
@@ -46,15 +60,39 @@ func NewCommandFactory(opts ...CommandFactoryOption) (*CommandFactory, error) {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "jwt provider not set")
 	}
 
+	if factory.hasher == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "hasher not set")
+	}
+
+	if factory.idGenerator == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "id generator not set")
+	}
+
 	return factory, nil
 }
 
-func (cf *CommandFactory) NewIntrospectedCommand(ctx context.Context, jwt string,
+func (cf *CommandFactory) NewIntrospectedCommand(
+	ctx context.Context,
+	jwt string,
 ) (entities.Command, error) {
 	return common.NewIntrospectCommand(ctx, jwt, cf.storage, cf.jwtProvider)
 }
 
-func (cf *CommandFactory) NewSignInCommand(ctx context.Context, userName string, password string,
+func (cf *CommandFactory) NewSignInCommand(
+	ctx context.Context,
+	userName string,
+	password string,
 ) (entities.Command, error) {
-	return common.NewSignInCommand(ctx, userName, password, cf.storage, cf.jwtProvider)
+	return common.NewSignInCommand(ctx, cf.storage, cf.jwtProvider, cf.hasher, userName, password)
+}
+
+func (cf *CommandFactory) NewAddUserCommand(
+	ctx context.Context,
+	login string,
+	password string,
+	rights []string,
+	contacts map[string]string,
+) (entities.Command, error) {
+	return common.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, login, password,
+		rights, contacts)
 }

@@ -2,7 +2,7 @@ BEGIN;
 
 -- Создаем тестовых пользователей (пароль: password123)
 -- Хеш для пароля "password123" с bcrypt cost=10
-INSERT INTO auth.users (user_id, name, password_hash, rights, contacts) VALUES
+INSERT INTO auth.users (uid, name, password_hash, rights, contacts) VALUES
     ('1', 'admin', '$2a$10$ft9DCzVOqK1EzQ.tLgAAVOBG.89o0zjQqzWpqRrtKdcv1iEu/G84u',
      ARRAY['mentor', 'user:read', 'test:view_results'],
      '{"email": "ivan.petrov@example.com", "phone": "+7-900-123-45-67", "telegram": "@ivan_mentor"}'),

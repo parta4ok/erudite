@@ -68,8 +68,8 @@ func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.Use
 	slog.Info("Get user by userID started")
 
 	params := []interface{}{userID}
-	query := `SELECT user_id, name, password_hash, rights, contacts FROM 
-	auth.users where user_id = $1 LIMIT 1`
+	query := `SELECT uid, name, password_hash, rights, contacts FROM 
+	auth.users where uid = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
 
@@ -79,7 +79,7 @@ func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*enti
 	slog.Info("Get user by name started")
 
 	params := []interface{}{userName}
-	query := `SELECT user_id, name, password_hash, rights, contacts FROM 
+	query := `SELECT uid, name, password_hash, rights, contacts FROM 
 	auth.users where name = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -124,6 +124,7 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	}, nil
 }
 
+//nolint:funlen //use spaces for visual division of block code
 func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	slog.Info("StoreUser started")
 
@@ -134,12 +135,53 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 		return err
 	}
 
-	params := []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights, contactsRaw}
-	query := `INSERT INTO auth.users (user_id, name, password_hash, rights, contacts) 
+	tx, err := s.db.Begin(ctx)
+	defer func() {
+		if err != nil {
+			if err := tx.Rollback(ctx); err != nil {
+				slog.Warn(err.Error())
+			}
+		}
+	}()
+
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
+	var paramsForCheck = []interface{}{user.ID, user.Username}
+	queryForCheck := `SELECT uid FROM auth.users WHERE uid = $1 OR name = $2 LIMIT 1`
+	row := tx.QueryRow(ctx, queryForCheck, paramsForCheck...)
+	var uid string
+	err = row.Scan(&uid)
+
+	if err == nil {
+		err = errors.Wrapf(entities.ErrAlreadyExists, "uid = '%s' or name = '%s' already exists",
+			user.ID, user.Username)
+		slog.Error(err.Error())
+		return err
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
+	var params = []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights,
+		contactsRaw}
+	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts)
 				VALUES ($1, $2, $3, $4, $5)`
 
-	if _, err = s.db.Exec(ctx, query, params...); err != nil {
+	if _, err = tx.Exec(ctx, query, params...); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "save user failure: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "commit failure with err: %v", err)
 		slog.Error(err.Error())
 		return err
 	}

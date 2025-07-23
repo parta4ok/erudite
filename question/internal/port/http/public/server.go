@@ -138,14 +138,16 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) registerRoutes() {
-	s.router.Use(s.timeoutMiddleware)
+	s.router.Use(
+		s.timeoutMiddleware,
+		s.introspectMiddleware,
+	)
 
 	s.router.Get(basePath+topicsPath, s.GetTopics)
 
 	s.router.Route(basePath, func(r chi.Router) {
-		r.With(s.introspectMiddleware).Post("/{user_id}"+startSessionPath, s.StartSession)
-		r.With(s.introspectMiddleware).Post("/{user_id}/{session_id}"+completeSessionPath,
-			s.CompleteSession)
+		r.Post("/{user_id}"+startSessionPath, s.StartSession)
+		r.Post("/{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
 	})
 }
 
@@ -417,14 +419,6 @@ func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
 		}
 
 		jwt := authorizationData[1]
-
-		userID := chi.URLParam(req, "user_id")
-		if userID == "" {
-			err := errors.Wrap(entities.ErrInvalidParam, "invalid user_id")
-			slog.Error(err.Error())
-			s.errProcessing(resp, err)
-			return
-		}
 
 		if err := s.introspector.Introspect(req.Context(), jwt); err != nil {
 			err := errors.Wrap(entities.ErrForbidden, "introspection failure")

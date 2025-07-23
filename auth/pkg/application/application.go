@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/parta4ok/kvs/auth/internal/adapter/config"
+	"github.com/parta4ok/kvs/auth/internal/adapter/generator/google"
+	"github.com/parta4ok/kvs/auth/internal/adapter/hasher/bcryption"
 	jwtprovider "github.com/parta4ok/kvs/auth/internal/adapter/jwt_provider"
 	"github.com/parta4ok/kvs/auth/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/auth/internal/cases"
@@ -50,7 +52,11 @@ func (app *App) Start() {
 
 	provider := app.initJWTProvider(cfg)
 
-	commandFactory := app.initCommandFactory(storage, provider)
+	hasher := app.initHasher(cfg)
+
+	generator := app.initGenerator(cfg)
+
+	commandFactory := app.initCommandFactory(storage, provider, hasher, generator)
 
 	server := app.initPrivateGRPCPort(cfg, commandFactory)
 	app.privateServer = server
@@ -125,13 +131,47 @@ func (app *App) initStorage(cfg *config.Config) common.Storage {
 	}
 
 	return storage
+}
 
+func (app *App) initHasher(_ *config.Config) common.Hasher {
+	slog.Info("init hasher started")
+	var hasher common.Hasher
+
+	h, err := bcryption.NewHasher()
+	if err != nil {
+		err := errors.Wrap(err, "hasher init failure")
+		app.panic(err)
+	}
+
+	hasher = h
+	return hasher
+}
+
+func (app *App) initGenerator(_ *config.Config) common.IDGenerator {
+	slog.Info("init generator started")
+	var generator common.IDGenerator
+
+	g, err := google.NewGenerator()
+	if err != nil {
+		err := errors.Wrap(err, "generator init failure")
+		app.panic(err)
+	}
+
+	generator = g
+	return generator
 }
 
 func (app *App) initCommandFactory(storage common.Storage,
-	provider common.JWTProvider) port.CommandFactory {
-	factory, err := cases.NewCommandFactory(cases.WithStorage(storage),
-		cases.WithJWTProvider(provider))
+	provider common.JWTProvider, hasher common.Hasher,
+	generator common.IDGenerator) port.CommandFactory {
+	slog.Info("initCommandFactory started")
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(storage),
+		cases.WithJWTProvider(provider),
+		cases.WithHasher(hasher),
+		cases.WithIDGenerator(generator),
+	)
 	if err != nil {
 		err := errors.Wrap(err, "new command factory init failure")
 		app.panic(err)

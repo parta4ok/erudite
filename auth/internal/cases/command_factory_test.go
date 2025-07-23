@@ -10,97 +10,138 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewCommandFactory_AllOptionsSet(t *testing.T) {
+func TestNewCommandFactory(t *testing.T) {
 	t.Parallel()
 
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
+	type deps struct {
+		storage     bool
+		jwtProvider bool
+		hasher      bool
+		idGenerator bool
+	}
+	tests := []struct {
+		name    string
+		deps    deps
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "no storage",
+			deps:    deps{jwtProvider: true, hasher: true, idGenerator: true},
+			wantErr: true,
+			errMsg:  "storage not set",
+		},
+		{
+			name:    "no jwtProvider",
+			deps:    deps{storage: true, hasher: true, idGenerator: true},
+			wantErr: true,
+			errMsg:  "jwt provider not set",
+		},
+		{
+			name:    "no hasher",
+			deps:    deps{storage: true, jwtProvider: true, idGenerator: true},
+			wantErr: true,
+			errMsg:  "hasher not set",
+		},
+		{
+			name:    "no idGenerator",
+			deps:    deps{storage: true, jwtProvider: true, hasher: true},
+			wantErr: true,
+			errMsg:  "id generator not set",
+		},
+		{
+			name:    "all deps",
+			deps:    deps{storage: true, jwtProvider: true, hasher: true, idGenerator: true},
+			wantErr: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(it *testing.T) {
+			it.Parallel()
+			ctrl := gomock.NewController(it)
+			it.Cleanup(ctrl.Finish)
 
-	st := testdata.NewMockStorage(ctrl)
-	jp := testdata.NewMockJWTProvider(ctrl)
+			opts := []cases.CommandFactoryOption{}
+			if tc.deps.storage {
+				opts = append(opts, cases.WithStorage(testdata.NewMockStorage(ctrl)))
+			}
+			if tc.deps.jwtProvider {
+				opts = append(opts, cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)))
+			}
+			if tc.deps.hasher {
+				opts = append(opts, cases.WithHasher(testdata.NewMockHasher(ctrl)))
+			}
+			if tc.deps.idGenerator {
+				opts = append(opts, cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)))
+			}
 
-	factory, err := cases.NewCommandFactory(
-		cases.WithStorage(st),
-		cases.WithJWTProvider(jp),
-	)
-	require.NoError(t, err)
-	require.NotNil(t, factory)
-}
-
-func TestNewCommandFactory_NoStorage(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
-
-	jp := testdata.NewMockJWTProvider(ctrl)
-
-	factory, err := cases.NewCommandFactory(
-		cases.WithJWTProvider(jp),
-	)
-	require.Error(t, err)
-	require.Nil(t, factory)
-	require.Contains(t, err.Error(), "storage not set")
-}
-
-func TestNewCommandFactory_NoJWTProvider(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
-
-	st := testdata.NewMockStorage(ctrl)
-
-	factory, err := cases.NewCommandFactory(
-		cases.WithStorage(st),
-	)
-	require.Error(t, err)
-	require.Nil(t, factory)
-	require.Contains(t, err.Error(), "jwt provider not set")
+			factory, err := cases.NewCommandFactory(opts...)
+			if tc.wantErr {
+				require.Error(it, err)
+				require.Nil(it, factory)
+				require.Contains(it, err.Error(), tc.errMsg)
+				return
+			}
+			require.NoError(it, err)
+			require.NotNil(it, factory)
+		})
+	}
 }
 
 func TestCommandFactory_NewIntrospectedCommand(t *testing.T) {
 	t.Parallel()
-
 	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
+	defer ctrl.Finish()
 
-	st := testdata.NewMockStorage(ctrl)
-	jp := testdata.NewMockJWTProvider(ctrl)
-
-	factory, _ := cases.NewCommandFactory(
-		cases.WithStorage(st),
-		cases.WithJWTProvider(jp),
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
 	)
-	cmd, err := factory.NewIntrospectedCommand(context.Background(), "jwt-token")
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewIntrospectedCommand(context.TODO(), "jwt-token")
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }
 
 func TestCommandFactory_NewSignInCommand(t *testing.T) {
 	t.Parallel()
-
 	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
+	defer ctrl.Finish()
 
-	st := testdata.NewMockStorage(ctrl)
-	jp := testdata.NewMockJWTProvider(ctrl)
-
-	factory, _ := cases.NewCommandFactory(
-		cases.WithStorage(st),
-		cases.WithJWTProvider(jp),
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
 	)
-	cmd, err := factory.NewSignInCommand(context.Background(), "user", "pass")
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewSignInCommand(context.TODO(), "user", "pass")
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
+}
+
+func TestCommandFactory_NewAddUserCommand(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewAddUserCommand(context.TODO(), "login", "pass", []string{"admin"}, map[string]string{"email": "test@test.com"})
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }

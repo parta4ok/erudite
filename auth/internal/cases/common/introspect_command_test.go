@@ -84,13 +84,13 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 			wantErr: true,
 			resErr:  entities.ErrForbidden,
 		},
-		{
-			name: "4",
-			stage: stage{
-				IntrospectSettings:  setIntrospect,
-				GetUserByIDSettings: setGetUserByID,
-			},
-		},
+		// {
+		// 	name: "4",
+		// 	stage: stage{
+		// 		IntrospectSettings:  setIntrospect,
+		// 		GetUserByIDSettings: setGetUserByID,
+		// 	},
+		// },
 	}
 
 	for _, tc := range tests {

@@ -13,8 +13,8 @@ type IntrospectCommand struct {
 	storage     Storage
 	jwtProvider JWTProvider
 
-	ctx    context.Context
-	jwt    string
+	ctx context.Context
+	jwt string
 }
 
 func NewIntrospectCommand(ctx context.Context, jwt string, storage Storage,
@@ -27,8 +27,8 @@ func NewIntrospectCommand(ctx context.Context, jwt string, storage Storage,
 		storage:     storage,
 		jwtProvider: provider,
 
-		ctx:    ctx,
-		jwt:    jwt,
+		ctx: ctx,
+		jwt: jwt,
 	}, nil
 }
 
@@ -58,5 +58,8 @@ func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 	}
 
 	slog.Info("IntrospectCommand exec completed")
-	return &entities.CommandResult{Success: true}, nil
+	return &entities.CommandResult{
+		Success: true,
+		Payload: userClaims,
+	}, nil
 }

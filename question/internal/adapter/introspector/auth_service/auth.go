@@ -34,7 +34,7 @@ func NewAuthService(port string) (*AuthService, error) {
 	return &AuthService{client: c}, nil
 }
 
-func (srv *AuthService) Introspect(ctx context.Context, jwt string) error {
+func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
 	slog.Info("Introspect started")
 
 	req := &authv1.IntrospectRequest{
@@ -45,15 +45,28 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) error {
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
 		slog.Error(err.Error())
-		return err
+		return nil, err
 	}
 
-	if resp.ErrorMessage != "" {
-		err := errors.New(resp.ErrorMessage)
+	if resp.Error.Message != "" {
+		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
 		slog.Error(err.Error())
-		return err
+		return nil, err
+	}
+
+	if resp.Claims == nil {
+		err := errors.Wrap(entities.ErrForbidden, "nil claims")
+		slog.Error(err.Error())
+		return nil, err
 	}
 
 	slog.Info("Introspect completed")
-	return nil
+
+	return &entities.Claims{
+		Username: resp.Claims.Username,
+		Subject:  resp.Claims.Subject,
+		Rights:   resp.Claims.Rights,
+		Audience: resp.Claims.Audience,
+		Issuer:   resp.Claims.Issuer,
+	}, nil
 }

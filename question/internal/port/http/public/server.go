@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
+	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +23,8 @@ const (
 	topicsPath          = "/topics"
 	startSessionPath    = "/start_session"
 	completeSessionPath = "/complete_session"
+
+	right_view_topic_list = "view_topic_list"
 )
 
 type Server struct {
@@ -29,6 +32,7 @@ type Server struct {
 	server       *http.Server
 	service      Service
 	introspector Introspector
+	accessor     Accessor
 	cfg          *ServerCfg
 }
 
@@ -57,6 +61,12 @@ func WithIntrospector(introspector Introspector) ServerOption {
 	}
 }
 
+func WithAccessor(accessor Accessor) ServerOption {
+	return func(s *Server) {
+		s.accessor = accessor
+	}
+}
+
 func (s *Server) setOption(opts ...ServerOption) {
 	for _, opt := range opts {
 		opt(s)
@@ -80,6 +90,12 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.introspector == nil {
 		err := errors.Wrap(entities.ErrInternal, "introspector not set")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if serv.accessor == nil {
+		err := errors.Wrap(entities.ErrInternal, "accessor not set")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -138,14 +154,16 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) registerRoutes() {
-	s.router.Use(s.timeoutMiddleware)
+	s.router.Use(
+		s.timeoutMiddleware,
+		s.introspectMiddleware,
+	)
 
 	s.router.Get(basePath+topicsPath, s.GetTopics)
 
 	s.router.Route(basePath, func(r chi.Router) {
-		r.With(s.introspectMiddleware).Post("/{user_id}"+startSessionPath, s.StartSession)
-		r.With(s.introspectMiddleware).Post("/{user_id}/{session_id}"+completeSessionPath,
-			s.CompleteSession)
+		r.Post("/{user_id}"+startSessionPath, s.StartSession)
+		r.Post("/{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
 	})
 }
 
@@ -165,6 +183,12 @@ func (s *Server) registerRoutes() {
 func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetTopics started")
 	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.checkUserRights(req.Context(), []string{right_view_topic_list}); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
 
 	topics, err := s.service.ShowTopics(req.Context())
 	if err != nil {
@@ -369,7 +393,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, entities.ErrInvalidParam):
 		errDTO.StatusCode = http.StatusBadRequest
-	case errors.Is(err, entities.ErrForbidden):
+	case errors.Is(err, entities.ErrForbidden) || errors.Is(err, accessor.ErrAssertion):
 		errDTO.StatusCode = http.StatusForbidden
 	case errors.Is(err, entities.ErrNotFound):
 		errDTO.StatusCode = http.StatusNotFound
@@ -418,21 +442,35 @@ func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
 
 		jwt := authorizationData[1]
 
-		userID := chi.URLParam(req, "user_id")
-		if userID == "" {
-			err := errors.Wrap(entities.ErrInvalidParam, "invalid user_id")
-			slog.Error(err.Error())
-			s.errProcessing(resp, err)
-			return
-		}
-
-		if err := s.introspector.Introspect(req.Context(), jwt); err != nil {
+		claims, err := s.introspector.Introspect(req.Context(), jwt)
+		if err != nil {
 			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
 			slog.Error(err.Error())
 			s.errProcessing(resp, err)
 			return
 		}
 
-		next.ServeHTTP(resp, req)
+		ctx := context.WithValue(req.Context(), accessor.UserClaims, &accessor.Claims{
+			Username: claims.Username,
+			Issuer:   claims.Issuer,
+			Subject:  claims.Subject,
+			Audience: claims.Audience,
+			Rights:   claims.Rights,
+		})
+		next.ServeHTTP(resp, req.WithContext(ctx))
 	})
+}
+
+func (s *Server) checkUserRights(ctx context.Context, requiredRights []string) error {
+	hasEnoughRights, err := s.accessor.HasPermission(ctx, requiredRights)
+	if err != nil {
+		return err
+	}
+
+	if !hasEnoughRights {
+		err := errors.Wrap(entities.ErrForbidden, "user has not enough rights")
+		return err
+	}
+
+	return nil
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// var errTest = entities.ErrInvalidParam
+
 func TestNewSignInCommand(t *testing.T) {
 	t.Parallel()
 
@@ -19,6 +21,7 @@ func TestNewSignInCommand(t *testing.T) {
 		BadPassword bool
 		NilStorage  bool
 		NilProvider bool
+		NilHasher   bool
 	}
 	tests := []struct {
 		name    string
@@ -26,84 +29,52 @@ func TestNewSignInCommand(t *testing.T) {
 		wantErr bool
 		resErr  error
 	}{
-		{
-			name: "1",
-			cases: cases{
-				BadUserName: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "2",
-			cases: cases{
-				BadPassword: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "3",
-			cases: cases{
-				NilStorage: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "4",
-			cases: cases{
-				NilProvider: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "5",
-		},
+		{"bad username", cases{BadUserName: true}, true, entities.ErrInvalidParam},
+		{"bad password", cases{BadPassword: true}, true, entities.ErrInvalidParam},
+		{"nil storage", cases{NilStorage: true}, true, entities.ErrInvalidParam},
+		{"nil provider", cases{NilProvider: true}, true, entities.ErrInvalidParam},
+		{"nil hasher", cases{NilHasher: true}, true, entities.ErrInvalidParam},
+		{"ok", cases{}, false, nil},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(it *testing.T) {
 			it.Parallel()
-
 			ctrl := gomock.NewController(it)
-			it.Cleanup(func() {
-				ctrl.Finish()
-			})
+			it.Cleanup(ctrl.Finish)
 
 			var provider common.JWTProvider
 			var storage common.Storage
+			var hasher common.Hasher
 
 			ctx := context.TODO()
-
 			password := "testPassword"
 			userName := "testUserName"
 
 			if tc.cases.BadUserName {
 				userName = ""
 			}
-
 			if tc.cases.BadPassword {
 				password = ""
 			}
-
 			if !tc.cases.NilProvider {
 				provider = testdata.NewMockJWTProvider(ctrl)
 			}
-
 			if !tc.cases.NilStorage {
 				storage = testdata.NewMockStorage(ctrl)
 			}
+			if !tc.cases.NilHasher {
+				hasher = testdata.NewMockHasher(ctrl)
+			}
 
-			command, err := common.NewSignInCommand(ctx, userName, password, storage, provider)
+			command, err := common.NewSignInCommand(ctx, storage, provider, hasher, userName, password)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
-				require.Nil(t, command)
+				require.Nil(it, command)
 				return
 			}
-			require.NoError(t, err)
-			require.NotNil(t, command)
+			require.NoError(it, err)
+			require.NotNil(it, command)
 		})
 	}
 }
@@ -114,8 +85,10 @@ func TestSignInCommand_Exec(t *testing.T) {
 	type stage struct {
 		GetUserByUsernameSettings func(ctx context.Context, t *testing.T, s *testdata.MockStorage, name string, user *entities.User, err error)
 		GetUserByUsernameErr      error
-		IncorrectPass             bool
-		GenerateSettings          func(t *testing.T, g *testdata.MockJWTProvider, user *entities.User, jwt string, err error)
+		IsHashSettings            func(ctx context.Context, t *testing.T, h *testdata.MockHasher, reqPass, hashPass string, result bool, err error)
+		IsHashErr                 error
+		IsHashResult              bool
+		GenerateSettings          func(ctx context.Context, t *testing.T, g *testdata.MockJWTProvider, user *entities.User, jwt string, err error)
 		GenerateErr               error
 	}
 
@@ -138,15 +111,29 @@ func TestSignInCommand_Exec(t *testing.T) {
 			name: "2",
 			stage: stage{
 				GetUserByUsernameSettings: setGetUserByUsername,
-				IncorrectPass:             true,
+				IsHashSettings:            setIsHash,
+				IsHashResult:              false,
+				IsHashErr:                 errTest,
 			},
 			wantErr: true,
-			resErr:  entities.ErrInvalidPassword,
+			resErr:  errTest,
 		},
 		{
 			name: "3",
 			stage: stage{
 				GetUserByUsernameSettings: setGetUserByUsername,
+				IsHashSettings:            setIsHash,
+				IsHashResult:              false,
+			},
+			wantErr: true,
+			resErr:  entities.ErrInvalidPassword,
+		},
+		{
+			name: "4",
+			stage: stage{
+				GetUserByUsernameSettings: setGetUserByUsername,
+				IsHashSettings:            setIsHash,
+				IsHashResult:              true,
 				GenerateSettings:          setGenerate,
 				GenerateErr:               errTest,
 			},
@@ -154,9 +141,11 @@ func TestSignInCommand_Exec(t *testing.T) {
 			resErr:  errTest,
 		},
 		{
-			name: "4",
+			name: "5",
 			stage: stage{
 				GetUserByUsernameSettings: setGetUserByUsername,
+				IsHashSettings:            setIsHash,
+				IsHashResult:              true,
 				GenerateSettings:          setGenerate,
 			},
 		},
@@ -167,49 +156,51 @@ func TestSignInCommand_Exec(t *testing.T) {
 			it.Parallel()
 
 			ctrl := gomock.NewController(it)
-			it.Cleanup(func() {
-				ctrl.Finish()
-			})
+			it.Cleanup(ctrl.Finish)
 
 			provider := testdata.NewMockJWTProvider(ctrl)
 			storage := testdata.NewMockStorage(ctrl)
+			hasher := testdata.NewMockHasher(ctrl)
 
 			ctx := context.TODO()
-			userName := "testUserName"
-			password := `password123`
-			jwt := "testjwt"
-			user := &entities.User{
-				ID:           "1",
-				Username:     "testUserName",
-				PasswordHash: "$2a$10$ft9DCzVOqK1EzQ.tLgAAVOBG.89o0zjQqzWpqRrtKdcv1iEu/G84u",
-				Rights:       []string{"read", "write"},
-				Contacts:     map[string]string{"phone": "89123131231"},
-			}
+			name := "testname"
+			password := "testpassword"
+			passwordHash := "testpasswordhash"
 
-			if tc.stage.IncorrectPass {
-				password = "incorrectPasswort"
+			jwt := "testjwt"
+
+			user := &entities.User{
+				ID:           "testID",
+				Username:     name,
+				PasswordHash: passwordHash,
+				Rights:       []string{},
+				Contacts:     map[string]string{},
 			}
 
 			if tc.stage.GetUserByUsernameSettings != nil {
-				tc.stage.GetUserByUsernameSettings(ctx, it, storage, userName, user, tc.stage.GetUserByUsernameErr)
+				tc.stage.GetUserByUsernameSettings(ctx, it, storage, name, user, tc.stage.GetUserByUsernameErr)
+			}
+
+			if tc.stage.IsHashSettings != nil {
+				tc.stage.IsHashSettings(ctx, it, hasher, password, passwordHash, tc.stage.IsHashResult, tc.stage.IsHashErr)
 			}
 
 			if tc.stage.GenerateSettings != nil {
-				tc.stage.GenerateSettings(it, provider, user, jwt, tc.stage.GenerateErr)
+				tc.stage.GenerateSettings(ctx, it, provider, user, jwt, tc.stage.GenerateErr)
 			}
 
-			command, err := common.NewSignInCommand(ctx, userName, password, storage, provider)
-			require.NoError(it, err)
+			command, err := common.NewSignInCommand(ctx, storage, provider, hasher, name, password)
+			require.NoError(t, err)
 			require.NotNil(t, command)
 
 			res, err := command.Exec()
 			if tc.wantErr {
-				require.ErrorIs(t, err, tc.resErr)
-				require.Nil(t, res)
+				require.ErrorIs(it, err, tc.resErr)
+				require.Nil(it, res)
 				return
 			}
-			require.NoError(t, err)
-			require.Equal(t, &entities.CommandResult{Success: true, Message: jwt}, res)
+			require.NoError(it, err)
+			require.Equal(it, &entities.CommandResult{Success: true, Message: jwt}, res)
 		})
 	}
 }
@@ -220,7 +211,13 @@ func setGetUserByUsername(ctx context.Context, t *testing.T, s *testdata.MockSto
 	s.EXPECT().GetUserByUsername(ctx, name).Return(user, err)
 }
 
-func setGenerate(t *testing.T, g *testdata.MockJWTProvider, user *entities.User, jwt string, err error) {
+func setIsHash(ctx context.Context, t *testing.T, h *testdata.MockHasher, reqPass, hashPass string, result bool, err error) {
+	t.Helper()
+
+	h.EXPECT().IsHash(ctx, reqPass, hashPass).Return(result, err)
+}
+
+func setGenerate(ctx context.Context, t *testing.T, g *testdata.MockJWTProvider, user *entities.User, jwt string, err error) {
 	t.Helper()
 
 	g.EXPECT().Generate(user).Return(jwt, err)

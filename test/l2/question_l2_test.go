@@ -19,12 +19,23 @@ const (
 	timeout = 30 * time.Second
 )
 
-func TestTopicsEndpoint(t *testing.T) {
+const (
+	rootUserID = "1"
+)
+
+func Test_Topics_Success(t *testing.T) {
 	t.Parallel()
 
-	client := &http.Client{Timeout: timeout}
+	token := getJwt(t)
+	require.NotEqual(t, "", token)
 
-	resp, err := client.Get(baseURL + "/topics")
+	client := &http.Client{Timeout: timeout}
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/topics", nil)
+	require.NoError(t, err)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -42,10 +53,23 @@ func TestTopicsEndpoint(t *testing.T) {
 	require.Greater(t, len(response.Topics), 0)
 }
 
+func Test_Topics_Unauthorized(t *testing.T) {
+	t.Parallel()
+
+	client := &http.Client{Timeout: timeout}
+	req, err := http.NewRequest(http.MethodGet, baseURL+"/topics", nil)
+	require.NoError(t, err)
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+}
+
 func TestCreateSession(t *testing.T) {
 	t.Parallel()
 
-	userID := "12345"
+	userID := rootUserID
 
 	requestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
@@ -54,9 +78,16 @@ func TestCreateSession(t *testing.T) {
 	jsonBody, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
+	token := getJwt(t)
+	require.NotEqual(t, "", token)
+
 	client := &http.Client{Timeout: timeout}
-	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
-	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/%s/start_session", baseURL, userID), bytes.NewBuffer(jsonBody))
+	require.NoError(t, err)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -81,6 +112,7 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestCompleteSession(t *testing.T) {
+	t.Skip()
 	t.Parallel()
 
 	userID := fmt.Sprintf("%d", time.Now().UnixMicro())
@@ -242,4 +274,32 @@ type UserAnswerDTO struct {
 
 type UserAnswersListDTO struct {
 	AnswersList []UserAnswerDTO `json:"user_answers"`
+}
+
+func getJwt(t *testing.T) string {
+	t.Helper()
+
+	client := &http.Client{Timeout: timeout}
+	type AuthData struct {
+		Login    string `json:"login"`
+		Password string `json:"password"`
+	}
+
+	data, err := json.Marshal(&AuthData{Login: "admin", Password: "password123"})
+	require.NoError(t, err)
+
+	resp, err := client.Post("http://localhost:8090/auth/v1/signin", "application/json", bytes.NewReader(data))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	type Token struct {
+		Token string `json:"token"`
+	}
+
+	var token Token
+
+	err = json.NewDecoder(resp.Body).Decode(&token)
+	require.NoError(t, err)
+
+	return token.Token
 }

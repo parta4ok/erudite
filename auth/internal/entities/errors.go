@@ -9,4 +9,5 @@ var (
 	ErrInvalidJWT      = errors.New("invalid JWT")
 	ErrInvalidPassword = errors.New("invalid password")
 	ErrForbidden       = errors.New("forbidden")
+	ErrAlreadyExists   = errors.New("already exists")
 )

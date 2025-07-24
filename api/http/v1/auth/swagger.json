@@ -12,6 +12,79 @@
     "host": "localhost:8090",
     "basePath": "/auth/v1",
     "paths": {
+        "/auth/v1/add-user": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add new user with selected credentials and other user info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Add new user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "User credentials and other data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "New user created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddUserResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/v1/signin": {
             "post": {
                 "description": "Authenticates user with provided credentials and returns JWT token",
@@ -63,6 +136,41 @@
         }
     },
     "definitions": {
+        "github_com_parta4ok_kvs_auth_pkg_dto.AddUserDTO": {
+            "type": "object",
+            "properties": {
+                "contacts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "description": "required: true",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "required: true",
+                    "type": "string"
+                },
+                "rights": {
+                    "description": "required: true",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.AddUserResponseDTO": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "required: true",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO": {
             "type": "object",
             "properties": {

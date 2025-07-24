@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/parta4ok/kvs/auth/internal/adapter/config"
+	"github.com/parta4ok/kvs/auth/internal/adapter/generator/google"
+	"github.com/parta4ok/kvs/auth/internal/adapter/hasher/bcryption"
 	jwtprovider "github.com/parta4ok/kvs/auth/internal/adapter/jwt_provider"
 	"github.com/parta4ok/kvs/auth/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/auth/internal/cases"
@@ -19,6 +21,7 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/port"
 	"github.com/parta4ok/kvs/auth/internal/port/grpc/private"
 	"github.com/parta4ok/kvs/auth/internal/port/http/public"
+	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/pkg/errors"
 )
 
@@ -50,14 +53,35 @@ func (app *App) Start() {
 
 	provider := app.initJWTProvider(cfg)
 
-	commandFactory := app.initCommandFactory(storage, provider)
+	hasher := app.initHasher(cfg)
+
+	generator := app.initGenerator(cfg)
+
+	accessor := app.initAccessor(cfg)
+
+	commandFactory := app.initCommandFactory(storage, provider, hasher, generator)
 
 	server := app.initPrivateGRPCPort(cfg, commandFactory)
 	app.privateServer = server
 
-	publicServer := app.initPublicHTTPPort(cfg, commandFactory)
+	publicServer := app.initPublicHTTPPort(cfg, commandFactory, accessor)
 	app.publicServer = publicServer
 	app.startWithGracefulShutdown()
+}
+
+func (app *App) initAccessor(_ *config.Config) public.Accessor {
+	slog.Info("initAccessor started")
+	var acessor public.Accessor
+
+	a, err := accessor.NewRightAccessor()
+	if err != nil {
+		err := errors.Wrap(err, "new right accessor failure")
+		app.panic(err)
+	}
+
+	acessor = a
+
+	return acessor
 }
 
 func (app *App) initConfiguredLogger(cfg *config.Config) {
@@ -125,13 +149,47 @@ func (app *App) initStorage(cfg *config.Config) common.Storage {
 	}
 
 	return storage
+}
 
+func (app *App) initHasher(_ *config.Config) common.Hasher {
+	slog.Info("init hasher started")
+	var hasher common.Hasher
+
+	h, err := bcryption.NewHasher()
+	if err != nil {
+		err := errors.Wrap(err, "hasher init failure")
+		app.panic(err)
+	}
+
+	hasher = h
+	return hasher
+}
+
+func (app *App) initGenerator(_ *config.Config) common.IDGenerator {
+	slog.Info("init generator started")
+	var generator common.IDGenerator
+
+	g, err := google.NewGenerator()
+	if err != nil {
+		err := errors.Wrap(err, "generator init failure")
+		app.panic(err)
+	}
+
+	generator = g
+	return generator
 }
 
 func (app *App) initCommandFactory(storage common.Storage,
-	provider common.JWTProvider) port.CommandFactory {
-	factory, err := cases.NewCommandFactory(cases.WithStorage(storage),
-		cases.WithJWTProvider(provider))
+	provider common.JWTProvider, hasher common.Hasher,
+	generator common.IDGenerator) port.CommandFactory {
+	slog.Info("initCommandFactory started")
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(storage),
+		cases.WithJWTProvider(provider),
+		cases.WithHasher(hasher),
+		cases.WithIDGenerator(generator),
+	)
 	if err != nil {
 		err := errors.Wrap(err, "new command factory init failure")
 		app.panic(err)
@@ -156,7 +214,8 @@ func (app *App) initJWTProvider(cfg *config.Config) common.JWTProvider {
 	return provider
 }
 
-func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFactory) *public.Server {
+func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFactory,
+	accessor public.Accessor) *public.Server {
 	slog.Info("init public http port started")
 
 	port := cfg.GetPublicPort()
@@ -164,6 +223,7 @@ func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFacto
 
 	server, err := public.New(
 		public.WithFactory(factory),
+		public.WithAccessor(accessor),
 		public.WithConfig(&public.ServerCfg{Port: port, Timeout: interval}),
 	)
 	if err != nil {

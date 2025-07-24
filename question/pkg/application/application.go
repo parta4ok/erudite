@@ -17,6 +17,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/internal/port/http/public"
+	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/pkg/errors"
 )
 
@@ -46,9 +47,10 @@ func (app *App) Start() {
 	storage, sessionStorage := app.initStorage(cfg)
 	generator := app.initGenerator()
 	authClient := app.initAuthServiceClient(cfg)
+	accessor := app.initAccessor(cfg)
 
 	service := app.initSessionService(storage, sessionStorage, generator)
-	server := app.initPublicPort(cfg, service, authClient)
+	server := app.initPublicPort(cfg, service, authClient, accessor)
 	app.publicServer = server
 
 	app.startWithGracefulShutdown()
@@ -121,7 +123,21 @@ func (app *App) initStorage(cfg *config.Config) (cases.Storage, entities.Session
 	}
 
 	return storage, sessionStorage
+}
 
+func (app *App) initAccessor(_ *config.Config) public.Accessor {
+	slog.Info("initAccessor started")
+	var acessor public.Accessor
+
+	a, err := accessor.NewRightAccessor()
+	if err != nil {
+		err := errors.Wrap(err, "new right accessor failure")
+		app.panic(err)
+	}
+
+	acessor = a
+
+	return acessor
 }
 
 func (app *App) initGenerator() entities.IDGenerator {
@@ -169,7 +185,7 @@ func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
 }
 
 func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service,
-	authClient public.Introspector) *public.Server {
+	authClient public.Introspector, accessor public.Accessor) *public.Server {
 	slog.Info("init public port started")
 
 	port := cfg.GetPublicPort()
@@ -181,7 +197,8 @@ func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service
 		public.WithConfig(&public.ServerCfg{
 			Port:    port,
 			Timeout: timeout,
-		}))
+		}),
+		public.WithAccessor(accessor))
 	if err != nil {
 		err := errors.Wrap(err, "new public port init failure")
 		app.panic(err)

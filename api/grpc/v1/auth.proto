@@ -13,5 +13,18 @@ message IntrospectRequest {
 }
 
 message IntrospectResponse {
-  string error_message = 1;
+    UserClaims claims = 1;
+    Error error = 2;
+}
+
+message UserClaims {
+  string username = 1;
+  string issuer = 2;
+  repeated string audience = 3;
+  string subject = 4;
+  repeated string rights = 5;
+}
+
+message Error {
+  string message = 1;
 }

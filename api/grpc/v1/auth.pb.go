@@ -67,7 +67,8 @@ func (x *IntrospectRequest) GetToken() string {
 
 type IntrospectResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ErrorMessage  string                 `protobuf:"bytes,1,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	Claims        *UserClaims            `protobuf:"bytes,1,opt,name=claims,proto3" json:"claims,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -102,9 +103,136 @@ func (*IntrospectResponse) Descriptor() ([]byte, []int) {
 	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *IntrospectResponse) GetErrorMessage() string {
+func (x *IntrospectResponse) GetClaims() *UserClaims {
 	if x != nil {
-		return x.ErrorMessage
+		return x.Claims
+	}
+	return nil
+}
+
+func (x *IntrospectResponse) GetError() *Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+type UserClaims struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	Issuer        string                 `protobuf:"bytes,2,opt,name=issuer,proto3" json:"issuer,omitempty"`
+	Audience      []string               `protobuf:"bytes,3,rep,name=audience,proto3" json:"audience,omitempty"`
+	Subject       string                 `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
+	Rights        []string               `protobuf:"bytes,5,rep,name=rights,proto3" json:"rights,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserClaims) Reset() {
+	*x = UserClaims{}
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserClaims) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserClaims) ProtoMessage() {}
+
+func (x *UserClaims) ProtoReflect() protoreflect.Message {
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserClaims.ProtoReflect.Descriptor instead.
+func (*UserClaims) Descriptor() ([]byte, []int) {
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *UserClaims) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UserClaims) GetIssuer() string {
+	if x != nil {
+		return x.Issuer
+	}
+	return ""
+}
+
+func (x *UserClaims) GetAudience() []string {
+	if x != nil {
+		return x.Audience
+	}
+	return nil
+}
+
+func (x *UserClaims) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *UserClaims) GetRights() []string {
+	if x != nil {
+		return x.Rights
+	}
+	return nil
+}
+
+type Error struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Error) Reset() {
+	*x = Error{}
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Error) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Error) ProtoMessage() {}
+
+func (x *Error) ProtoReflect() protoreflect.Message {
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Error.ProtoReflect.Descriptor instead.
+func (*Error) Descriptor() ([]byte, []int) {
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *Error) GetMessage() string {
+	if x != nil {
+		return x.Message
 	}
 	return ""
 }
@@ -115,9 +243,19 @@ const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x16api/grpc/v1/auth.proto\x12\x04auth\")\n" +
 	"\x11IntrospectRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"9\n" +
-	"\x12IntrospectResponse\x12#\n" +
-	"\rerror_message\x18\x01 \x01(\tR\ferrorMessage2N\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"a\n" +
+	"\x12IntrospectResponse\x12(\n" +
+	"\x06claims\x18\x01 \x01(\v2\x10.auth.UserClaimsR\x06claims\x12!\n" +
+	"\x05error\x18\x02 \x01(\v2\v.auth.ErrorR\x05error\"\x8e\x01\n" +
+	"\n" +
+	"UserClaims\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
+	"\x06issuer\x18\x02 \x01(\tR\x06issuer\x12\x1a\n" +
+	"\baudience\x18\x03 \x03(\tR\baudience\x12\x18\n" +
+	"\asubject\x18\x04 \x01(\tR\asubject\x12\x16\n" +
+	"\x06rights\x18\x05 \x03(\tR\x06rights\"!\n" +
+	"\x05Error\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage2N\n" +
 	"\vAuthService\x12?\n" +
 	"\n" +
 	"Introspect\x12\x17.auth.IntrospectRequest\x1a\x18.auth.IntrospectResponseB\x14Z\x12api/grpc/v1;authv1b\x06proto3"
@@ -134,19 +272,23 @@ func file_api_grpc_v1_auth_proto_rawDescGZIP() []byte {
 	return file_api_grpc_v1_auth_proto_rawDescData
 }
 
-var file_api_grpc_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_grpc_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_api_grpc_v1_auth_proto_goTypes = []any{
 	(*IntrospectRequest)(nil),  // 0: auth.IntrospectRequest
 	(*IntrospectResponse)(nil), // 1: auth.IntrospectResponse
+	(*UserClaims)(nil),         // 2: auth.UserClaims
+	(*Error)(nil),              // 3: auth.Error
 }
 var file_api_grpc_v1_auth_proto_depIdxs = []int32{
-	0, // 0: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
-	1, // 1: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: auth.IntrospectResponse.claims:type_name -> auth.UserClaims
+	3, // 1: auth.IntrospectResponse.error:type_name -> auth.Error
+	0, // 2: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
+	1, // 3: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
+	3, // [3:4] is the sub-list for method output_type
+	2, // [2:3] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_api_grpc_v1_auth_proto_init() }
@@ -160,7 +302,7 @@ func file_api_grpc_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_grpc_v1_auth_proto_rawDesc), len(file_api_grpc_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

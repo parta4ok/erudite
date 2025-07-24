@@ -19,9 +19,8 @@ type AuthService struct {
 	factory port.CommandFactory
 }
 
-func (a *AuthService) Introspect(
-	ctx context.Context,
-	req *authv1.IntrospectRequest,
+//nolint:funlen //ok
+func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequest,
 ) (*authv1.IntrospectResponse, error) {
 	slog.Info("Introspect started")
 
@@ -29,32 +28,65 @@ func (a *AuthService) Introspect(
 	if token == "" {
 		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
 		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+		return &authv1.IntrospectResponse{
+			Claims: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
 	}
 
 	command, err := a.factory.NewIntrospectedCommand(ctx, token)
 	if err != nil {
 		err := errors.Wrap(err, "create introspect command failure")
 		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+		return &authv1.IntrospectResponse{
+			Claims: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
 	}
 
 	res, err := command.Exec()
 	if err != nil {
 		err := errors.Wrap(err, "introspect command exec failure")
 		slog.Error(err.Error())
-		return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+		return &authv1.IntrospectResponse{
+			Claims: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
 	}
 
 	if res != nil {
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
 			slog.Error(err.Error())
-			return &authv1.IntrospectResponse{ErrorMessage: err.Error()}, nil
+			return &authv1.IntrospectResponse{
+				Claims: nil,
+				Error:  &authv1.Error{Message: err.Error()},
+			}, nil
 		}
 	}
 
-	return &authv1.IntrospectResponse{}, nil
+	userClaims, ok := res.Payload.(*entities.UserClaims)
+	if !ok {
+		err := errors.Wrap(entities.ErrInvalidJWT, "assert claims failure")
+		slog.Error(err.Error())
+		return &authv1.IntrospectResponse{
+			Claims: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	resp := &authv1.IntrospectResponse{
+		Claims: &authv1.UserClaims{
+			Username: userClaims.Username,
+			Issuer:   userClaims.Issuer,
+			Audience: userClaims.Audience,
+			Subject:  userClaims.Subject,
+			Rights:   userClaims.Rights,
+		},
+		Error: &authv1.Error{Message: ""},
+	}
+
+	return resp, nil
 }
 
 type Server struct {

@@ -10,4 +10,6 @@ import (
 type CommandFactory interface {
 	NewIntrospectedCommand(ctx context.Context, jwt string) (entities.Command, error)
 	NewSignInCommand(ctx context.Context, userName string, password string) (entities.Command, error)
+	NewAddUserCommand(ctx context.Context, login string, password string, rights []string,
+		contacts map[string]string) (entities.Command, error)
 }

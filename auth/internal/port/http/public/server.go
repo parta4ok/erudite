@@ -3,10 +3,12 @@ package public
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -14,19 +16,24 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/auth/internal/port"
 	"github.com/parta4ok/kvs/auth/pkg/dto"
+	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/pkg/errors"
 )
 
 const (
-	basePath   = "/auth/v1"
-	signinPath = "/signin"
+	basePath    = "/auth/v1"
+	signinPath  = "/signin"
+	addUserPath = "/add-user"
+
+	right_admin = "admin"
 )
 
 type Server struct {
-	router  *chi.Mux
-	server  *http.Server
-	factory port.CommandFactory
-	cfg     *ServerCfg
+	router   *chi.Mux
+	server   *http.Server
+	factory  port.CommandFactory
+	accessor Accessor
+	cfg      *ServerCfg
 }
 
 type ServerCfg struct {
@@ -39,6 +46,12 @@ type ServerOption func(*Server)
 func WithFactory(factory port.CommandFactory) ServerOption {
 	return func(s *Server) {
 		s.factory = factory
+	}
+}
+
+func WithAccessor(accessor Accessor) ServerOption {
+	return func(s *Server) {
+		s.accessor = accessor
 	}
 }
 
@@ -65,6 +78,12 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.factory == nil {
 		err := errors.Wrap(entities.ErrInternal, "factory not set")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if serv.accessor == nil {
+		err := errors.Wrap(entities.ErrInternal, "accessor not set")
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -127,6 +146,7 @@ func (s *Server) registerRoutes() {
 	s.router.Use(s.timeoutMiddleware)
 
 	s.router.Post(basePath+signinPath, s.Signin)
+	s.router.Put(basePath+addUserPath, s.AddUser)
 }
 
 // Sign in user
@@ -187,11 +207,152 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	topicsDTO := &dto.SigninResponseDTO{Token: res.Message}
+	signinDTO := &dto.SigninResponseDTO{Token: res.Message}
 
-	data, err := json.Marshal(topicsDTO)
+	data, err := json.Marshal(signinDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal token failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusCreated)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// Add new user
+//
+// @Summary      Add new user
+// @Description  Add new user with selected credentials and other user info
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        request body dto.AddUserDTO true "User credentials and other data"
+// @Success      201  {object}  dto.AddUserResponseDTO "New user created"
+// @Failure      400  {object}  dto.ErrorDTO "Invalid request parameters"
+// @Failure      401  {object}  dto.ErrorDTO "Unauthorized"
+// @Failure		 403  {object}  dto.ErrorDTO "Forbidden"
+// @Failure		 409  {object}  dto.ErrorDTO "Conflict"
+// @Failure      500  {object}  dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/add-user [post]
+//
+//nolint:funlen //ok
+func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("AddUser started")
+	resp.Header().Set("Content-Type", "application/json")
+
+	authHeader := req.Header.Get("Authorization")
+	if authHeader == "" {
+		err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	const prefix = "Bearer "
+	authorizationData := strings.Split(authHeader, prefix)
+	if len(authorizationData) != 2 {
+		err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	jwt := authorizationData[1]
+	introspectCommand, err := s.factory.NewIntrospectedCommand(req.Context(), jwt)
+	if err != nil {
+		err := errors.Wrap(err, "new inrospect failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	introspectResult, err := introspectCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "inrospection failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !introspectResult.Success {
+		err := errors.Wrap(entities.ErrForbidden, "operation forbidden")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	claims, ok := introspectResult.Payload.(*entities.UserClaims)
+	if !ok {
+		err := errors.Wrap(entities.ErrForbidden, "assertion of user claims failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	fmt.Println("--- claims:", claims)
+
+	ctx := context.WithValue(req.Context(), accessor.UserClaims, &accessor.Claims{
+		Username: claims.Username,
+		Issuer:   claims.Issuer,
+		Subject:  claims.Subject,
+		Audience: claims.Audience,
+		Rights:   claims.Rights,
+	})
+
+	if err := s.checkUserRights(ctx, []string{right_admin}); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var requestDTO dto.AddUserDTO
+	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInvalidParam,
+			"decode req body to requestDTO failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	addUserCommand, err := s.factory.NewAddUserCommand(req.Context(), requestDTO.Username,
+		requestDTO.Password, requestDTO.Rights, requestDTO.Contacts)
+	if err != nil {
+		err := errors.Wrap(err, "new add user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	addUserResult, err := addUserCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "add user command failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !addUserResult.Success {
+		err := errors.Wrap(entities.ErrInternal, "add user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	responseDTO := &dto.AddUserResponseDTO{
+		UserID: addUserResult.Message,
+	}
+
+	data, err := json.Marshal(responseDTO)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -220,6 +381,8 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 		errDTO.StatusCode = http.StatusForbidden
 	case errors.Is(err, entities.ErrNotFound):
 		errDTO.StatusCode = http.StatusNotFound
+	case errors.Is(err, entities.ErrAlreadyExists):
+		errDTO.StatusCode = http.StatusConflict
 	}
 
 	errDtoData, err := json.Marshal(&errDTO)
@@ -242,4 +405,18 @@ func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
 		req = req.WithContext(ctx)
 		next.ServeHTTP(resp, req)
 	})
+}
+
+func (s *Server) checkUserRights(ctx context.Context, requiredRights []string) error {
+	hasEnoughRights, err := s.accessor.HasPermission(ctx, requiredRights)
+	if err != nil {
+		return err
+	}
+
+	if !hasEnoughRights {
+		err := errors.Wrap(entities.ErrForbidden, "user has not enough rights")
+		return err
+	}
+
+	return nil
 }

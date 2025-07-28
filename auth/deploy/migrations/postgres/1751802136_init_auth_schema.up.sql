@@ -14,5 +14,4 @@ CREATE TABLE IF NOT EXISTS auth.users (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
 
-
 END;

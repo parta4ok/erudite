@@ -24,7 +24,10 @@ const (
 	startSessionPath    = "/start_session"
 	completeSessionPath = "/complete_session"
 
-	right_view_topic_list = "view_topic_list"
+	right_view_topic_list         = "view_topic_list"
+	right_start_session           = "start_session"
+	right_complete_session        = "complete_session"
+	right_view_completed_sessions = "view_completed_sessions"
 )
 
 type Server struct {
@@ -236,6 +239,12 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
 
+	if err := s.checkUserRights(req.Context(), []string{right_start_session}); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
 	resp.Header().Set("Content-Type", "application/json")
 
 	userID := chi.URLParam(req, "user_id")
@@ -318,6 +327,12 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 //nolint:funlen //ok
 func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession started")
+
+	if err := s.checkUserRights(req.Context(), []string{right_complete_session}); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
 
 	resp.Header().Set("Content-Type", "application/json")
 

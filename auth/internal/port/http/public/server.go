@@ -241,7 +241,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 // @Failure		 403  {object}  dto.ErrorDTO "Forbidden"
 // @Failure		 409  {object}  dto.ErrorDTO "Conflict"
 // @Failure      500  {object}  dto.ErrorDTO "Internal server error"
-// @Router       /auth/v1/add-user [post]
+// @Router       /auth/v1/add-user [put]
 //
 //nolint:funlen //ok
 func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {

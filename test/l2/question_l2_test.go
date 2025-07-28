@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -112,10 +113,12 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestCompleteSession(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 
-	userID := fmt.Sprintf("%d", time.Now().UnixMicro())
+	adminJWT := getJwt(t)
+
+	userID, jwt := createUser(t, adminJWT, "Student")
+
 	requestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
 	}
@@ -125,7 +128,13 @@ func TestCompleteSession(t *testing.T) {
 
 	client := &http.Client{Timeout: timeout}
 	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
-	resp, err := client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -162,10 +171,14 @@ func TestCompleteSession(t *testing.T) {
 
 	jsonBody, err = json.Marshal(completeBody)
 	require.NoError(t, err)
-
 	url = fmt.Sprintf("%s/%s/%s/complete_session", baseURL, userID, sessionResponse.SessionID)
-	resp, err = client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
+	req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
 	require.NoError(t, err)
+
+	resp, err = client.Do(req)
 	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -181,6 +194,107 @@ func TestCompleteSession(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotEmpty(t, resultResponse.Grade)
+}
+
+func TestCompleteSessionTwiceFailure(t *testing.T) {
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	userID, jwt := createUser(t, adminJWT, "Student")
+
+	requestBody := map[string]interface{}{
+		"topics": []string{"Базы данных", "Базовые типы в Go"},
+	}
+
+	jsonBody, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	client := &http.Client{Timeout: timeout}
+	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(body, &sessionResponse)
+	require.NoError(t, err)
+
+	require.NotEqual(t, sessionResponse.SessionID, "")
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	jsonBody, err = json.Marshal(completeBody)
+	require.NoError(t, err)
+	url = fmt.Sprintf("%s/%s/%s/complete_session", baseURL, userID, sessionResponse.SessionID)
+	req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err = client.Do(req)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var resultResponse struct {
+		IsSuccess bool   `json:"is_success"`
+		Grade     string `json:"grade"`
+	}
+	err = json.Unmarshal(body, &resultResponse)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, resultResponse.Grade)
+
+	requestBody = map[string]interface{}{
+		"topics": []string{"Базы данных", "Базовые типы в Go"},
+	}
+
+	jsonBody, err = json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	url = fmt.Sprintf("%s/%s/start_session", baseURL, userID)
+	req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err = client.Do(req)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
 func TestErrorCases(t *testing.T) {
@@ -285,7 +399,7 @@ func getJwt(t *testing.T) string {
 		Password string `json:"password"`
 	}
 
-	data, err := json.Marshal(&AuthData{Login: "admin", Password: "password123"})
+	data, err := json.Marshal(&AuthData{Login: "admin@kvs.ru", Password: "password123"})
 	require.NoError(t, err)
 
 	resp, err := client.Post("http://localhost:8090/auth/v1/signin", "application/json", bytes.NewReader(data))
@@ -302,4 +416,92 @@ func getJwt(t *testing.T) string {
 	require.NoError(t, err)
 
 	return token.Token
+}
+
+func getNewUserJwt(t *testing.T, login, pass string) string {
+	t.Helper()
+
+	client := &http.Client{Timeout: timeout}
+	type AuthData struct {
+		Login    string `json:"login"`
+		Password string `json:"password"`
+	}
+
+	data, err := json.Marshal(&AuthData{Login: login, Password: pass})
+	require.NoError(t, err)
+
+	resp, err := client.Post("http://localhost:8090/auth/v1/signin", "application/json", bytes.NewReader(data))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	type Token struct {
+		Token string `json:"token"`
+	}
+
+	var token Token
+
+	err = json.NewDecoder(resp.Body).Decode(&token)
+	require.NoError(t, err)
+
+	return token.Token
+}
+
+func createUser(t *testing.T, adminJWT string, userStatus string) (string, string) {
+	t.Helper()
+
+	type AddUserDTO struct {
+		// required: true
+		Username string `json:"name"`
+		// required: true
+		Password string `json:"password"`
+		// required: true
+		Rights   []string          `json:"rights"`
+		Contacts map[string]string `json:"contacts,omitempty"`
+	}
+
+	var rights []string
+	switch userStatus {
+	case "Admin":
+		rights = []string{"admin", "add_user", "delete_user", "view_topic_list", "start_session",
+			"complete_session", "view_completed_sessions"}
+	case "Mentor":
+		rights = []string{"mentor", "view_topic_list", "start_session", "complete_session",
+			"view_completed_sessions"}
+	default:
+		rights = []string{"student", "view_topic_list", "start_session", "complete_session"}
+	}
+
+	bodyDTO := &AddUserDTO{
+		Username: uuid.NewString(),
+		Password: uuid.NewString(),
+		Rights:   rights,
+		Contacts: map[string]string{"phone": uuid.NewString(), "telegram": uuid.NewString()},
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+
+	require.NoError(t, err)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		// required: true
+		UserID string `json:"user_id"`
+	}
+
+	var AddUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&AddUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEqual(t, "", AddUserRespDTO.UserID)
+
+	return AddUserRespDTO.UserID, getNewUserJwt(t, bodyDTO.Username, bodyDTO.Password)
 }

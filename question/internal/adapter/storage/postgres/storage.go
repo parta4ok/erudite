@@ -124,50 +124,20 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 		return nil, err
 	}
 
-	params := make([]interface{}, 0)
-	params = append(params, topics, s.questionsLimits)
+	params := []interface{}{topics, s.questionsLimits}
 
 	query := `
-	WITH ranked_questions AS (
-    SELECT
-        q.question_id,
-        qt.name AS question_type,
-        t.name AS topic,
-        q.subject,
-        q.variants,
-        q.correct_answers,
-        ROW_NUMBER() OVER (
-            PARTITION BY t.topic_id, qt.id
-            ORDER BY q.usage_count ASC, RANDOM()
-        ) AS rn
-    FROM kvs.questions q
-    JOIN kvs.topics t ON q.topic_id = t.topic_id
-    JOIN kvs.question_types qt ON q.question_type_id = qt.id
-    WHERE t.name = ANY($1::text[])
-	),
-	to_update AS (
-    	SELECT question_id
-    	FROM ranked_questions
-    	WHERE rn <= $2
-	),
-	updated AS (
-    	UPDATE kvs.questions
-    	SET usage_count = usage_count + 1
-   		WHERE question_id IN (SELECT question_id FROM to_update)
-    	RETURNING question_id
-	)
-	SELECT
-    	rq.question_id,
-    	rq.question_type,
-    	rq.topic,
-   		rq.subject,
-    	rq.variants,
-    	rq.correct_answers
-	FROM ranked_questions rq
-	JOIN updated u ON rq.question_id = u.question_id
-	WHERE rq.rn <= $2
-	ORDER BY rq.topic, rq.question_type;
-	`
+	SELECT 
+    question_id, question_type, topic, subject, variants, correct_answers 
+	FROM (
+		SELECT q.*, qt.name AS question_type, t.name AS topic, 
+		ROW_NUMBER() OVER (PARTITION BY t.topic_id ORDER BY random()) AS rn
+    	FROM kvs.questions q
+    	JOIN kvs.topics t ON q.topic_id = t.topic_id
+    	JOIN kvs.question_types qt ON q.question_type_id = qt.id
+    	WHERE t.name = ANY($1)
+	) random_questions
+	WHERE rn <= $2;`
 
 	rows, errDB := s.db.Query(ctx, query, params...)
 	if errDB != nil {
@@ -297,20 +267,12 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID string) (
 	slog.Info("GetSessionBySessionID started")
 
 	query := `
-	SELECT 
-    s.user_id,
-    s.state,
-    s.topics,
-    s.questions,
-    s.answers,
-    s.created_at,
-    s.duration_limit,
-    s.is_expired
+	SELECT s.user_id, s.state, s.topics, s.questions, s.answers, s.created_at, 
+	s.duration_limit, s.is_expired
 	FROM kvs.sessions s 
 	WHERE s.session_id = $1
 	ORDER BY s.updated_at DESC
-	LIMIT 1;
-	`
+	LIMIT 1;`
 	sessionParameters := []interface{}{sessionID}
 
 	row := s.db.QueryRow(ctx, query, sessionParameters...)
@@ -452,13 +414,8 @@ func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []string) (
 	slog.Info("getQuestionsByID strarted")
 
 	query := `
-	SELECT 
-    q.question_id,
-    qt.name AS question_type_name,
-    t.name AS topic_name,
-    q.subject,
-    q.variants,
-    q.correct_answers
+	SELECT q.question_id, qt.name AS question_type_name, t.name AS topic_name, q.subject, 
+	q.variants, q.correct_answers
 	FROM 
     kvs.questions q
 	JOIN kvs.question_types qt ON q.question_type_id = qt.id

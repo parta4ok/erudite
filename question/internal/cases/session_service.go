@@ -149,3 +149,24 @@ func (srv *SessionService) CompleteSession(
 
 	return sessionResult, nil
 }
+
+func (srv *SessionService) GetAllCompletedUserSessions(ctx context.Context, userID string) (
+	[]*entities.Session, error) {
+	slog.Info("GetAllCompletedUserSessions started")
+
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID not set")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	sessions, err := srv.storage.GetAllCompletedUserSessions(ctx, userID)
+	if err != nil {
+		err = errors.Wrap(err, "get all completed user sessions failure")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("GetAllCompletedUserSessions completed")
+	return sessions, nil
+}

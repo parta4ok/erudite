@@ -3,8 +3,9 @@ package dto
 // UserAnswerDTO represents user answer
 // swagger:model UserAnswerDTO
 type UserAnswerDTO struct {
-	QuestionID string   `json:"question_id" example:"1234"`
-	Answers    []string `json:"answers" example:"selection1,selection2"`
+	QuestionID      string   `json:"question_id" example:"1234"`
+	QuestionSubject string   `json:"question_subject,omitempty"`
+	Answers         []string `json:"answers" example:"selection1,selection2"`
 }
 
 // UserAnswersListDTO represents list of user answers

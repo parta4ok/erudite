@@ -20,6 +20,7 @@ type CompletedSessionState struct {
 	questions map[string]Question
 	answers   []*UserAnswer
 	holder    StateHolder
+	startedAt time.Time
 	isExpired bool
 }
 
@@ -27,12 +28,14 @@ func NewCompletedSessionState(
 	questions map[string]Question,
 	holder StateHolder,
 	answers []*UserAnswer,
+	startedAt time.Time,
 	isExpired bool,
 ) *CompletedSessionState {
 	return &CompletedSessionState{
 		questions: questions,
 		holder:    holder,
 		answers:   answers,
+		startedAt: startedAt,
 		isExpired: isExpired,
 	}
 }
@@ -107,8 +110,7 @@ func (state *CompletedSessionState) GetQuestions() ([]Question, error) {
 }
 
 func (state *CompletedSessionState) GetStartedAt() (time.Time, error) {
-	return time.Time{}, errors.Wrapf(
-		ErrInvalidState, "%s not support `GetStartedAt`", state.GetStatus())
+	return state.startedAt, nil
 }
 
 func (state *CompletedSessionState) GetUserAnswers() ([]*UserAnswer, error) {

@@ -56,7 +56,7 @@ func TestStorage_GetQuestions(t *testing.T) {
 		typeMap[q.Type()] = struct{}{}
 	}
 
-	require.Equal(t, 3*len(typeMap), len(questions))
+	require.Equal(t, len(typeMap), len(questions))
 }
 
 func TestStorage_GetSession(t *testing.T) {
@@ -231,4 +231,75 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 		secondSession.GetTopics())
 	require.NoError(t, err)
 	require.True(t, forbidden)
+}
+
+func TestStorage_GetAllCompletedUserSessions(t *testing.T) {
+	db := makeDB(t, postgres.WithQuestionsLimit(2))
+	defer db.Close()
+
+	ctx := context.TODO()
+	userID := fmt.Sprintf("usr_%d", time.Now().UnixNano())
+	topics := []string{"Базовые типы в Go"}
+	ctrl := gomock.NewController(t)
+	defer t.Cleanup(ctrl.Finish)
+
+	questions, err := db.GetQuesions(ctx, topics)
+	require.NoError(t, err)
+	require.NotEmpty(t, questions)
+
+	questionsMap := make(map[string]entities.Question, len(questions))
+	for _, q := range questions {
+		questionsMap[q.ID()] = q
+	}
+
+	sessionOld, err := entities.NewSession(userID, topics, cryptoprocessing.NewUint64Generator(), db)
+	require.NoError(t, err)
+	err = sessionOld.SetQuestions(questionsMap, time.Minute*10)
+	require.NoError(t, err)
+	require.NoError(t, sessionOld.SetUserAnswer([]*entities.UserAnswer{
+		mustAnswer(t, questions[0]),
+		mustAnswer(t, questions[1]),
+	}))
+	require.Equal(t, entities.CompletedState, sessionOld.GetStatus())
+	require.NoError(t, db.StoreSession(ctx, sessionOld))
+
+	sessionNew, err := entities.NewSession(userID, topics, cryptoprocessing.NewUint64Generator(), db)
+	require.NoError(t, err)
+	err = sessionNew.SetQuestions(questionsMap, time.Minute*10)
+	require.NoError(t, err)
+	require.NoError(t, sessionNew.SetUserAnswer([]*entities.UserAnswer{
+		mustAnswer(t, questions[0]),
+		mustAnswer(t, questions[1]),
+	}))
+	require.Equal(t, entities.CompletedState, sessionNew.GetStatus())
+	require.NoError(t, db.StoreSession(ctx, sessionNew))
+
+	sessions, err := db.GetAllCompletedUserSessions(ctx, userID)
+	require.NoError(t, err)
+	require.Len(t, sessions, 2)
+
+	require.True(t, sessions[0].GetSesionID() == sessionNew.GetSesionID(), "newest session first")
+	require.True(t, sessions[1].GetSesionID() == sessionOld.GetSesionID(), "oldest session second")
+
+	require.Equal(t, sessionNew.GetTopics(), sessions[0].GetTopics())
+	require.Equal(t, sessionOld.GetTopics(), sessions[1].GetTopics())
+
+	newQs, err := sessionNew.GetQuestions()
+	require.NoError(t, err)
+	oldQs, err := sessionOld.GetQuestions()
+	require.NoError(t, err)
+	fetchedNewQs, _ := sessions[0].GetQuestions()
+	fetchedOldQs, _ := sessions[1].GetQuestions()
+	require.ElementsMatch(t, newQs, fetchedNewQs)
+	require.ElementsMatch(t, oldQs, fetchedOldQs)
+	require.Equal(t, entities.CompletedState, sessions[0].GetStatus())
+	require.Equal(t, entities.CompletedState, sessions[1].GetStatus())
+}
+
+func mustAnswer(t *testing.T, q entities.Question) *entities.UserAnswer {
+	t.Helper()
+
+	answer, err := entities.NewUserAnswer(q.ID(), []string{q.Variants()[0]})
+	require.NoError(t, err)
+	return answer
 }

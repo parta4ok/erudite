@@ -12,4 +12,5 @@ type Storage interface {
 	GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error)
 	StoreSession(ctx context.Context, session *entities.Session) error
 	GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session, error)
+	GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error)
 }

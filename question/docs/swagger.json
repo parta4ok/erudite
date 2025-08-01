@@ -64,6 +64,65 @@
                 }
             }
         },
+        "/{user_id}/completed_sessions": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns detailed list of all completed sessions for the user with the specified id.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get all completed sessions for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of completed sessions",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionsResponseListDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user_id",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "No completed sessions found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/{user_id}/start_session": {
             "post": {
                 "security": [
@@ -209,6 +268,40 @@
         }
     },
     "definitions": {
+        "github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionResponseDTO": {
+            "type": "object",
+            "properties": {
+                "is_expired": {
+                    "type": "boolean"
+                },
+                "session_result": {
+                    "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user_answers": {
+                    "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionsResponseListDTO": {
+            "type": "object",
+            "properties": {
+                "completed_sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionResponseDTO"
+                    }
+                }
+            }
+        },
         "github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO": {
             "type": "object",
             "properties": {
@@ -324,6 +417,9 @@
                 "question_id": {
                     "type": "string",
                     "example": "1234"
+                },
+                "question_subject": {
+                    "type": "string"
                 }
             }
         },

@@ -58,7 +58,8 @@ func (state *ActiveSessionState) SetQuestions(_ map[string]Question,
 func (state *ActiveSessionState) SetUserAnswer(answers []*UserAnswer) error {
 	isExpired := time.Now().UTC().After(state.startedAt.Add(state.duration))
 
-	completedState := NewCompletedSessionState(state.questions, state.holder, answers, isExpired)
+	completedState := NewCompletedSessionState(state.questions, state.holder, answers,
+		state.startedAt, isExpired)
 	state.holder.ChangeState(completedState)
 
 	return nil

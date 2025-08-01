@@ -35,6 +35,21 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// GetAllCompletedUserSessions mocks base method.
+func (m *MockStorage) GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllCompletedUserSessions", ctx, userID)
+	ret0, _ := ret[0].([]*entities.Session)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllCompletedUserSessions indicates an expected call of GetAllCompletedUserSessions.
+func (mr *MockStorageMockRecorder) GetAllCompletedUserSessions(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllCompletedUserSessions", reflect.TypeOf((*MockStorage)(nil).GetAllCompletedUserSessions), ctx, userID)
+}
+
 // GetQuesions mocks base method.
 func (m *MockStorage) GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error) {
 	m.ctrl.T.Helper()

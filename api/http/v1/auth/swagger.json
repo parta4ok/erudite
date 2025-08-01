@@ -13,7 +13,7 @@
     "basePath": "/auth/v1",
     "paths": {
         "/auth/v1/add-user": {
-            "post": {
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []

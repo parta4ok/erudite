@@ -210,6 +210,13 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 			return err
 		}
 
+		startedAt, err := session.GetStartedAt()
+		if err != nil {
+			err := errors.Wrap(err, "session GetStartedAt failure")
+			slog.Error(err.Error())
+			return err
+		}
+
 		userAnswers, err := session.GetUserAnswers()
 		if err != nil {
 			err := errors.Wrap(err, "session GetUserAnswers failure")
@@ -247,7 +254,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 			return err
 		}
 
-		parameters = append(parameters, questionsIDs, answersListJSON, isExpired,
+		parameters = append(parameters, questionsIDs, startedAt, answersListJSON, isExpired,
 			sesseionResult.IsSuccess, sesseionResult.Grade)
 	}
 
@@ -397,7 +404,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		}
 
 		state := entities.NewCompletedSessionState(questionsMap, completedSession,
-			answers, *isExpired)
+			answers, *createdAt, *isExpired)
 		completedSession.ChangeState(state)
 
 		slog.Info("recoverSession completed")
@@ -508,7 +515,8 @@ func (s *Storage) makeActiveStateSessionQuery() string {
 
 func (s *Storage) makeCompletedStateSessionQuery() string {
 	return `
-		, questions, answers, is_expired, is_passed, comment) values ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+		, questions, created_at, answers, is_expired, is_passed, comment) values ($1, $2, $3, $4, $5, 
+		$6, $7, $8, $9, $10);
 	`
 }
 
@@ -579,6 +587,123 @@ ORDER BY
 	}
 
 	return false, nil
+}
+
+//nolint:funlen //ok
+func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string) (
+	[]*entities.Session, error) {
+	slog.Info("GetAllCompletedUserSessions started")
+
+	args := []interface{}{userID}
+
+	query := `
+	SELECT
+    	session_id,
+    	user_id,
+    	state,
+    	topics,
+    	questions,
+    	answers,
+    	is_expired,
+    	is_passed,
+    	comment,
+		created_at,
+    	updated_at
+	FROM kvs.sessions
+	WHERE user_id = $1
+  	AND state = 'completed state'
+	ORDER BY updated_at DESC;
+	`
+
+	rows, err := s.db.Query(ctx, query, args...)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err := errors.Wrapf(entities.ErrNotFound, "not found completed sessions with userID=%s", userID)
+			slog.Warn(err.Error())
+			return nil, err
+		}
+		err := errors.Wrapf(entities.ErrInternal, "search completed user sessions failure: %v", err)
+		slog.Warn(err.Error())
+		return nil, err
+	}
+
+	userSessions := make([]*entities.Session, 0)
+
+	for rows.Next() {
+		var (
+			sessionID    string
+			userID       string
+			stateName    string
+			topics       []string
+			questionsIDs []string
+			answersRaw   []byte
+			isExpired    *bool
+			isPassed     bool
+			comment      string
+			createdAt    *time.Time
+			updatedAt    *time.Time
+		)
+
+		if err := rows.Scan(&sessionID, &userID, &stateName, &topics, &questionsIDs, &answersRaw,
+			&isExpired, &isPassed, &comment, &createdAt, &updatedAt); err != nil {
+			err := errors.Wrapf(entities.ErrInternal, "scan session data failure: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		completedSession, err := entities.NewSession(userID, topics,
+			cryptoprocessing.NewUint64Generator(), s, entities.WithSessionID(sessionID),
+			entities.WithNilState())
+		if err != nil {
+			err = errors.Wrap(err, "creating new session with sessionID option failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		questions, err := s.getQuestionsByID(ctx, questionsIDs)
+		if err != nil {
+			err = errors.Wrap(err, "getQuestionsByID failure")
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		questionsMap := make(map[string]entities.Question, len(questions))
+		for _, question := range questions {
+			questionsMap[question.ID()] = question
+		}
+
+		var answersListDTO dto.UserAnswersListDTO
+		if err := json.Unmarshal(answersRaw, &answersListDTO); err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "unmarshaling failure: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
+
+		answers := make([]*entities.UserAnswer, 0, len(answersListDTO.AnswersList))
+		for _, answerDTO := range answersListDTO.AnswersList {
+			answer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
+			if err != nil {
+				err = errors.Wrap(err, "creating user answer failure")
+				slog.Error(err.Error())
+				return nil, err
+			}
+			answers = append(answers, answer)
+		}
+
+		state := entities.NewCompletedSessionState(questionsMap, completedSession,
+			answers, *createdAt, *isExpired)
+		completedSession.ChangeState(state)
+		userSessions = append(userSessions, completedSession)
+	}
+
+	if err := rows.Err(); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "rows err: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("GetAllCompletedUserSessions completed")
+	return userSessions, nil
 }
 
 func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) error {

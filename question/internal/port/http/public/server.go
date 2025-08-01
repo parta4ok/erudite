@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	basePath            = "/kvs/v1"
-	topicsPath          = "/topics"
-	startSessionPath    = "/start_session"
-	completeSessionPath = "/complete_session"
+	basePath                 = "/kvs/v1"
+	topicsPath               = "/topics"
+	startSessionPath         = "/start_session"
+	completeSessionPath      = "/complete_session"
+	allCompletedSessionsPath = "/completed_sessions"
 
 	right_view_topic_list         = "view_topic_list"
 	right_start_session           = "start_session"
@@ -163,6 +164,7 @@ func (s *Server) registerRoutes() {
 	)
 
 	s.router.Get(basePath+topicsPath, s.GetTopics)
+	s.router.Get(basePath+"/{user_id}"+allCompletedSessionsPath, s.GetAllCompletedUserSessions)
 
 	s.router.Route(basePath, func(r chi.Router) {
 		r.Post("/{user_id}"+startSessionPath, s.StartSession)
@@ -398,6 +400,82 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession completed successfully")
 }
 
+// GetAllCompletedUserSessions returns detailed information about all completed sessions for a user.
+//
+// @Summary      Get all completed sessions for a user
+// @Description  Returns detailed list of all completed sessions for the user with the specified id.
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        user_id path string true "User ID"
+// @Success      200 {object} dto.CompletedSessionsResponseListDTO "List of completed sessions"
+// @Failure      400 {object} dto.ErrorDTO "Invalid user_id"
+// @Failure      404 {object} dto.ErrorDTO "No completed sessions found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /{user_id}/completed_sessions [get]
+func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("GetAllCompletedUserSessions started")
+
+	if err := s.checkUserRights(req.Context(), []string{right_view_completed_sessions}); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	userID := chi.URLParam(req, "user_id")
+
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	sessions, err := s.service.GetAllCompletedUserSessions(req.Context(), userID)
+	if err != nil {
+		err := errors.Wrap(err, "GetAllCompletedUserSessions failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	sessionsListDTO := dto.CompletedSessionsResponseListDTO{
+		CompletedSessions: make([]dto.CompletedSessionResponseDTO, 0, len(sessions)),
+	}
+	for _, session := range sessions {
+		sessionInfo, err := s.extractDataFromCompleteSession(*session)
+		if err != nil {
+			err = errors.Wrap(err, "extractDataFromCompleteSession failure")
+			slog.Error(err.Error())
+			s.errProcessing(resp, err)
+			return
+		}
+
+		sessionsListDTO.CompletedSessions = append(sessionsListDTO.CompletedSessions, sessionInfo)
+	}
+
+	data, err := json.Marshal(sessionsListDTO)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	slog.Info("CompleteSession completed successfully")
+}
+
 func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	stausCode := http.StatusInternalServerError
 	errDTO := dto.ErrorDTO{
@@ -488,4 +566,66 @@ func (s *Server) checkUserRights(ctx context.Context, requiredRights []string) e
 	}
 
 	return nil
+}
+
+func (s *Server) extractDataFromCompleteSession(session entities.Session) (
+	dto.CompletedSessionResponseDTO, error) {
+	var completeSessionDTO dto.CompletedSessionResponseDTO
+
+	startedAt, err := session.GetStartedAt()
+	if err != nil {
+		return completeSessionDTO, err
+	}
+
+	topics := session.GetTopics()
+
+	answers, err := session.GetUserAnswers()
+	if err != nil {
+		return completeSessionDTO, err
+	}
+
+	answersList := dto.UserAnswersListDTO{
+		AnswersList: make([]dto.UserAnswerDTO, 0, len(answers)),
+	}
+
+	questions, err := session.GetQuestions()
+	if err != nil {
+		return completeSessionDTO, err
+	}
+
+	questionsMap := make(map[string]entities.Question, len(questions))
+	for _, question := range questions {
+		questionsMap[question.ID()] = question
+	}
+
+	for _, answer := range answers {
+		answersList.AnswersList = append(answersList.AnswersList, dto.UserAnswerDTO{
+			QuestionID:      answer.GetQuestionID(),
+			QuestionSubject: questionsMap[answer.GetQuestionID()].Subject(),
+			Answers:         answer.GetSelections(),
+		})
+	}
+
+	isExpired, err := session.IsExpired()
+	if err != nil {
+		return completeSessionDTO, err
+	}
+
+	result, err := session.GetSessionResult()
+	if err != nil {
+		return completeSessionDTO, err
+	}
+
+	resultDTO := dto.SessionResultDTO{
+		IsSuccess: result.IsSuccess,
+		Grade:     result.Grade,
+	}
+
+	completeSessionDTO.StartedAt = startedAt
+	completeSessionDTO.Topics = topics
+	completeSessionDTO.UserAnswers = answersList
+	completeSessionDTO.IsExpired = isExpired
+	completeSessionDTO.SessionResult = resultDTO
+
+	return completeSessionDTO, nil
 }

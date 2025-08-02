@@ -20,9 +20,6 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
-
       - name: Install Task
         run: |
           sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
@@ -32,10 +29,10 @@ jobs:
           pwd
           ls -l
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
+      - name: Run golangci-lint (recommended way)
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: latest
+          version: v2.3.0
 
       - name: Run unit tests
         run: go test -v ./...

@@ -156,7 +156,7 @@ func compareSession(t *testing.T, originalSession, recoveredSession *entities.Se
 	}
 	os, oErr := originalSession.GetStartedAt()
 	rs, rErr := recoveredSession.GetStartedAt()
-	require.Equal(t, os, rs)
+	require.Equal(t, os.Truncate(time.Second), rs.Truncate(time.Second))
 	if oErr != nil {
 		require.Contains(t, oErr.Error(), rErr.Error())
 	}

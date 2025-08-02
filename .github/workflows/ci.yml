@@ -52,5 +52,6 @@ jobs:
 
       - name: Run L1 tests
         run: task l1_test
-#       - name: Run L2 tests
-#         run: task l2_test
+
+      - name: Run L2 tests
+        run: task l2_test

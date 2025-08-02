@@ -26,7 +26,12 @@ jobs:
       - name: Install Task
         run: |
           sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-      
+
+      - name: Install docker-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
       - name: Install migrate
         run: |
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
@@ -37,7 +42,7 @@ jobs:
           pwd
           ls -l
 
-      - name: Run golangci-lint (recommended way)
+      - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.3.0

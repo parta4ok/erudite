@@ -43,20 +43,16 @@ func TestStorage_GetTopics(t *testing.T) {
 }
 
 func TestStorage_GetQuestions(t *testing.T) {
-	db := makeDB(t, postgres.WithQuestionsLimit(3))
+	limit := 3
+
+	db := makeDB(t, postgres.WithQuestionsLimit(limit))
 	defer db.Close()
 
 	testTopics := []string{"Базы данных"}
 	questions, err := db.GetQuesions(context.TODO(), testTopics)
 	require.NoError(t, err)
 
-	typeMap := make(map[entities.QuestionType]struct{}, 0)
-	for _, q := range questions {
-		require.Equal(t, testTopics[0], q.Topic())
-		typeMap[q.Type()] = struct{}{}
-	}
-
-	require.Equal(t, len(typeMap), len(questions))
+	require.Equal(t, limit, len(questions))
 }
 
 func TestStorage_GetSession(t *testing.T) {

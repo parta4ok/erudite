@@ -501,7 +501,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	}
 
 	resp.WriteHeader(errDTO.StatusCode)
-	resp.Write(errDtoData) //nolint:errcheck //ok
+	resp.Write(errDtoData) //nolint:errcheck,gosec //ok
 }
 
 func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {

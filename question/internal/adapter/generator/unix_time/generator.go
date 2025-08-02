@@ -18,5 +18,5 @@ func NewUint64Generator() *Uint64Generator {
 }
 
 func (gen *Uint64Generator) GenerateID() string {
-	return fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano()))
+	return fmt.Sprintf("%d", uint64(time.Now().UTC().UnixNano())) //nolint:gosec // ok
 }

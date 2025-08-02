@@ -65,6 +65,20 @@ func (mr *MockStorageMockRecorder) GetUserByUsername(ctx, userName interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByUsername", reflect.TypeOf((*MockStorage)(nil).GetUserByUsername), ctx, userName)
 }
 
+// RemoveUser mocks base method.
+func (m *MockStorage) RemoveUser(ctx context.Context, userID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveUser", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveUser indicates an expected call of RemoveUser.
+func (mr *MockStorageMockRecorder) RemoveUser(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUser", reflect.TypeOf((*MockStorage)(nil).RemoveUser), ctx, userID)
+}
+
 // StoreUser mocks base method.
 func (m *MockStorage) StoreUser(ctx context.Context, user *entities.User) error {
 	m.ctrl.T.Helper()

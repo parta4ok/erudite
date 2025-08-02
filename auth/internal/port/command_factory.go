@@ -12,4 +12,5 @@ type CommandFactory interface {
 	NewSignInCommand(ctx context.Context, userName string, password string) (entities.Command, error)
 	NewAddUserCommand(ctx context.Context, login string, password string, rights []string,
 		contacts map[string]string) (entities.Command, error)
+	NewDeleteUserCommand(ctx context.Context, userID string) (entities.Command, error)
 }

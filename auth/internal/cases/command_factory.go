@@ -96,3 +96,10 @@ func (cf *CommandFactory) NewAddUserCommand(
 	return common.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, login, password,
 		rights, contacts)
 }
+
+func (cf *CommandFactory) NewDeleteUserCommand(
+	ctx context.Context,
+	userID string,
+) (entities.Command, error) {
+	return common.NewDeleteUserCommand(ctx, cf.storage, userID)
+}

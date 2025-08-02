@@ -190,6 +190,29 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	return nil
 }
 
+func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
+	slog.Info("Removing user started")
+
+	query := `DELETE FROM auth.users WHERE uid = $1`
+	args := []interface{}{userID}
+
+	tag, err := s.db.Exec(ctx, query, args...)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "exec delete query failure: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		err = errors.Wrapf(entities.ErrNotFound, "not found user with id='%s'", userID)
+		slog.Warn(err.Error())
+		return err
+	}
+
+	slog.Info("Removing user finished")
+	return nil
+}
+
 func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 	return nil
 }

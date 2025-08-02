@@ -9,6 +9,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	_ entities.Command = (*IntrospectCommand)(nil)
+)
+
 type IntrospectCommand struct {
 	storage     Storage
 	jwtProvider JWTProvider

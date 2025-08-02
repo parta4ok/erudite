@@ -32,8 +32,10 @@ jobs:
           pwd
           ls -l
 
-      - name: Run linter
-        run: task lint
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
 
       - name: Run unit tests
         run: go test -v ./...

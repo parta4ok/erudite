@@ -124,7 +124,6 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	}, nil
 }
 
-//nolint:funlen //use spaces for visual division of block code
 func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	slog.Info("StoreUser started")
 

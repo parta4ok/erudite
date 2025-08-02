@@ -357,7 +357,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 			questionsMap[question.ID()] = question
 		}
 		state := entities.NewActiveSessionState(questionsMap, activeSession,
-			time.Microsecond*time.Duration(duration_limit), entities.WithStartedAt(*createdAt))
+			time.Microsecond*time.Duration(duration_limit), entities.WithStartedAt(*createdAt)) //nolint:gosec,lll // ok
 		activeSession.ChangeState(state)
 
 		slog.Info("recoverSession completed")

@@ -145,3 +145,23 @@ func TestCommandFactory_NewAddUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }
+
+func TestCommandFactory_NewDeleteUserCimmand(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewDeleteUserCommand(context.TODO(), "test_user_id")
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
+}

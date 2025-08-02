@@ -50,6 +50,21 @@ func (mr *MockCommandFactoryMockRecorder) NewAddUserCommand(ctx, login, password
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAddUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewAddUserCommand), ctx, login, password, rights, contacts)
 }
 
+// NewDeleteUserCommand mocks base method.
+func (m *MockCommandFactory) NewDeleteUserCommand(ctx context.Context, userID string) (entities.Command, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewDeleteUserCommand", ctx, userID)
+	ret0, _ := ret[0].(entities.Command)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewDeleteUserCommand indicates an expected call of NewDeleteUserCommand.
+func (mr *MockCommandFactoryMockRecorder) NewDeleteUserCommand(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDeleteUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDeleteUserCommand), ctx, userID)
+}
+
 // NewIntrospectedCommand mocks base method.
 func (m *MockCommandFactory) NewIntrospectedCommand(ctx context.Context, jwt string) (entities.Command, error) {
 	m.ctrl.T.Helper()

@@ -8,6 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	_ entities.Command = (*SignInCommand)(nil)
+)
+
 type SignInCommand struct {
 	storage     Storage
 	jwtProvider JWTProvider

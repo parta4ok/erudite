@@ -89,3 +89,35 @@ func TestStorage_StoreUser(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, testUser, user)
 }
+
+func TestStorage_RemoveUser_Success(t *testing.T) {
+	db := makeDB(t)
+	defer db.Close()
+	ctx := context.TODO()
+
+	id := uuid.New().String()
+	user := &entities.User{
+		ID:           id,
+		Username:     uuid.New().String(),
+		PasswordHash: uuid.New().String(),
+		Rights:       []string{"read", "write"},
+		Contacts:     map[string]string{"phone": "1234567890"},
+	}
+
+	require.NoError(t, db.StoreUser(ctx, user))
+
+	require.NoError(t, db.RemoveUser(ctx, id))
+
+	usr, err := db.GetUserByID(ctx, id)
+	require.ErrorIs(t, err, entities.ErrNotFound)
+	require.Nil(t, usr)
+}
+
+func TestStorage_RemoveUser_NotFound(t *testing.T) {
+	db := makeDB(t)
+	defer db.Close()
+	ctx := context.TODO()
+
+	err := db.RemoveUser(ctx, "non-existent-id")
+	require.ErrorIs(t, err, entities.ErrNotFound)
+}

@@ -12,4 +12,5 @@ type Storage interface {
 	GetUserByUsername(ctx context.Context, userName string) (*entities.User, error)
 	StoreUser(ctx context.Context, user *entities.User) error
 	UpdateUser(ctx context.Context, user *entities.User) error
+	RemoveUser(ctx context.Context, userID string) error
 }

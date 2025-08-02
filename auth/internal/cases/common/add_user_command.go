@@ -9,6 +9,10 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/entities"
 )
 
+var (
+	_ entities.Command = (*AddUserCommand)(nil)
+)
+
 type AddUserCommand struct {
 	storage   Storage
 	hasher    Hasher

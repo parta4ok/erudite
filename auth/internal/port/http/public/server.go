@@ -3,7 +3,6 @@ package public
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -21,9 +20,10 @@ import (
 )
 
 const (
-	basePath    = "/auth/v1"
-	signinPath  = "/signin"
-	addUserPath = "/add-user"
+	basePath       = "/auth/v1"
+	signinPath     = "/signin"
+	addUserPath    = "/add-user"
+	deleteUserPath = "/delete-user"
 
 	right_admin = "admin"
 )
@@ -147,6 +147,9 @@ func (s *Server) registerRoutes() {
 
 	s.router.Post(basePath+signinPath, s.Signin)
 	s.router.Put(basePath+addUserPath, s.AddUser)
+	s.router.Route(basePath, func(r chi.Router) {
+		r.Delete(deleteUserPath+"/{user_id}", s.DeleteUser)
+	})
 }
 
 // Sign in user
@@ -230,6 +233,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 //
 // @Summary      Add new user
 // @Description  Add new user with selected credentials and other user info
+// @Tags         auth
 // @Accept       json
 // @Produce      json
 // @Security     ApiKeyAuth
@@ -248,66 +252,8 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("AddUser started")
 	resp.Header().Set("Content-Type", "application/json")
 
-	authHeader := req.Header.Get("Authorization")
-	if authHeader == "" {
-		err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	const prefix = "Bearer "
-	authorizationData := strings.Split(authHeader, prefix)
-	if len(authorizationData) != 2 {
-		err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	jwt := authorizationData[1]
-	introspectCommand, err := s.factory.NewIntrospectedCommand(req.Context(), jwt)
-	if err != nil {
-		err := errors.Wrap(err, "new inrospect failure")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	introspectResult, err := introspectCommand.Exec()
-	if err != nil {
-		err := errors.Wrap(err, "inrospection failure")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	if !introspectResult.Success {
-		err := errors.Wrap(entities.ErrForbidden, "operation forbidden")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	claims, ok := introspectResult.Payload.(*entities.UserClaims)
-	if !ok {
-		err := errors.Wrap(entities.ErrForbidden, "assertion of user claims failure")
-		slog.Error(err.Error())
-		s.errProcessing(resp, err)
-		return
-	}
-
-	fmt.Println("--- claims:", claims)
-
-	ctx := context.WithValue(req.Context(), accessor.UserClaims, &accessor.Claims{
-		Username: claims.Username,
-		Issuer:   claims.Issuer,
-		Subject:  claims.Subject,
-		Audience: claims.Audience,
-		Rights:   claims.Rights,
-	})
-
-	if err := s.checkUserRights(ctx, []string{right_admin}); err != nil {
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -367,6 +313,71 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Delete user by ID
+//
+// @Summary      Delete user
+// @Description  Delete existing user by ID. Requires admin rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        user_id path string true "User ID to delete"
+// @Success      204 "User successfully deleted"
+// @Failure      400 {object} dto.ErrorDTO "Invalid request parameters"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      404 {object} dto.ErrorDTO "User not found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/delete-user/{user_id} [delete]
+//
+//nolint:funlen //ok
+func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("DeleteUser started")
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	userID := chi.URLParam(req, "user_id")
+
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	deleteUserCommand, err := s.factory.NewDeleteUserCommand(req.Context(), userID)
+	if err != nil {
+		err := errors.Wrap(err, "new delete user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	deleteUserResult, err := deleteUserCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "delete user command failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !deleteUserResult.Success {
+		err := errors.Wrap(entities.ErrInternal, "add user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	stausCode := http.StatusInternalServerError
 	errDTO := dto.ErrorDTO{
@@ -394,7 +405,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	}
 
 	resp.WriteHeader(errDTO.StatusCode)
-	resp.Write(errDtoData) //nolint:errcheck //ok
+	resp.Write(errDtoData) //nolint:errcheck,gosec //ok
 }
 
 func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
@@ -415,6 +426,68 @@ func (s *Server) checkUserRights(ctx context.Context, requiredRights []string) e
 
 	if !hasEnoughRights {
 		err := errors.Wrap(entities.ErrForbidden, "user has not enough rights")
+		return err
+	}
+
+	return nil
+}
+
+func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Request,
+	rights []string) error {
+	authHeader := req.Header.Get("Authorization")
+	if authHeader == "" {
+		err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
+		slog.Error(err.Error())
+		return err
+	}
+
+	const prefix = "Bearer "
+	authorizationData := strings.Split(authHeader, prefix)
+	if len(authorizationData) != 2 {
+		err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
+		slog.Error(err.Error())
+		return err
+	}
+
+	jwt := authorizationData[1]
+	introspectCommand, err := s.factory.NewIntrospectedCommand(req.Context(), jwt)
+	if err != nil {
+		err := errors.Wrap(err, "new inrospect failure")
+		slog.Error(err.Error())
+		return err
+	}
+
+	introspectResult, err := introspectCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "inrospection failure")
+		slog.Error(err.Error())
+		return err
+	}
+
+	if !introspectResult.Success {
+		err := errors.Wrap(entities.ErrForbidden, "operation forbidden")
+		slog.Error(err.Error())
+		return err
+	}
+
+	claims, ok := introspectResult.Payload.(*entities.UserClaims)
+	if !ok {
+		err := errors.Wrap(entities.ErrForbidden, "assertion of user claims failure")
+		slog.Error(err.Error())
+		return err
+	}
+
+	ctx := context.WithValue(req.Context(), accessor.UserClaims, &accessor.Claims{
+		Username: claims.Username,
+		Issuer:   claims.Issuer,
+		Subject:  claims.Subject,
+		Audience: claims.Audience,
+		Rights:   claims.Rights,
+	})
+
+	if err := s.checkUserRights(ctx, rights); err != nil {
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
 		return err
 	}
 

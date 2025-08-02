@@ -27,6 +27,11 @@ jobs:
         run: |
           sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
+      - name: Show current dir and ls
+        run: |
+          pwd
+          ls -l
+
       - name: Run linter
         run: task lint
 

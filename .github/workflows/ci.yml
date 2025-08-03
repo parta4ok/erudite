@@ -37,11 +37,6 @@ jobs:
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
           sudo mv migrate /usr/local/bin/
 
-      - name: Show current dir and ls
-        run: |
-          pwd
-          ls -l
-
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:

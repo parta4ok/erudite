@@ -4,12 +4,14 @@ on:
   pull_request:
     branches:
       - main
-      - develop
 
 jobs:
   ci:
     name: Validate Pull Request
     runs-on: ubuntu-latest
+
+    env:
+      TEST_PG_CONN: postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable
 
     steps:
       - name: Checkout code
@@ -19,25 +21,31 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0
-#       - name: Install Task
-#         run: |
-#           sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
-#       - name: Show current dir and ls
-#         run: |
-#           pwd
-#           ls -l
+      - name: Install Task
+        run: |
+          sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
-#       - name: Run linter
-#         run: task lint
+      - name: Install docker-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
 
-#       - name: Run unit tests
-#         run: go test -v ./...
+      - name: Install migrate
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/
 
-#       - name: Run L1 tests
-#         run: task l1_test
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.3.0
 
-#       - name: Run L2 tests
-#         run: task l2_test
+      - name: Run unit tests
+        run: go test -v ./...
+
+      - name: Run L1 tests
+        run: task l1_test
+
+      - name: Run L2 tests
+        run: task l2_test

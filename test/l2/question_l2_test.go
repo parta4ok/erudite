@@ -62,7 +62,10 @@ func Test_Topics_Unauthorized(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
@@ -179,7 +182,10 @@ func TestCompleteSession(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err = client.Do(req)
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -262,7 +268,10 @@ func TestCompleteSessionTwiceFailure(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err = client.Do(req)
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -297,10 +306,17 @@ func TestCompleteSessionTwiceFailure(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
 }
 
+func TestUserDeletion(t *testing.T) {
+	adminJWT := getJwt(t)
+	userID, _ := createUser(t, adminJWT, "Student")
+
+	deleteUser(t, adminJWT, userID)
+}
+
 func TestErrorCases(t *testing.T) {
-	t.Skip()
 	client := &http.Client{Timeout: timeout}
 
+	jwt := getJwt(t)
 	// start session with not existings topics
 	t.Run("NonExistentTopics", func(t *testing.T) {
 		requestBody := map[string]interface{}{
@@ -309,9 +325,21 @@ func TestErrorCases(t *testing.T) {
 		jsonBody, err := json.Marshal(requestBody)
 		require.NoError(t, err)
 
-		resp, err := client.Post(baseURL+"/1234/start_session", "application/json", bytes.NewBuffer(jsonBody))
+		userID, studentJWT := createUser(t, jwt, "Student")
+
+		url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+
+		defer func() {
+			err = resp.Body.Close()
+			require.NoError(t, err)
+		}()
 
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
@@ -320,9 +348,20 @@ func TestErrorCases(t *testing.T) {
 	t.Run("InvalidRequestFormat", func(t *testing.T) {
 		invalidJSON := `{"topics": "not an array"}`
 
-		resp, err := client.Post(baseURL+"/123/start_session", "application/json", bytes.NewReader([]byte(invalidJSON)))
+		userID, studentJWT := createUser(t, jwt, "Student")
+		url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(invalidJSON)))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+
+		defer func() {
+			err = resp.Body.Close()
+			require.NoError(t, err)
+		}()
 
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
@@ -337,22 +376,31 @@ func TestErrorCases(t *testing.T) {
 				},
 			},
 		}
-		jsonBody, _ := json.Marshal(requestBody)
-
-		userID := fmt.Sprintf("%d", time.Now().UnixMilli())
-		sessionID := fmt.Sprintf("%d", time.Now().UnixMilli())
-		urlSuff := fmt.Sprintf("%s/%s/complete_session", userID, sessionID)
-
-		resp, err := client.Post(baseURL+urlSuff, "application/json", bytes.NewBuffer(jsonBody))
+		jsonBody, err := json.Marshal(requestBody)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		userID, studentJWT := createUser(t, jwt, "Student")
+		sessionID := fmt.Sprintf("%d", time.Now().UnixMilli())
+
+		url := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, userID, sessionID)
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader([]byte(jsonBody)))
+		require.NoError(t, err)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+
+		defer func() {
+			err = resp.Body.Close()
+			require.NoError(t, err)
+		}()
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 }
 
 func TestConcurrentRequests(t *testing.T) {
-	t.Skip()
 	client := &http.Client{Timeout: timeout}
+	jwt := getJwt(t)
 
 	t.Run("ConcurrentTopicsRequests", func(t *testing.T) {
 		const numRequests = 10
@@ -360,12 +408,21 @@ func TestConcurrentRequests(t *testing.T) {
 
 		for i := 0; i < numRequests; i++ {
 			go func() {
-				resp, err := client.Get(baseURL + "/topics")
+				req, err := http.NewRequest(http.MethodGet, baseURL+"/topics", nil)
+				require.NoError(t, err)
+				req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+				req.Header.Add("Content-Type", "application/json")
+
+				resp, err := client.Do(req)
+				require.NoError(t, err)
 				if err != nil {
 					results <- err
 					return
 				}
-				defer resp.Body.Close()
+				defer func() {
+					err = resp.Body.Close()
+					require.NoError(t, err)
+				}()
 
 				if resp.StatusCode != http.StatusOK {
 					results <- fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -489,7 +546,10 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
 
 	require.NoError(t, err)
 	require.Equal(t, http.StatusCreated, resp.StatusCode)
@@ -506,4 +566,24 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 	require.NotEqual(t, "", AddUserRespDTO.UserID)
 
 	return AddUserRespDTO.UserID, getNewUserJwt(t, bodyDTO.Username, bodyDTO.Password)
+}
+
+func deleteUser(t *testing.T, adminJWT string, userID string) {
+	t.Helper()
+
+	client := &http.Client{Timeout: timeout}
+
+	req, err := http.NewRequest(http.MethodDelete, "http://localhost:8090/auth/v1/delete-user/"+userID, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
+
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 }

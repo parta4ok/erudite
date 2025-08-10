@@ -1,0 +1,6 @@
+notificationhub:
+    notifiers:
+        email:
+            box: notifier-nv@mail.ru
+            smtp: smtp.mail.ru
+            port: 587

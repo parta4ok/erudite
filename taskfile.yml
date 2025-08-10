@@ -59,6 +59,12 @@ tasks:
     desc: Run all services containers with force rebuild and clean start
     cmds:
       - docker-compose --profile services down -v
+      - docker-compose --profile services up -d --force-recreate
+      - task: postgres:migrate:up
+  services:rebuild:
+    desc: Rebuild and run all services containers
+    cmds:
+      - docker-compose --profile services down -v
       - docker-compose --profile services up -d --build --force-recreate
       - task: postgres:migrate:up
 

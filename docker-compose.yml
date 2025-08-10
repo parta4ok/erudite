@@ -1,58 +1,102 @@
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: knowledge
-    ports:
-      - "5432:5432"
-    networks:
-      - service_network
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres -d knowledge" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    profiles:
-      - services
-      - l1
-      - l2
-  question_app:
-    container_name: queston_app
-    build:
-      context: .
-      dockerfile: question/dockerfile
-    restart: always
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - service_network
-    profiles:
-      - services
-      - l2
-  auth_app:
-    container_name: auth_app
-    build:
-      context: .
-      dockerfile: auth/dockerfile
-    restart: always
-    ports:
-      - "8091:8091"
-      - "8090:8090"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - service_network
-    profiles:
-      - services
-      - l2
+    postgres:
+        image: postgres:16
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: knowledge
+        ports:
+            - "5432:5432"
+        networks:
+            - service_network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d knowledge"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        profiles:
+            - services
+            - l1
+            - l2
 
+    nats:
+        image: nats:2.11.7
+        container_name: nats
+        command: ["-js", "-sd", "/data"]
+        restart: always
+        ports:
+            - "4222:4222"
+        networks:
+            - service_network
+        healthcheck:
+            test: ["CMD", "/nats-server", "--healthz"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        profiles:
+            - services
+            - l1
+            - l2
+
+    nats-migrations:
+        container_name: nats_migrations
+        build:
+            context: .
+            dockerfile: toolkit/nats/migrations/dockerfile
+        depends_on:
+            nats:
+                condition: service_healthy
+        environment:
+            NATS_URL: nats://nats:4222
+            MIGRATION_MODE: up
+            LOG_LEVEL: info
+        networks:
+        - service_network
+        restart: "no"
+        profiles:
+        - services
+        - l1
+        - l2
+
+    question_app:
+        container_name: queston_app
+        build:
+            context: .
+            dockerfile: question/dockerfile
+        restart: always
+        ports:
+            - "8080:8080"
+        depends_on:
+            postgres:
+                condition: service_healthy
+            nats:
+                condition: service_healthy
+            nats-migrations:
+                condition: service_completed_successfully
+        networks:
+            - service_network
+        profiles:
+            - services
+            - l2
+
+    auth_app:
+        container_name: auth_app
+        build:
+            context: .
+            dockerfile: auth/dockerfile
+        restart: always
+        ports:
+            - "8091:8091"
+            - "8090:8090"
+        depends_on:
+            postgres:
+                condition: service_healthy
+        networks:
+            - service_network
+        profiles:
+            - services
+            - l2
 
 networks:
-  service_network:
-    driver: bridge
+    service_network:
+        driver: bridge

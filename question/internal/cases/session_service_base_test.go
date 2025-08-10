@@ -15,7 +15,7 @@ import (
 	entitiesTestdata "github.com/parta4ok/kvs/question/internal/entities/testdata"
 )
 
-func TestNewSessionService_Success(t *testing.T) {
+func TestNewSessionServiceBase_Success(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -25,13 +25,13 @@ func TestNewSessionService_Success(t *testing.T) {
 	sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
 	generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 
-	service, err := cases.NewSessionService(storage, sessionStorage, generator)
+	service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 
 	require.NoError(t, err)
 	require.NotNil(t, service)
 }
 
-func TestNewSessionService_WithCustomDuration(t *testing.T) {
+func TestNewSessionServiceBase_WithCustomDuration(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -42,14 +42,14 @@ func TestNewSessionService_WithCustomDuration(t *testing.T) {
 	generator := entitiesTestdata.NewMockIDGenerator(ctrl)
 	customDuration := time.Minute * 15
 
-	service, err := cases.NewSessionService(storage, sessionStorage, generator,
+	service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator,
 		cases.WithCustomSessionDuration(customDuration))
 
 	require.NoError(t, err)
 	require.NotNil(t, service)
 }
 
-func TestNewSessionService_ValidationErrors(t *testing.T) {
+func TestNewSessionServiceBase_ValidationErrors(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -94,7 +94,7 @@ func TestNewSessionService_ValidationErrors(t *testing.T) {
 
 			storage, sessionStorage, generator := tc.setupMocks()
 
-			service, err := cases.NewSessionService(storage, sessionStorage, generator)
+			service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 
 			require.Error(t, err)
 			require.Nil(t, service)
@@ -103,7 +103,7 @@ func TestNewSessionService_ValidationErrors(t *testing.T) {
 	}
 }
 
-func TestSessionService_ShowTopics(t *testing.T) {
+func TestSessionServiceBase_ShowTopics(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -155,7 +155,7 @@ func TestSessionService_ShowTopics(t *testing.T) {
 
 			storage, sessionStorage, generator := tc.setupMocks()
 
-			service, err := cases.NewSessionService(storage, sessionStorage, generator)
+			service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 			require.NoError(t, err)
 
 			ctx := context.Background()
@@ -173,7 +173,7 @@ func TestSessionService_ShowTopics(t *testing.T) {
 	}
 }
 
-func TestSessionService_CreateSession(t *testing.T) {
+func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 	t.Parallel()
 
@@ -361,7 +361,7 @@ func TestSessionService_CreateSession(t *testing.T) {
 
 			storage, sessionStorage, generator := tc.setupMocks()
 
-			service, err := cases.NewSessionService(storage, sessionStorage, generator)
+			service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 			require.NoError(t, err)
 
 			ctx := context.Background()
@@ -382,7 +382,7 @@ func TestSessionService_CreateSession(t *testing.T) {
 	}
 }
 
-func TestSessionService_CompleteSession(t *testing.T) {
+func TestSessionServiceBase_CompleteSession(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -532,7 +532,7 @@ func TestSessionService_CompleteSession(t *testing.T) {
 
 			storage, sessionStorage, generator := tc.setupMocks()
 
-			service, err := cases.NewSessionService(storage, sessionStorage, generator)
+			service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 			require.NoError(t, err)
 
 			ctx := context.Background()

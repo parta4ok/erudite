@@ -49,7 +49,7 @@ func (app *App) Start() {
 	authClient := app.initAuthServiceClient(cfg)
 	accessor := app.initAccessor(cfg)
 
-	service := app.initSessionService(storage, sessionStorage, generator)
+	service := app.initSessionServiceBase(storage, sessionStorage, generator)
 	server := app.initPublicPort(cfg, service, authClient, accessor)
 	app.publicServer = server
 
@@ -149,13 +149,14 @@ func (app *App) initGenerator() entities.IDGenerator {
 	return gen
 }
 
-func (app *App) initSessionService(storage cases.Storage, sessionStorage entities.SessionStorage,
-	generator entities.IDGenerator) *cases.SessionService {
+func (app *App) initSessionServiceBase(storage cases.Storage,
+	sessionStorage entities.SessionStorage,
+	generator entities.IDGenerator) *cases.SessionServiceBase {
 	slog.Info("init session_service started")
 
-	serv, err := cases.NewSessionService(storage, sessionStorage, generator)
+	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 	if err != nil {
-		err := errors.Wrap(err, "NewSessionService")
+		err := errors.Wrap(err, "NewSessionServiceBase")
 		app.panic(err)
 	}
 
@@ -184,7 +185,7 @@ func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
 	return authClient
 }
 
-func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service,
+func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase public.Service,
 	authClient public.Introspector, accessor public.Accessor) *public.Server {
 	slog.Info("init public port started")
 
@@ -192,7 +193,7 @@ func (app *App) initPublicPort(cfg *config.Config, sessionService public.Service
 	timeout := cfg.GetPublicTimeout()
 
 	server, err := public.New(
-		public.WithService(sessionService),
+		public.WithService(sessionServiceBase),
 		public.WithIntrospector(authClient),
 		public.WithConfig(&public.ServerCfg{
 			Port:    port,

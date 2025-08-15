@@ -12,7 +12,7 @@ jobs:
 
         env:
             TEST_PG_CONN: postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable
-            TEST_NATS_CONN: nats://nats:4222
+            TEST_NATS_CONN: nats://localhost:4222
 
         steps:
             - name: Checkout code

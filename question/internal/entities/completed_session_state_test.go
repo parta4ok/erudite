@@ -108,7 +108,8 @@ func TestCompletedSessionState_GetSessionResult_Success(t *testing.T) {
 	mockQuestion := testdata.NewMockQuestion(ctrl)
 	mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 	mockQuestion.EXPECT().IsAnswerCorrect(gomock.Any()).Return(true).Times(1)
-
+	mockQuestion.EXPECT().Subject().Return("Q1?").Times(2)
+	mockQuestion.EXPECT().Variants().Return([]string{"correct", "incorrect"})
 	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)
 
@@ -136,6 +137,8 @@ func TestCompletedSessionState_GetSessionResult_Failure(t *testing.T) {
 	mockQuestion := testdata.NewMockQuestion(ctrl)
 	mockQuestion.EXPECT().ID().Return("1").AnyTimes()
 	mockQuestion.EXPECT().IsAnswerCorrect(gomock.Any()).Return(false).Times(1)
+	mockQuestion.EXPECT().Subject().Return("q1").Times(2)
+	mockQuestion.EXPECT().Variants().Return([]string{"correct", "wrong"})
 
 	questions := map[string]entities.Question{"1": mockQuestion}
 	holder := testdata.NewMockStateHolder(ctrl)

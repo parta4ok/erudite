@@ -45,7 +45,7 @@ func NewSession(userID string, topics []string, generator IDGenerator,
 		return nil, errors.Wrap(ErrInvalidParam, "id generator not set")
 	}
 
-	if sessionStorage == nil{
+	if sessionStorage == nil {
 		return nil, errors.Wrap(ErrInvalidParam, "session storage not set")
 	}
 
@@ -80,8 +80,13 @@ func NewSessionWithCustomState(sessionID string, userID string, topics []string,
 }
 
 type SessionResult struct {
-	IsSuccess bool
-	Grade     string
+	UserID      string
+	Topics      []string
+	Questions   map[string][]string
+	UserAnswers map[string][]string
+	IsExpire    bool
+	IsSuccess   bool
+	Grade       string
 }
 
 func (s *Session) GetSesionID() string {

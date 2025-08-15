@@ -1,118 +1,140 @@
 version: "3"
 
 tasks:
-  lint:
-    cmds:
-      - golangci-lint run -c ./.golangci.yml ./...
-  grpc:generate:
-    desc: Generate grpc files
-    cmds:
-      - protoc --go_out=. --go-grpc_out=. ./api/grpc/v1/auth.proto
-  postgres:up:
-    desc: Run Postgres service
-    cmds:
-      - docker-compose up -d postgres
+    lint:
+        cmds:
+            - golangci-lint run -c ./.golangci.yml ./...
+    grpc:generate:
+        desc: Generate grpc files
+        cmds:
+            - protoc --go_out=. --go-grpc_out=. ./api/grpc/v1/auth.proto
+    postgres:up:
+        desc: Run Postgres service
+        cmds:
+            - docker-compose up -d postgres
 
-  postgres:restart:
-    desc: Restart Postgres service
-    cmds:
-      - docker-compose restart postgres
+    postgres:restart:
+        desc: Restart Postgres service
+        cmds:
+            - docker-compose restart postgres
 
-  postgres:stop:
-    desc: Stop Postgres service
-    cmds:
-      - docker-compose stop postgres
+    postgres:stop:
+        desc: Stop Postgres service
+        cmds:
+            - docker-compose stop postgres
 
-  postgres:migrate:up:
-    desc: Apply all up migrations to Postgres
-    cmds:
-      - task: postgres:migrate:question:up
-      - task: postgres:migrate:auth:up
+    postgres:migrate:up:
+        desc: Apply all up migrations to Postgres
+        cmds:
+            - task: postgres:migrate:question:up
+            - task: postgres:migrate:auth:up
 
-  postgres:migrate:down:
-    desc: Revert all migrations (down) on Postgres
-    cmds:
-      - task: postgres:migrate:auth:down
-      - task: postgres:migrate:question:down
+    postgres:migrate:down:
+        desc: Revert all migrations (down) on Postgres
+        cmds:
+            - task: postgres:migrate:auth:down
+            - task: postgres:migrate:question:down
 
-  postgres:migrate:question:up:
-    desc: Apply all up migrations of question to Postgres
-    cmds:
-      - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" up
-    silent: true
-  postgres:migrate:question:down:
-    desc: Revert all migrations (down) of question on Postgres
-    cmds:
-      - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" down
-    silent: true
-  postgres:migrate:auth:up:
-    desc: Apply all up migrations of auth to Postgres
-    cmds:
-      - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" up
-    silent: true
-  postgres:migrate:auth:down:
-    desc: Revert all migrations (down) of auth on Postgres
-    cmds:
-      - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" down
-    silent: true
-  services:up:
-    desc: Run all services containers with force rebuild and clean start
-    cmds:
-      - docker-compose --profile services down -v
-      - docker-compose --profile services up -d --force-recreate
-      - task: postgres:migrate:up
-  services:rebuild:
-    desc: Rebuild and run all services containers
-    cmds:
-      - docker-compose --profile services down -v
-      - docker-compose --profile services up -d --build --force-recreate
-      - task: postgres:migrate:up
+    postgres:migrate:question:up:
+        desc: Apply all up migrations of question to Postgres
+        cmds:
+            - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" up
+        silent: true
+    postgres:migrate:question:down:
+        desc: Revert all migrations (down) of question on Postgres
+        cmds:
+            - migrate -path question/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=kvs_migrations" down
+        silent: true
+    postgres:migrate:auth:up:
+        desc: Apply all up migrations of auth to Postgres
+        cmds:
+            - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" up
+        silent: true
+    postgres:migrate:auth:down:
+        desc: Revert all migrations (down) of auth on Postgres
+        cmds:
+            - migrate -path auth/deploy/migrations/postgres -database "postgresql://postgres:password@localhost:5432/knowledge?sslmode=disable&x-migrations-table=auth_migrations" down
+        silent: true
 
-  services:down:
-    desc: Stop and remove all services containers with volumes
-    cmds:
-      - docker-compose --profile services down -v
+    nats:up:
+        desc: Run NATS service
+        cmds:
+            - docker-compose up -d nats
+    nats:restart:
+        desc: Restart NATS service
+        cmds:
+            - docker-compose restart nats
+    nats:stop:
+        desc: Stop NATS service
+        cmds:
+            - docker-compose stop nats
 
-  l1_test:
-    desc: Run L1 test with container infrastructure
-    cmds:
-      - task: postgres:up
-      - cmd: sleep 1
-      - task: postgres:migrate:up
-      - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
-      - task: postgres:stop
-  l2_test:
-    desc: Run L2 integration tests with service and container infrastructure
-    cmds:
-      - task: services:up
-      - cmd: sleep 2
-      - task: postgres:migrate:up
-      - cmd: go test -v -tags=KVS_TEST_L2 ./test/l2/...
-      - task: services:down
-  swag_gen:
-    desc: Generate swagger specification (JSON only)
-    cmds:
-      - task: swag_gen_question
-      - task: swag_gen_auth
-  run_question_local:
-    desc: Run question service locally with local config
-    cmds:
-      - KVS_CONFIG_PATH=./deployment/question.yaml go run ./question/cmd/question_service/main.go
-  run_auth_local:
-    desc: Run auth service locally with local config
-    cmds:
-      - AUTH_CONFIG_PATH=./deployment/auth.yaml go run ./auth/cmd/app/main.go
+    nats:migrate:up:
+        desc: Apply all up migrations to NATS
+        cmds:
+            - docker-compose up -d nats-migrations
 
-  swag_gen_question:
-    desc: Generate swagger specification for question service
-    cmds:
-      - cd question && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
-      - mkdir -p api/http/v1/question
-      - cp question/docs/swagger.json api/http/v1/question/swagger.json
+    services:up:
+        desc: Run all services containers with force rebuild and clean start
+        cmds:
+            - docker-compose --profile services down -v
+            - docker-compose --profile services up -d --force-recreate
+            - task: postgres:migrate:up
+    services:rebuild:
+        desc: Rebuild and run all services containers
+        cmds:
+            - docker-compose --profile services down -v
+            - docker-compose --profile services up -d --build --force-recreate
+            - task: postgres:migrate:up
 
-  swag_gen_auth:
-    desc: Generate swagger specification for auth service
-    cmds:
-      - cd auth && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
-      - mkdir -p api/http/v1/auth
-      - cp auth/docs/swagger.json api/http/v1/auth/swagger.json
+    services:down:
+        desc: Stop and remove all services containers with volumes
+        cmds:
+            - docker-compose --profile services down -v
+
+    l1_test:
+        desc: Run L1 test with container infrastructure
+        cmds:
+            - task: nats:up
+            - task: nats:migrate:up
+            - task: postgres:up
+            - cmd: sleep 1
+            - task: postgres:migrate:up
+            - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
+            - task: postgres:stop
+            - task: nats:stop
+    l2_test:
+        desc: Run L2 integration tests with service and container infrastructure
+        cmds:
+            - task: services:up
+            - cmd: sleep 2
+            - task: postgres:migrate:up
+            - cmd: go test -v -tags=KVS_TEST_L2 ./test/l2/...
+            - task: services:down
+    swag_gen:
+        desc: Generate swagger specification (JSON only)
+        cmds:
+            - task: swag_gen_question
+            - task: swag_gen_auth
+    run_question_local:
+        desc: Run question service locally with local config
+        cmds:
+            - KVS_CONFIG_PATH=./deployment/question.yaml go run ./question/cmd/question_service/main.go
+    run_auth_local:
+        desc: Run auth service locally with local config
+        cmds:
+            - AUTH_CONFIG_PATH=./deployment/auth.yaml go run ./auth/cmd/app/main.go
+
+    swag_gen_question:
+        desc: Generate swagger specification for question service
+        cmds:
+            - cd question && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+            - mkdir -p api/http/v1/question
+            - cp question/docs/swagger.json api/http/v1/question/swagger.json
+
+    swag_gen_auth:
+        desc: Generate swagger specification for auth service
+        cmds:
+            - cd auth && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+            - mkdir -p api/http/v1/auth
+            - cp auth/docs/swagger.json api/http/v1/auth/swagger.json

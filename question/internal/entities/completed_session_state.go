@@ -81,9 +81,23 @@ func (state *CompletedSessionState) processingResult() (*SessionResult, error) {
 	percent := float64(countOfCorrectUserAnswers) / float64(len(state.questions)) * 100
 	usersCorrectAnswersPercent := fmt.Sprintf("%.2f percents", percent)
 
+	var answers = make(map[string][]string, len(state.answers))
+	for _, answer := range state.answers {
+		answers[state.questions[answer.questionID].Subject()] = answer.answer
+	}
+
+	questions := make(map[string][]string, len(state.answers))
+
+	for _, question := range state.questions {
+		questions[question.Subject()] = question.Variants()
+	}
+
 	return &SessionResult{
-		IsSuccess: percent >= DefaultBorderResult,
-		Grade:     usersCorrectAnswersPercent,
+		Questions:   questions,
+		UserAnswers: answers,
+		IsExpire:    state.isExpired,
+		IsSuccess:   percent >= DefaultBorderResult,
+		Grade:       usersCorrectAnswersPercent,
 	}, nil
 }
 

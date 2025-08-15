@@ -426,6 +426,8 @@ func TestSessionServiceBase_CompleteSession(t *testing.T) {
 			expectedResult: &entities.SessionResult{
 				IsSuccess: true,
 				Grade:     "100%",
+				UserID:    "1",
+				Topics:    []string{"Go"},
 			},
 			expectedError: "",
 		},

@@ -9,7 +9,7 @@ import (
 type SessionResult struct {
 	userID     string
 	Topics     []string
-	Questions  map[int]string
+	Questions  map[string][]string
 	UserAnswer map[string][]string
 	IsExpire   bool
 	IsSuccess  bool
@@ -19,7 +19,7 @@ type SessionResult struct {
 func NewSessionResult(
 	userID string,
 	topics []string,
-	questions map[int]string,
+	questions map[string][]string,
 	answers map[string][]string,
 	isExpire, isSuccess bool,
 	resume string,

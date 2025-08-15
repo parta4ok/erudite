@@ -14,7 +14,7 @@ func TestNewSessionResult(t *testing.T) {
 		name      string
 		userID    string
 		topics    []string
-		questions map[int]string
+		questions map[string][]string
 		answers   map[string][]string
 		isExpire  bool
 		isSuccess bool
@@ -26,9 +26,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "valid session result",
 			userID: "user123",
 			topics: []string{"math", "physics"},
-			questions: map[int]string{
-				1: "What is 2+2?",
-				2: "What is gravity?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"4"},
@@ -43,8 +43,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "valid session result with single topic",
 			userID: "user456",
 			topics: []string{"chemistry"},
-			questions: map[int]string{
-				1: "What is H2O?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"water"},
@@ -58,8 +59,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "empty userID",
 			userID: "",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"4"},
@@ -77,8 +79,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "whitespace only userID",
 			userID: "   ",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"4"},
@@ -93,10 +96,12 @@ func TestNewSessionResult(t *testing.T) {
 			},
 		},
 		{
-			name:      "empty topics",
-			userID:    "user123",
-			topics:    []string{},
-			questions: map[int]string{1: "Question"},
+			name:   "empty topics",
+			userID: "user123",
+			topics: []string{},
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"}},
 			answers:   map[string][]string{"1": {"answer"}},
 			isExpire:  false,
 			isSuccess: true,
@@ -108,10 +113,13 @@ func TestNewSessionResult(t *testing.T) {
 			},
 		},
 		{
-			name:      "nil topics",
-			userID:    "user123",
-			topics:    nil,
-			questions: map[int]string{1: "Question"},
+			name:   "nil topics",
+			userID: "user123",
+			topics: nil,
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
+			},
 			answers:   map[string][]string{"1": {"answer"}},
 			isExpire:  false,
 			isSuccess: true,
@@ -126,7 +134,7 @@ func TestNewSessionResult(t *testing.T) {
 			name:      "empty questions",
 			userID:    "user123",
 			topics:    []string{"math"},
-			questions: map[int]string{},
+			questions: map[string][]string{},
 			answers:   map[string][]string{"1": {"answer"}},
 			isExpire:  false,
 			isSuccess: true,
@@ -156,8 +164,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "empty answers",
 			userID: "user123",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers:   map[string][]string{},
 			isExpire:  false,
@@ -173,8 +182,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "nil answers",
 			userID: "user123",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers:   nil,
 			isExpire:  false,
@@ -190,8 +200,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "empty resume",
 			userID: "user123",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"4"},
@@ -209,8 +220,9 @@ func TestNewSessionResult(t *testing.T) {
 			name:   "whitespace only resume",
 			userID: "user123",
 			topics: []string{"math"},
-			questions: map[int]string{
-				1: "What is 2+2?",
+			questions: map[string][]string{
+				"q1": []string{"1", "2"},
+				"q2": []string{"1", "2"},
 			},
 			answers: map[string][]string{
 				"1": {"4"},
@@ -301,7 +313,10 @@ func TestSessionResult_GetUserID(t *testing.T) {
 			sessionResult, err := entities.NewSessionResult(
 				tt.userID,
 				[]string{"math"},
-				map[int]string{1: "What is 2+2?"},
+				map[string][]string{
+					"q1": []string{"1", "2"},
+					"q2": []string{"1", "2"},
+				},
 				map[string][]string{"1": {"4"}},
 				false,
 				true,

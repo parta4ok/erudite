@@ -84,3 +84,15 @@ func (cfg *Config) GetPublicTimeout() time.Duration {
 func (cfg *Config) GetAuthConn() string {
 	return cfg.viper.GetString("auth_service.address")
 }
+
+func (cfg *Config) GetEventTimeout() time.Duration {
+	return cfg.viper.GetDuration("nats.event_timeout")
+}
+
+func (cfg *Config) GetNatsURL() string {
+	return cfg.viper.GetString("nats.url")
+}
+
+func (cfg *Config) GetNatsSubject() string {
+	return cfg.viper.GetString("nats.subject")
+}

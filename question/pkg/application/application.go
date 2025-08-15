@@ -13,11 +13,13 @@ import (
 	"github.com/parta4ok/kvs/question/internal/adapter/config"
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
 	authservice "github.com/parta4ok/kvs/question/internal/adapter/introspector/auth_service"
+	"github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/pkg/errors"
 )
 
@@ -50,7 +52,11 @@ func (app *App) Start() {
 	accessor := app.initAccessor(cfg)
 
 	service := app.initSessionServiceBase(storage, sessionStorage, generator)
-	server := app.initPublicPort(cfg, service, authClient, accessor)
+	broker := app.initBroker(cfg)
+
+	wrappedService := app.initWrappedSessionService(cfg, service, broker)
+
+	server := app.initPublicPort(cfg, wrappedService, authClient, accessor)
 	app.publicServer = server
 
 	app.startWithGracefulShutdown()
@@ -101,6 +107,23 @@ func parseLogLevel(levelStr string) slog.Level {
 	}
 }
 
+func (app *App) initBroker(cfg *config.Config) cases.MessageBroker {
+	slog.Info("init broker started")
+
+	var broker cases.MessageBroker
+	subject := cfg.GetNatsSubject()
+
+	pub := app.initNatsPub(cfg)
+	nats, err := nats.NewPublisher(pub, subject)
+	if err != nil {
+		app.panic(err)
+	}
+
+	broker = nats
+
+	return broker
+}
+
 func (app *App) initStorage(cfg *config.Config) (cases.Storage, entities.SessionStorage) {
 	slog.Info("init storage started")
 
@@ -149,10 +172,24 @@ func (app *App) initGenerator() entities.IDGenerator {
 	return gen
 }
 
+func (app *App) initNatsPub(cfg *config.Config) *publisher.Publisher {
+	slog.Info("init nats publisher started")
+
+	natsUrl := cfg.GetNatsURL()
+	pub, err := publisher.NewPublisher(natsUrl)
+	if err != nil {
+		app.panic(err)
+	}
+
+	return pub
+}
+
 func (app *App) initSessionServiceBase(storage cases.Storage,
 	sessionStorage entities.SessionStorage,
-	generator entities.IDGenerator) *cases.SessionServiceBase {
+	generator entities.IDGenerator) cases.SessionService {
 	slog.Info("init session_service started")
+
+	var sessionService cases.SessionService
 
 	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
 	if err != nil {
@@ -160,7 +197,26 @@ func (app *App) initSessionServiceBase(storage cases.Storage,
 		app.panic(err)
 	}
 
-	return serv
+	sessionService = serv
+
+	return sessionService
+}
+
+func (app *App) initWrappedSessionService(cfg *config.Config, service cases.SessionService,
+	broker cases.MessageBroker) cases.SessionService {
+	slog.Info("init wrapped_session_service started")
+	var wrappedService cases.SessionService
+
+	brokerEventTimeOut := cfg.GetEventTimeout()
+	srv, err := cases.NewSessionServiceBusDecorator(service, broker,
+		cases.WithCustomEventTimeout(brokerEventTimeOut))
+	if err != nil {
+		app.panic(err)
+	}
+
+	wrappedService = srv
+
+	return wrappedService
 }
 
 func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
@@ -185,7 +241,7 @@ func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
 	return authClient
 }
 
-func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase public.Service,
+func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase cases.SessionService,
 	authClient public.Introspector, accessor public.Accessor) *public.Server {
 	slog.Info("init public port started")
 

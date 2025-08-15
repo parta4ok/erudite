@@ -68,7 +68,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.Use
 	slog.Info("Get user by userID started")
 
 	params := []interface{}{userID}
-	query := `SELECT uid, name, password_hash, rights, contacts FROM 
+	query := `SELECT uid, name, password_hash, rights, contacts FROM
 	auth.users where uid = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -79,7 +79,7 @@ func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*enti
 	slog.Info("Get user by name started")
 
 	params := []interface{}{userName}
-	query := `SELECT uid, name, password_hash, rights, contacts FROM 
+	query := `SELECT uid, name, password_hash, rights, contacts FROM
 	auth.users where name = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))

@@ -147,6 +147,9 @@ func (srv *SessionServiceBase) CompleteSession(
 		return nil, errors.Wrap(err, "StoreSession")
 	}
 
+	sessionResult.UserID = session.GetUserID()
+	sessionResult.Topics = session.GetTopics()
+
 	return sessionResult, nil
 }
 

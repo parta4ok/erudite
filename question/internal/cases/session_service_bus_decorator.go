@@ -9,15 +9,34 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	timeoutEventDefault = 5 * time.Second
+)
+
+type SessionDecoratorOptions func(*SessionServiceBusDecorator)
+
+func WithCustomEventTimeout(timeout time.Duration) SessionDecoratorOptions {
+	return func(service *SessionServiceBusDecorator) {
+		service.timeoutEvent = timeout
+	}
+}
+
+func (service *SessionServiceBusDecorator) setOptions(options ...SessionDecoratorOptions) {
+	for _, option := range options {
+		option(service)
+	}
+}
+
 // SessionServiceBusDecorator is a decorator for SessionService that adds message broker
 // functionality.
 type SessionServiceBusDecorator struct {
 	sessionService SessionService
 	messageBroker  MessageBroker
+	timeoutEvent   time.Duration
 }
 
-func NewSessionServiceBusDecorator(sessionService SessionService, messageBroker MessageBroker) (
-	*SessionServiceBusDecorator, error) {
+func NewSessionServiceBusDecorator(sessionService SessionService, messageBroker MessageBroker,
+	opts ...SessionDecoratorOptions) (*SessionServiceBusDecorator, error) {
 	if sessionService == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "base session service not set")
 	}
@@ -25,10 +44,15 @@ func NewSessionServiceBusDecorator(sessionService SessionService, messageBroker 
 		return nil, errors.Wrap(entities.ErrInvalidParam, "message broker not set")
 	}
 
-	return &SessionServiceBusDecorator{
+	service := &SessionServiceBusDecorator{
 		sessionService: sessionService,
 		messageBroker:  messageBroker,
-	}, nil
+		timeoutEvent:   timeoutEventDefault,
+	}
+
+	service.setOptions(opts...)
+
+	return service, nil
 }
 
 func (service *SessionServiceBusDecorator) CompleteSession(ctx context.Context, sessionID string,
@@ -43,14 +67,13 @@ func (service *SessionServiceBusDecorator) CompleteSession(ctx context.Context, 
 	}
 
 	go func() {
-		msgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		msgCtx, cancel := context.WithTimeout(context.Background(), timeoutEventDefault)
 		defer cancel()
 
 		if err := service.messageBroker.SessionFinishedEvent(msgCtx, sessionResult); err != nil {
 			err = errors.Wrap(err, "SessionFinishedEvent in SessionServiceBusDecorator")
 			slog.Warn("Failed to send session finished event",
-				"session_id", sessionID,
-				"error", err)
+				"session_id", sessionID, "error", err)
 		}
 	}()
 

@@ -1,18 +1,22 @@
 kvs:
-  http:
-    public:
-      port: :8080
-      timeout: 5s
-  storage:
-    type: postgres
-  logging:
-    service_name: question
-    service_version: 1.0.0
-    version: 1.0.0
-    level: info
-    format: json
-    add_source: true
+    http:
+        public:
+            port: :8080
+            timeout: 5s
+    storage:
+        type: postgres
+    logging:
+        service_name: question
+        service_version: 1.0.0
+        version: 1.0.0
+        level: info
+        format: json
+        add_source: true
 postgres:
-  connection: postgresql://postgres:password@postgres:5432/knowledge
+    connection: postgresql://postgres:password@postgres:5432/knowledge
 auth_service:
-  address: "auth_app:8091"
+    address: "auth_app:8091"
+nats:
+    url: nats://nats:4222
+    subject: sessions.result
+    event_timeout: 5s

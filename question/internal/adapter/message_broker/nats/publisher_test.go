@@ -1,3 +1,5 @@
+//go:build KVS_TEST_L1
+
 package nats_test
 
 import (

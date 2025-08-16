@@ -68,7 +68,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.Use
 	slog.Info("Get user by userID started")
 
 	params := []interface{}{userID}
-	query := `SELECT uid, name, password_hash, rights, contacts FROM
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
 	auth.users where uid = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -79,7 +79,7 @@ func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*enti
 	slog.Info("Get user by name started")
 
 	params := []interface{}{userName}
-	query := `SELECT uid, name, password_hash, rights, contacts FROM
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
 	auth.users where name = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -90,13 +90,14 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 
 	var (
 		id           string
-		Username     string
-		PasswordHash string
-		Rights       []string
-		ContactsRaw  []byte
+		username     string
+		passwordHash string
+		rights       []string
+		contactsRaw  []byte
+		linkedID     string
 	)
 
-	if err := row.Scan(&id, &Username, &PasswordHash, &Rights, &ContactsRaw); err != nil {
+	if err := row.Scan(&id, &username, &passwordHash, &rights, &contactsRaw, &linkedID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrap(entities.ErrNotFound, "user not found")
 			slog.Error(err.Error())
@@ -107,8 +108,8 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 		return nil, err
 	}
 
-	var Contacts map[string]string
-	if err := json.Unmarshal(ContactsRaw, &Contacts); err != nil {
+	var contacts map[string]string
+	if err := json.Unmarshal(contactsRaw, &contacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal contacts failure: %v", err)
 		slog.Error(err.Error())
 		return nil, err
@@ -117,10 +118,11 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	slog.Info("processRow completed")
 	return &entities.User{
 		ID:           id,
-		Username:     Username,
-		PasswordHash: PasswordHash,
-		Rights:       Rights,
-		Contacts:     Contacts,
+		Username:     username,
+		PasswordHash: passwordHash,
+		Rights:       rights,
+		Contacts:     contacts,
+		LinkedID:     linkedID,
 	}, nil
 }
 
@@ -170,9 +172,9 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	}
 
 	var params = []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights,
-		contactsRaw}
-	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts)
-				VALUES ($1, $2, $3, $4, $5)`
+		contactsRaw, user.LinkedID}
+	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts, linked_id)
+				VALUES ($1, $2, $3, $4, $5, $6)`
 
 	if _, err = tx.Exec(ctx, query, params...); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "save user failure: %v", err)
@@ -214,5 +216,47 @@ func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 }
 
 func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
+	slog.Info("User update started")
+
+	query := `
+	UPDATE auth.users
+	SET
+		name = COALESCE($1, name),
+		password_hash = COALESCE($2, password_hash),
+		rights = COALESCE($3, rights),
+		contacts = COALESCE($4, contacts),
+		linked_id = COALESCE($5, linked_id)
+	WHERE uid = $6;
+	`
+	args := make([]interface{}, 6)
+
+	if user.Username != "" {
+		args[0] = user.Username
+	}
+
+	if user.PasswordHash != "" {
+		args[1] = user.PasswordHash
+	}
+
+	if len(user.Rights) != 0 {
+		args[2] = user.Rights
+	}
+
+	if len(user.Contacts) != 0 {
+		args[3] = user.Contacts
+	}
+
+	if user.LinkedID != "" {
+		args[4] = user.LinkedID
+	}
+
+	args[5] = user.ID
+
+	if _, err := s.db.Exec(ctx, query, args...); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "update user failure with err: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
 	return nil
 }

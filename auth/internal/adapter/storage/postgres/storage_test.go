@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-
 	"github.com/parta4ok/kvs/auth/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -120,4 +119,163 @@ func TestStorage_RemoveUser_NotFound(t *testing.T) {
 
 	err := db.RemoveUser(ctx, "non-existent-id")
 	require.ErrorIs(t, err, entities.ErrNotFound)
+}
+
+func TestStorage_UpdateUser(t *testing.T) {
+	type fields struct {
+		checkFunc func(t *testing.T, base, updated, changes *entities.User)
+	}
+	type args struct {
+		updatedUser *entities.User
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "update username",
+			args: args{
+				updatedUser: &entities.User{
+					Username: uuid.NewString(),
+				},
+			},
+			fields: fields{
+				checkFunc: userNameUpdatedCheck,
+			},
+		},
+		{
+			name: "update password hash",
+			args: args{
+				updatedUser: &entities.User{
+					PasswordHash: uuid.NewString(),
+				},
+			},
+			fields: fields{
+				checkFunc: passwordHashUpdatedCheck,
+			},
+		},
+		{
+			name: "update password hash",
+			args: args{
+				updatedUser: &entities.User{
+					Rights: []string{uuid.NewString()},
+				},
+			},
+			fields: fields{
+				checkFunc: rightsUpdatedCheck,
+			},
+		},
+		{
+			name: "update contacts",
+			args: args{
+				updatedUser: &entities.User{
+					Contacts: map[string]string{uuid.NewString(): uuid.NewString()},
+				},
+			},
+			fields: fields{
+				checkFunc: contactsUpdatedCheck,
+			},
+		},
+		{
+			name: "update linkedID",
+			args: args{
+				updatedUser: &entities.User{
+					LinkedID: uuid.NewString(),
+				},
+			},
+			fields: fields{
+				checkFunc: linkedIDUpdatedCheck,
+			},
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(it *testing.T) {
+			it.Parallel()
+
+			db := makeDB(it)
+			defer db.Close()
+
+			ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
+			defer cancel()
+
+			baseUser := &entities.User{
+				ID:           uuid.NewString(),
+				Username:     uuid.NewString(),
+				PasswordHash: uuid.NewString(),
+				Rights:       []string{uuid.NewString()},
+				Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+				LinkedID:     uuid.NewString(),
+			}
+
+			err := db.StoreUser(ctx, baseUser)
+			require.NoError(t, err)
+
+			tc.args.updatedUser.ID = baseUser.ID
+
+			err = db.UpdateUser(ctx, tc.args.updatedUser)
+			require.NoError(t, err)
+
+			resUser, err := db.GetUserByID(ctx, baseUser.ID)
+			require.NoError(t, err)
+
+			tc.fields.checkFunc(t, baseUser, resUser, tc.args.updatedUser)
+		})
+	}
+}
+
+func userNameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, changes.Username, updated.Username)
+	require.Equal(t, base.PasswordHash, updated.PasswordHash)
+	require.Equal(t, base.Rights, updated.Rights)
+	require.Equal(t, base.Contacts, updated.Contacts)
+	require.Equal(t, base.LinkedID, updated.LinkedID)
+}
+
+func passwordHashUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, base.Username, updated.Username)
+	require.Equal(t, changes.PasswordHash, updated.PasswordHash)
+	require.Equal(t, base.Rights, updated.Rights)
+	require.Equal(t, base.Contacts, updated.Contacts)
+	require.Equal(t, base.LinkedID, updated.LinkedID)
+}
+
+func rightsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, base.Username, updated.Username)
+	require.Equal(t, base.PasswordHash, updated.PasswordHash)
+	require.Equal(t, changes.Rights, updated.Rights)
+	require.Equal(t, base.Contacts, updated.Contacts)
+	require.Equal(t, base.LinkedID, updated.LinkedID)
+}
+
+func contactsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, base.Username, updated.Username)
+	require.Equal(t, base.PasswordHash, updated.PasswordHash)
+	require.Equal(t, base.Rights, updated.Rights)
+	require.Equal(t, changes.Contacts, updated.Contacts)
+	require.Equal(t, base.LinkedID, updated.LinkedID)
+}
+
+func linkedIDUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, base.Username, updated.Username)
+	require.Equal(t, base.PasswordHash, updated.PasswordHash)
+	require.Equal(t, base.Rights, updated.Rights)
+	require.Equal(t, base.Contacts, updated.Contacts)
+	require.Equal(t, changes.LinkedID, updated.LinkedID)
 }

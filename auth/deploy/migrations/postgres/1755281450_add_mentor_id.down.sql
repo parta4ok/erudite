@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE auth.users DROP COLUMN IF EXISTS linked_id;
+
+END;

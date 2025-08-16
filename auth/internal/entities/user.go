@@ -6,4 +6,5 @@ type User struct {
 	PasswordHash string
 	Rights       []string
 	Contacts     map[string]string
+	LinkedID     string
 }

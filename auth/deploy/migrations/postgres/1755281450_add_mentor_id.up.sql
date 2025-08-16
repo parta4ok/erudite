@@ -1,0 +1,5 @@
+BEGIN;
+
+ALTER TABLE auth.users ADD COLUMN IF NOT EXISTS linked_id TEXT DEFAULT '';
+
+END;

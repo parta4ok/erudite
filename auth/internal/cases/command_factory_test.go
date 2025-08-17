@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"github.com/parta4ok/kvs/auth/internal/cases"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
+	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
 )
 
@@ -146,7 +148,7 @@ func TestCommandFactory_NewAddUserCommand(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
-func TestCommandFactory_NewDeleteUserCimmand(t *testing.T) {
+func TestCommandFactory_NewDeleteUserCommand(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -162,6 +164,26 @@ func TestCommandFactory_NewDeleteUserCimmand(t *testing.T) {
 	require.NotNil(t, factory)
 
 	cmd, err := factory.NewDeleteUserCommand(context.TODO(), "test_user_id")
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
+}
+
+func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewUpdateUserCommand(context.TODO(), &entities.User{ID: uuid.NewString()})
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }

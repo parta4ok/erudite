@@ -24,6 +24,7 @@ const (
 	signinPath     = "/signin"
 	addUserPath    = "/add-user"
 	deleteUserPath = "/delete-user"
+	updateUserPath = "/update-user"
 
 	right_admin = "admin"
 )
@@ -149,6 +150,7 @@ func (s *Server) registerRoutes() {
 	s.router.Put(basePath+addUserPath, s.AddUser)
 	s.router.Route(basePath, func(r chi.Router) {
 		r.Delete(deleteUserPath+"/{user_id}", s.DeleteUser)
+		r.Patch(updateUserPath+"/{user_id}", s.UpdateUser)
 	})
 }
 
@@ -369,13 +371,114 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	if !deleteUserResult.Success {
-		err := errors.Wrap(entities.ErrInternal, "add user failure")
+		err := errors.Wrap(entities.ErrInternal, "delete user failure")
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
 	}
 
 	resp.WriteHeader(http.StatusNoContent)
+}
+
+// Update user by ID
+//
+// @Summary      Update user
+// @Description  Update user by ID. Requires admin rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        user_id path string true "User ID to update"
+// @Param        request body dto.UpdateUserDTO true "User credentials and other data"
+// @Success      200 {object} dto.UpdateUserResponseDTO "User updated"
+// @Failure      400 {object} dto.ErrorDTO "Invalid request parameters"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      404 {object} dto.ErrorDTO "User not found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/update-user/{user_id} [patch]
+//
+//nolint:funlen //ok
+func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("UpdateUser started")
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	userID := chi.URLParam(req, "user_id")
+
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var updateUserDTO dto.UpdateUserDTO
+	if err := json.NewDecoder(req.Body).Decode(&updateUserDTO); err != nil {
+		err := errors.Wrap(entities.ErrInvalidParam, "invalid request body")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	updateUser := &entities.User{
+		ID:           userID,
+		Username:     updateUserDTO.Username,
+		PasswordHash: updateUserDTO.Password,
+		Rights:       updateUserDTO.Rights,
+		Contacts:     updateUserDTO.Contacts,
+		LinkedID:     updateUserDTO.LinkedID,
+	}
+
+	updateUserCommand, err := s.factory.NewUpdateUserCommand(req.Context(), updateUser)
+	if err != nil {
+		err := errors.Wrap(err, "new update user command failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	updateUserResult, err := updateUserCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "update user command exec failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !updateUserResult.Success {
+		err := errors.Wrap(entities.ErrInternal, "update user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	responseDTO := &dto.UpdateUserResponseDTO{
+		UserID: updateUserResult.Message,
+	}
+
+	data, err := json.Marshal(responseDTO)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
 }
 
 func (s *Server) errProcessing(resp http.ResponseWriter, err error) {

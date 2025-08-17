@@ -103,3 +103,10 @@ func (cf *CommandFactory) NewDeleteUserCommand(
 ) (entities.Command, error) {
 	return common.NewDeleteUserCommand(ctx, cf.storage, userID)
 }
+
+func (cf *CommandFactory) NewUpdateUserCommand(
+	ctx context.Context,
+	user *entities.User,
+) (entities.Command, error) {
+	return common.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
+}

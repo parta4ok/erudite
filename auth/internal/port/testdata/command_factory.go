@@ -94,3 +94,18 @@ func (mr *MockCommandFactoryMockRecorder) NewSignInCommand(ctx, userName, passwo
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewSignInCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewSignInCommand), ctx, userName, password)
 }
+
+// NewUpdateUserCommand mocks base method.
+func (m *MockCommandFactory) NewUpdateUserCommand(ctx context.Context, user *entities.User) (entities.Command, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewUpdateUserCommand", ctx, user)
+	ret0, _ := ret[0].(entities.Command)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewUpdateUserCommand indicates an expected call of NewUpdateUserCommand.
+func (mr *MockCommandFactoryMockRecorder) NewUpdateUserCommand(ctx, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewUpdateUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewUpdateUserCommand), ctx, user)
+}

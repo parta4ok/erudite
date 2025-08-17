@@ -1,0 +1,14 @@
+package dto
+
+type UpdateUserDTO struct {
+	Username string            `json:"name,omitempty"`
+	Password string            `json:"password,omitempty"`
+	Rights   []string          `json:"rights,omitempty"`
+	Contacts map[string]string `json:"contacts,omitempty"`
+	LinkedID string            `json:"linked_id,omitempty"`
+}
+
+type UpdateUserResponseDTO struct {
+	// required: true
+	UserID string `json:"user_id"`
+}

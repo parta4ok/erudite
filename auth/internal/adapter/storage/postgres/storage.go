@@ -252,8 +252,15 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 
 	args[5] = user.ID
 
-	if _, err := s.db.Exec(ctx, query, args...); err != nil {
+	tag, err := s.db.Exec(ctx, query, args...)
+	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "update user failure with err: %v", err)
+		slog.Error(err.Error())
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		err = errors.Wrap(entities.ErrNotFound, "user with requested id not found")
 		slog.Error(err.Error())
 		return err
 	}

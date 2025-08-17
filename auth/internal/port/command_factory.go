@@ -13,4 +13,5 @@ type CommandFactory interface {
 	NewAddUserCommand(ctx context.Context, login string, password string, rights []string,
 		contacts map[string]string) (entities.Command, error)
 	NewDeleteUserCommand(ctx context.Context, userID string) (entities.Command, error)
+	NewUpdateUserCommand(ctx context.Context, user *entities.User) (entities.Command, error)
 }

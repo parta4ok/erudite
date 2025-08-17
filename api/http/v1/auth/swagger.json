@@ -207,6 +207,89 @@
                     }
                 }
             }
+        },
+        "/auth/v1/update-user/{user_id}": {
+            "patch": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update user by ID. Requires admin rights.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID to update",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User credentials and other data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -218,6 +301,9 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "linked_id": {
+                    "type": "string"
                 },
                 "name": {
                     "description": "required: true",
@@ -275,6 +361,41 @@
             "type": "object",
             "properties": {
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserDTO": {
+            "type": "object",
+            "properties": {
+                "contacts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "linked_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "rights": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserResponseDTO": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "description": "required: true",
                     "type": "string"
                 }
             }

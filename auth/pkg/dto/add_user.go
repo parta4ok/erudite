@@ -8,6 +8,7 @@ type AddUserDTO struct {
 	// required: true
 	Rights   []string          `json:"rights"`
 	Contacts map[string]string `json:"contacts,omitempty"`
+	LinkedID string            `json:"linked_id,omitempty"`
 }
 
 type AddUserResponseDTO struct {

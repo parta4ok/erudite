@@ -27,7 +27,8 @@ func NewMessageService(notifier Notifier, authClient AuthClient) (*MessageServic
 	}, nil
 }
 
-func (ms *MessageService) SendMessage(ctx context.Context, sessionResult *entities.SessionResult) error {
+func (ms *MessageService) SendMessage(ctx context.Context,
+	sessionResult *entities.SessionResult) error {
 	if sessionResult == nil {
 		err := errors.Wrap(entities.ErrInvalidParam, "sessionResult is nil")
 		slog.Error(err.Error())

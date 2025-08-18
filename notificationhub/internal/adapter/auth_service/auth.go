@@ -35,7 +35,8 @@ func NewAuthService(port string) (*AuthService, error) {
 	return &AuthService{client: c}, nil
 }
 
-func (srv *AuthService) GetRecipientByID(ctx context.Context, id string) (*entities.Recipient, error) {
+func (srv *AuthService) GetRecipientByID(ctx context.Context, id string,
+) (*entities.Recipient, error) {
 	slog.Info("GetRecipientByID started")
 
 	req := &authv1.LinkedID{

@@ -19,7 +19,7 @@ type AuthService struct {
 	factory port.CommandFactory
 }
 
-//nolint:funlen //ok
+//nolint:funlen,dupl //ok
 func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequest,
 ) (*authv1.IntrospectResponse, error) {
 	slog.Info("Introspect started")
@@ -84,6 +84,78 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 			Rights:   userClaims.Rights,
 		},
 		Error: &authv1.Error{Message: ""},
+	}
+
+	return resp, nil
+}
+
+//nolint:funlen,dupl //ok
+func (a *AuthService) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
+) (*authv1.UserInfoResponse, error) {
+	slog.Info("GetLinkedUser started")
+
+	userID := req.LinkedID
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "user id is empty")
+		slog.Error(err.Error())
+		return &authv1.UserInfoResponse{
+			UserInfo: nil,
+			Error:    &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	command, err := a.factory.NewGetUserCommand(ctx, userID)
+	if err != nil {
+		err := errors.Wrap(err, "create get user command failure")
+		slog.Error(err.Error())
+		return &authv1.UserInfoResponse{
+			UserInfo: nil,
+			Error:    &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	res, err := command.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "get user command exec failure")
+		slog.Error(err.Error())
+		return &authv1.UserInfoResponse{
+			UserInfo: nil,
+			Error:    &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	if res != nil {
+		if !res.Success {
+			err := errors.Wrap(entities.ErrInvalidJWT, "get user command exec failure")
+			slog.Error(err.Error())
+			return &authv1.UserInfoResponse{
+				UserInfo: nil,
+				Error:    &authv1.Error{Message: err.Error()},
+			}, nil
+		}
+	}
+
+	userData, ok := res.Payload.(*entities.User)
+	if !ok {
+		err := errors.Wrap(entities.ErrInvalidJWT, "assert user data failure")
+		slog.Error(err.Error())
+		return &authv1.UserInfoResponse{
+			UserInfo: nil,
+			Error:    &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	resp := &authv1.UserInfoResponse{
+		UserInfo: &authv1.UserInfo{
+			Id:       userData.ID,
+			Username: userData.Username,
+			Rights:   userData.Rights,
+			Contacts: userData.Contacts,
+			LinkedID: userData.LinkedID,
+		},
+		Error: &authv1.Error{
+			Message: "",
+		},
 	}
 
 	return resp, nil

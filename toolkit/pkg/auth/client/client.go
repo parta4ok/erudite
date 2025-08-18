@@ -39,3 +39,8 @@ func (c *AuthClient) Introspect(ctx context.Context, req *authv1.IntrospectReque
 	opts ...grpc.CallOption) (*authv1.IntrospectResponse, error) {
 	return c.client.Introspect(ctx, req, opts...)
 }
+
+func (c *AuthClient) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
+	opts ...grpc.CallOption) (*authv1.UserInfoResponse, error) {
+	return c.client.GetLinkedUser(ctx, req, opts...)
+}

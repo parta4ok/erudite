@@ -110,3 +110,10 @@ func (cf *CommandFactory) NewUpdateUserCommand(
 ) (entities.Command, error) {
 	return common.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
 }
+
+func (cf *CommandFactory) NewGetUserCommand(
+	ctx context.Context,
+	userID string,
+) (entities.Command, error) {
+	return common.NewGetUserCommand(ctx, cf.storage, userID)
+}

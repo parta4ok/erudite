@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
@@ -26,14 +27,15 @@ func NewMessageService(notifier Notifier, authClient AuthClient) (*MessageServic
 	}, nil
 }
 
-func (ms *MessageService) SendMessage(sessionResult *entities.SessionResult) error {
+func (ms *MessageService) SendMessage(ctx context.Context,
+	sessionResult *entities.SessionResult) error {
 	if sessionResult == nil {
 		err := errors.Wrap(entities.ErrInvalidParam, "sessionResult is nil")
 		slog.Error(err.Error())
 		return err
 	}
 
-	recipient, err := ms.authClient.GetRecipientByID(sessionResult.GetUserID())
+	recipient, err := ms.authClient.GetRecipientByID(ctx, sessionResult.GetUserID())
 	if err != nil {
 		err = errors.Wrap(err, "failed to get recipient")
 		slog.Error(err.Error())

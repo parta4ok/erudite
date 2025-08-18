@@ -5,6 +5,7 @@
 package testdata
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,16 +36,16 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 }
 
 // GetRecipientByID mocks base method.
-func (m *MockAuthClient) GetRecipientByID(id string) (*entities.Recipient, error) {
+func (m *MockAuthClient) GetRecipientByID(ctx context.Context, id string) (*entities.Recipient, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipientByID", id)
+	ret := m.ctrl.Call(m, "GetRecipientByID", ctx, id)
 	ret0, _ := ret[0].(*entities.Recipient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRecipientByID indicates an expected call of GetRecipientByID.
-func (mr *MockAuthClientMockRecorder) GetRecipientByID(id interface{}) *gomock.Call {
+func (mr *MockAuthClientMockRecorder) GetRecipientByID(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipientByID", reflect.TypeOf((*MockAuthClient)(nil).GetRecipientByID), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipientByID", reflect.TypeOf((*MockAuthClient)(nil).GetRecipientByID), ctx, id)
 }

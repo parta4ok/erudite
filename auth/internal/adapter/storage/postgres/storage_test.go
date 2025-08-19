@@ -279,3 +279,40 @@ func linkedIDUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.Contacts, updated.Contacts)
 	require.Equal(t, changes.LinkedID, updated.LinkedID)
 }
+
+func TestStorage_GetUserByLinkedID(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	mentor := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		Rights:       []string{"mentor"},
+		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+	}
+
+	student := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		Rights:       []string{"mentor"},
+		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+		LinkedID:     mentor.ID,
+	}
+
+	err := db.StoreUser(ctx, mentor)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, student)
+	require.NoError(t, err)
+
+	user, err := db.GetUserByLinkedID(ctx, student.ID)
+	require.NoError(t, err)
+	require.Equal(t, mentor, user)
+}

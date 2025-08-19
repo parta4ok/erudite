@@ -65,19 +65,19 @@ func (mr *MockCommandFactoryMockRecorder) NewDeleteUserCommand(ctx, userID inter
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDeleteUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDeleteUserCommand), ctx, userID)
 }
 
-// NewGetUserCommand mocks base method.
-func (m *MockCommandFactory) NewGetUserCommand(ctx context.Context, userID string) (entities.Command, error) {
+// NewGetLinkedUserCommand mocks base method.
+func (m *MockCommandFactory) NewGetLinkedUserCommand(ctx context.Context, userID string) (entities.Command, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewGetUserCommand", ctx, userID)
+	ret := m.ctrl.Call(m, "NewGetLinkedUserCommand", ctx, userID)
 	ret0, _ := ret[0].(entities.Command)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// NewGetUserCommand indicates an expected call of NewGetUserCommand.
-func (mr *MockCommandFactoryMockRecorder) NewGetUserCommand(ctx, userID interface{}) *gomock.Call {
+// NewGetLinkedUserCommand indicates an expected call of NewGetLinkedUserCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetLinkedUserCommand(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetUserCommand), ctx, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetLinkedUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetLinkedUserCommand), ctx, userID)
 }
 
 // NewIntrospectedCommand mocks base method.

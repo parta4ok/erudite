@@ -14,5 +14,5 @@ type CommandFactory interface {
 		contacts map[string]string) (entities.Command, error)
 	NewDeleteUserCommand(ctx context.Context, userID string) (entities.Command, error)
 	NewUpdateUserCommand(ctx context.Context, user *entities.User) (entities.Command, error)
-	NewGetUserCommand(ctx context.Context, userID string) (entities.Command, error)
+	NewGetLinkedUserCommand(ctx context.Context, userID string) (entities.Command, error)
 }

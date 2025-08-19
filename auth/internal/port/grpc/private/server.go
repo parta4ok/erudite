@@ -104,7 +104,7 @@ func (a *AuthService) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
 		}, nil
 	}
 
-	command, err := a.factory.NewGetUserCommand(ctx, userID)
+	command, err := a.factory.NewGetLinkedUserCommand(ctx, userID)
 	if err != nil {
 		err := errors.Wrap(err, "create get user command failure")
 		slog.Error(err.Error())

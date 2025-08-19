@@ -187,3 +187,23 @@ func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }
+
+func TestCommandFactory_NewGetLinkedCommand(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	factory, err := cases.NewCommandFactory(
+		cases.WithStorage(testdata.NewMockStorage(ctrl)),
+		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
+		cases.WithHasher(testdata.NewMockHasher(ctrl)),
+		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, factory)
+
+	cmd, err := factory.NewGetLinkedUserCommand(context.TODO(), uuid.NewString())
+	require.NoError(t, err)
+	require.NotNil(t, cmd)
+}

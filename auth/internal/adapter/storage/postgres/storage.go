@@ -267,3 +267,38 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 
 	return nil
 }
+
+func (s *Storage) GetUserByLinkedID(ctx context.Context, userID string) (*entities.User, error) {
+	slog.Info("GetUserByLinkedID started")
+
+	args := []interface{}{userID}
+
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
+	auth.users where uid = (SELECT linked_id from auth.users WHERE uid = $1)`
+
+	var uid, name, passwordHash, linkedID string
+	var rights []string
+	var contacts map[string]string
+
+	row := s.db.QueryRow(ctx, query, args...)
+	if err := row.Scan(&uid, &name, &passwordHash, &rights, &contacts, &linkedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = errors.Wrapf(entities.ErrNotFound, "user not found: %v", err)
+			slog.Error(err.Error())
+			return nil, err
+		}
+		err = errors.Wrapf(entities.ErrInternal, "get user by linked_id failure: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("GetUserByLinkedID completed")
+	return &entities.User{
+		ID:           uid,
+		Username:     name,
+		PasswordHash: passwordHash,
+		Rights:       rights,
+		Contacts:     contacts,
+		LinkedID:     linkedID,
+	}, nil
+}

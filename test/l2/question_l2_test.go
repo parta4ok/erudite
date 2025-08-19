@@ -440,6 +440,79 @@ func TestConcurrentRequests(t *testing.T) {
 	})
 }
 
+func TestUpdateUser(t *testing.T) {
+	rootAdminJWT := getJwt(t)
+	adminUserID, adminJWT := createUser(t, rootAdminJWT, "Admin")
+
+	t.Run("AdminCanCreateUser", func(t *testing.T) {
+		testUserID, _ := createUser(t, adminJWT, "Student")
+		deleteUser(t, adminJWT, testUserID)
+	})
+
+	t.Run("AdminCanDeleteUser", func(t *testing.T) {
+		testUserID, _ := createUser(t, rootAdminJWT, "Student")
+		deleteUser(t, adminJWT, testUserID)
+	})
+
+	newLogin := "updated_student_" + uuid.New().String()
+	newPassword := "new_student_password"
+	updateUserToStudentWithCredentials(t, rootAdminJWT, adminUserID, newLogin, newPassword)
+	studentJWT := getNewUserJwt(t, newLogin, newPassword)
+	t.Run("StudentCannotCreateUser", func(t *testing.T) {
+		client := &http.Client{Timeout: timeout}
+
+		// Пытаемся создать пользователя под студентом
+		type AddUserDTO struct {
+			Username string            `json:"name"`
+			Password string            `json:"password"`
+			Rights   []string          `json:"rights"`
+			Contacts map[string]string `json:"contacts,omitempty"`
+		}
+
+		bodyDTO := &AddUserDTO{
+			Username: "test_user_" + uuid.New().String(),
+			Password: "test_password",
+			Rights:   []string{"student"},
+			Contacts: map[string]string{"email": "test@test.com"},
+		}
+
+		data, err := json.Marshal(&bodyDTO)
+		require.NoError(t, err)
+
+		req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+		require.NoError(t, err)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	})
+
+	t.Run("StudentCannotDeleteUser", func(t *testing.T) {
+		client := &http.Client{Timeout: timeout}
+
+		testUserID, _ := createUser(t, rootAdminJWT, "Student")
+
+		req, err := http.NewRequest(http.MethodDelete, "http://localhost:8090/auth/v1/delete-user/"+testUserID, nil)
+		require.NoError(t, err)
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+		req.Header.Add("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		require.Equal(t, http.StatusForbidden, resp.StatusCode)
+
+		deleteUser(t, rootAdminJWT, testUserID)
+	})
+
+	deleteUser(t, rootAdminJWT, adminUserID)
+}
+
 type UserAnswerDTO struct {
 	QuestionID string   `json:"question_id"`
 	Answers    []string `json:"answers"`
@@ -542,13 +615,15 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 	require.NoError(t, err)
 
 	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
+	require.NoError(t, err)
 	defer func() {
-		err = resp.Body.Close()
-		require.NoError(t, err)
+		closeErr := resp.Body.Close()
+		require.NoError(t, closeErr)
 	}()
 
 	require.NoError(t, err)
@@ -574,16 +649,51 @@ func deleteUser(t *testing.T, adminJWT string, userID string) {
 	client := &http.Client{Timeout: timeout}
 
 	req, err := http.NewRequest(http.MethodDelete, "http://localhost:8090/auth/v1/delete-user/"+userID, nil)
+	require.NoError(t, err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
 	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
+	require.NoError(t, err)
 
 	defer func() {
-		err = resp.Body.Close()
-		require.NoError(t, err)
+		closeErr := resp.Body.Close()
+		require.NoError(t, closeErr)
 	}()
 
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+}
+
+func updateUserToStudentWithCredentials(t *testing.T, adminJWT string, userID string, newLogin string, newPassword string) {
+	t.Helper()
+
+	type UpdateUserDTO struct {
+		Username string            `json:"name,omitempty"`
+		Password string            `json:"password,omitempty"`
+		Rights   []string          `json:"rights,omitempty"`
+		Contacts map[string]string `json:"contacts,omitempty"`
+		LinkedID string            `json:"linked_id,omitempty"`
+	}
+
+	updateDTO := &UpdateUserDTO{
+		Username: newLogin,
+		Password: newPassword,
+		Rights:   []string{"student", "view_topic_list", "start_session", "complete_session"},
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&updateDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPatch, "http://localhost:8090/auth/v1/update-user/"+userID, bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
 }

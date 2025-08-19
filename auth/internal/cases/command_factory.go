@@ -111,9 +111,9 @@ func (cf *CommandFactory) NewUpdateUserCommand(
 	return common.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
 }
 
-func (cf *CommandFactory) NewGetUserCommand(
+func (cf *CommandFactory) NewGetLinkedUserCommand(
 	ctx context.Context,
 	userID string,
 ) (entities.Command, error) {
-	return common.NewGetUserCommand(ctx, cf.storage, userID)
+	return common.NewGetLinkedUserCommand(ctx, cf.storage, userID)
 }

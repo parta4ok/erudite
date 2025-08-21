@@ -51,12 +51,12 @@ services:
             MIGRATION_MODE: up
             LOG_LEVEL: info
         networks:
-        - service_network
+            - service_network
         restart: "no"
         profiles:
-        - services
-        - l1
-        - l2
+            - services
+            - l1
+            - l2
 
     question_app:
         container_name: queston_app
@@ -91,6 +91,24 @@ services:
         depends_on:
             postgres:
                 condition: service_healthy
+        networks:
+            - service_network
+        profiles:
+            - services
+            - l2
+
+    notificationhub_app:
+        container_name: notificationhub_app
+        env_file: .env
+        build:
+            context: .
+            dockerfile: notificationhub/dockerfile
+        restart: always
+        depends_on:
+            nats:
+                condition: service_healthy
+            nats-migrations:
+                condition: service_completed_successfully
         networks:
             - service_network
         profiles:

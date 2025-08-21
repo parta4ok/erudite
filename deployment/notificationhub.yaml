@@ -1,6 +1,19 @@
 notificationhub:
     notifiers:
         email:
-            box: notifier-nv@mail.ru
+            sender: notifier-nv@mail.ru
             smtp: smtp.mail.ru
             port: 587
+    logging:
+        service_name: notificationhub
+        service_version: 1.0.0
+        version: 1.0.0
+        level: info
+        format: json
+        add_source: true
+auth_service:
+    address: "auth_app:8091"
+nats:
+    url: nats://nats:4222
+    subject: sessions.*
+    event_timeout: 5s

@@ -124,6 +124,10 @@ tasks:
         desc: Run auth service locally with local config
         cmds:
             - AUTH_CONFIG_PATH=./deployment/auth.yaml go run ./auth/cmd/app/main.go
+    run_notificationhub_local:
+        desc: Run notificationhub service locally with local config
+        cmds:
+            - NOTIFICATIONHUB_CONFIG_PATH=./deployment/notificationhub.yaml go run ./notificationhub/cmd/app/main.go
 
     swag_gen_question:
         desc: Generate swagger specification for question service

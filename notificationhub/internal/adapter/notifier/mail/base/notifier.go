@@ -108,7 +108,6 @@ func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
 		}
 		return err
 	}
-	fmt.Println("Email sent successfully!")
 
 	slog.Info("notification by email sent successfully")
 	return nil

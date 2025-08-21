@@ -589,6 +589,7 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 		// required: true
 		Rights   []string          `json:"rights"`
 		Contacts map[string]string `json:"contacts,omitempty"`
+		LinkedID string            `json:"linked_id,omitempty"`
 	}
 
 	var rights []string
@@ -608,6 +609,7 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 		Password: uuid.NewString(),
 		Rights:   rights,
 		Contacts: map[string]string{"phone": uuid.NewString(), "telegram": uuid.NewString()},
+		LinkedID: "2",
 	}
 
 	client := &http.Client{Timeout: timeout}
@@ -696,4 +698,194 @@ func updateUserToStudentWithCredentials(t *testing.T, adminJWT string, userID st
 	defer resp.Body.Close()
 
 	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestCompleteStudentWorkflowWithLinkedID(t *testing.T) {
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	require.NotEmpty(t, adminJWT)
+
+	mentorID, mentorJWT := createMentorWithEmail(t, adminJWT, "nvmaslenko@gmail.com")
+	require.NotEmpty(t, mentorID)
+	require.NotEmpty(t, mentorJWT)
+
+	studentID, studentJWT := createUser(t, adminJWT, "Student")
+	require.NotEmpty(t, studentID)
+	require.NotEmpty(t, studentJWT)
+
+	updateUserLinkedID(t, adminJWT, studentID, mentorID)
+
+	sessionRequestBody := map[string]interface{}{
+		"topics": []string{"Базы данных", "Базовые типы в Go"},
+	}
+
+	sessionJSON, err := json.Marshal(sessionRequestBody)
+	require.NoError(t, err)
+
+	client := &http.Client{Timeout: timeout}
+	sessionURL := fmt.Sprintf("%s/%s/start_session", baseURL, studentID)
+	sessionReq, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+
+	sessionReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	sessionReq.Header.Add("Content-Type", "application/json")
+
+	sessionResp, err := client.Do(sessionReq)
+	require.NoError(t, err)
+	defer sessionResp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, sessionResp.StatusCode)
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+
+	sessionBody, err := io.ReadAll(sessionResp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(sessionBody, &sessionResponse)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, sessionResponse.SessionID)
+	require.Greater(t, len(sessionResponse.Questions), 0)
+	require.Equal(t, 2, len(sessionResponse.Topics))
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	completeJSON, err := json.Marshal(completeBody)
+	require.NoError(t, err)
+
+	completeURL := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, studentID, sessionResponse.SessionID)
+	completeReq, err := http.NewRequest(http.MethodPost, completeURL, bytes.NewReader(completeJSON))
+	require.NoError(t, err)
+
+	completeReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	completeReq.Header.Add("Content-Type", "application/json")
+
+	completeResp, err := client.Do(completeReq)
+	require.NoError(t, err)
+	defer completeResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, completeResp.StatusCode)
+
+	completeBodyResult, err := io.ReadAll(completeResp.Body)
+	require.NoError(t, err)
+
+	var resultResponse struct {
+		IsSuccess bool   `json:"is_success"`
+		Grade     string `json:"grade"`
+	}
+	err = json.Unmarshal(completeBodyResult, &resultResponse)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, resultResponse.Grade)
+
+	t.Logf("Test completed successfully. Mentor %s (nvmaslenko@gmail.com), Student %s with LinkedID=%s completed session %s with grade: %s, success: %v",
+		mentorID, studentID, mentorID, sessionResponse.SessionID, resultResponse.Grade, resultResponse.IsSuccess)
+}
+
+func updateUserLinkedID(t *testing.T, adminJWT string, userID string, linkedID string) {
+	t.Helper()
+
+	type UpdateUserDTO struct {
+		LinkedID string `json:"linked_id"`
+	}
+
+	updateDTO := &UpdateUserDTO{
+		LinkedID: linkedID,
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(updateDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPatch, "http://localhost:8090/auth/v1/update-user/"+userID, bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func createMentorWithEmail(t *testing.T, adminJWT string, email string) (string, string) {
+	t.Helper()
+
+	type AddUserDTO struct {
+		Username string            `json:"name"`
+		Password string            `json:"password"`
+		Rights   []string          `json:"rights"`
+		Contacts map[string]string `json:"contacts,omitempty"`
+		LinkedID string            `json:"linked_id,omitempty"`
+	}
+
+	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions"}
+
+	mentorUsername := uuid.NewString()
+	mentorPassword := uuid.NewString()
+
+	bodyDTO := &AddUserDTO{
+		Username: mentorUsername,
+		Password: mentorPassword,
+		Rights:   rights,
+		Contacts: map[string]string{
+			"email":    email,
+			"phone":    uuid.NewString(),
+			"telegram": uuid.NewString(),
+		},
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		closeErr := resp.Body.Close()
+		require.NoError(t, closeErr)
+	}()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		UserID string `json:"user_id"`
+	}
+
+	var addUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addUserRespDTO.UserID)
+
+	mentorJWT := getNewUserJwt(t, mentorUsername, mentorPassword)
+
+	return addUserRespDTO.UserID, mentorJWT
 }

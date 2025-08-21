@@ -320,7 +320,7 @@ func (app *App) shutdown() {
 	slog.Info("Application shutdown completed")
 }
 
-func (app *App) Stop() {
+func (app *App) Stop() { 
 	if app.cancel != nil {
 		app.cancel()
 	}

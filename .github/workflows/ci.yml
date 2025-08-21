@@ -18,6 +18,10 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Create .env from GitHub Secrets
+              run: |
+                  echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}" > .env
+
             - name: Set up Go
               uses: actions/setup-go@v5
               with:

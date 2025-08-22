@@ -15,6 +15,10 @@ const (
 	TitlePrefix = "Результаты тестирования для студента: %s"
 )
 
+var (
+	_ cases.Notifier = (*MailNotifier)(nil)
+)
+
 type MailNotifier struct {
 	next cases.Notifier
 

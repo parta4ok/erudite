@@ -13,6 +13,7 @@ import (
 	authservice "github.com/parta4ok/kvs/notificationhub/internal/adapter/auth_service"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/config"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/mail/base"
+	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/telegram"
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
 	"github.com/parta4ok/kvs/notificationhub/internal/port"
@@ -44,9 +45,10 @@ func (app *App) Start() {
 	slog.Info("Logger configuration completed")
 
 	mailNotifier := app.initMailNotifier(cfg, nil)
+	telegramNotifier := app.initTelegramNotifier(cfg, mailNotifier)
 	authClient := app.initAuthServiceClient(cfg)
 
-	service := app.initService(cfg, mailNotifier, authClient)
+	service := app.initService(cfg, telegramNotifier, authClient)
 
 	natsConsumer := app.initNatsConsumer(cfg, service)
 	app.natsConsumer = natsConsumer
@@ -102,6 +104,18 @@ func parseLogLevel(levelStr string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+func (app *App) initTelegramNotifier(_ *config.Config, nextNotifier cases.Notifier) cases.Notifier {
+	var tgNotifier cases.Notifier
+
+	tg, err := telegram.NewTelegramNotifier(nextNotifier, os.Getenv("TG_BOT_TOKEN"))
+	if err != nil {
+		app.panic(err)
+	}
+
+	tgNotifier = tg
+	return tgNotifier
 }
 
 func (app *App) initMailNotifier(cfg *config.Config, nextNotifier cases.Notifier) cases.Notifier {

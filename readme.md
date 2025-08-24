@@ -6,6 +6,66 @@
 ## Задачи
 - Внедрение в процесс обучения с целью минимизации временных затрат на проверку базовых знаний студента
 
+## Обобзенный сценарий тестирования для студента
+```mermaid
+sequenceDiagram
+    actor S as Student
+    participant A as Auth Service
+    participant Q as Question Service
+    participant N as NotificationHub Service
+    actor M as Mentor
+
+    S ->> A: login
+    activate A
+    A -->> S: jwt
+    deactivate A
+
+    S ->> Q: GetTopics(jwt)
+    activate Q
+    Q ->> A: introspect(jwt)
+    activate A
+    A -->> Q: user claims
+    deactivate A
+    ALT user has not enough rights
+        Q -->> S: forbidden
+    END
+    Q -->>S: existings topics
+    deactivate Q
+    
+    S ->>S: select topic/topics from existings topics
+    
+    S ->> Q: StartSession(jwt, topics)
+    activate Q
+    Q ->> A: introspect(jwt)
+    activate A
+    A -->> Q: user claims
+    deactivate A
+    ALT user has not enough rights
+        Q -->> S: forbidden
+    END
+    Q -->> S: QuestionsSession (questions from selected topics)
+    deactivate Q
+    S ->> S: select and set questions answers
+
+    S ->> Q: answers(jwt)
+    activate Q
+    Q ->> Q: generate session result
+    Q ->> N: session result
+    activate N
+    Q -->> S: session result
+    deactivate Q
+    
+    N ->> A: get recipient (studentID)
+    activate A
+    A -->> N: recipient id, recipient contacts
+    deactivate A
+    Loop notifiers
+        N ->> M: try to send session result by concrete notifier like telegram, email, etc
+     
+    END
+    deactivate N
+```
+
 ## Возможности
 - Автоматическая генерация тестовых сессий по выбранным темам
 - Поддержка разных типов вопросов: одиночный выбор; множественный выбор; true/false

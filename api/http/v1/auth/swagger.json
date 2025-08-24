@@ -302,6 +302,10 @@
                         "type": "string"
                     }
                 },
+                "fullname": {
+                    "description": "required: true",
+                    "type": "string"
+                },
                 "linked_id": {
                     "type": "string"
                 },
@@ -314,7 +318,6 @@
                     "type": "string"
                 },
                 "rights": {
-                    "description": "required: true",
                     "type": "array",
                     "items": {
                         "type": "string"

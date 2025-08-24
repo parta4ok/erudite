@@ -19,7 +19,6 @@ func TestAddUserCommand(t *testing.T) {
 		notNilGenerator bool
 		notNilHasher    bool
 		notNilUser      bool
-		notNilPassword  bool
 	}
 	tests := []struct {
 		name    string
@@ -33,7 +32,6 @@ func TestAddUserCommand(t *testing.T) {
 				notNilGenerator: true,
 				notNilHasher:    true,
 				notNilUser:      true,
-				notNilPassword:  true,
 			},
 			wantErr: true,
 			resErr:  entities.ErrInvalidParam,
@@ -41,10 +39,9 @@ func TestAddUserCommand(t *testing.T) {
 		{
 			name: "2",
 			args: args{
-				notNilStorage:  true,
-				notNilHasher:   true,
-				notNilUser:     true,
-				notNilPassword: true,
+				notNilStorage: true,
+				notNilHasher:  true,
+				notNilUser:    true,
 			},
 			wantErr: true,
 			resErr:  entities.ErrInvalidParam,
@@ -55,7 +52,6 @@ func TestAddUserCommand(t *testing.T) {
 				notNilStorage:   true,
 				notNilGenerator: true,
 				notNilUser:      true,
-				notNilPassword:  true,
 			},
 			wantErr: true,
 			resErr:  entities.ErrInvalidParam,
@@ -66,7 +62,6 @@ func TestAddUserCommand(t *testing.T) {
 				notNilStorage:   true,
 				notNilGenerator: true,
 				notNilHasher:    true,
-				notNilPassword:  true,
 			},
 			wantErr: true,
 			resErr:  entities.ErrInvalidParam,
@@ -78,18 +73,6 @@ func TestAddUserCommand(t *testing.T) {
 				notNilGenerator: true,
 				notNilHasher:    true,
 				notNilUser:      true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "6",
-			args: args{
-				notNilStorage:   true,
-				notNilGenerator: true,
-				notNilHasher:    true,
-				notNilUser:      true,
-				notNilPassword:  true,
 			},
 		},
 	}
@@ -108,10 +91,7 @@ func TestAddUserCommand(t *testing.T) {
 			var hasher common.Hasher
 
 			ctx := context.TODO()
-			var user string
-			var password string
-			var rights []string
-			var contacts map[string]string
+			var user *entities.User
 
 			if tc.args.notNilStorage {
 				storage = testdata.NewMockStorage(ctrl)
@@ -126,14 +106,15 @@ func TestAddUserCommand(t *testing.T) {
 			}
 
 			if tc.args.notNilUser {
-				user = "testuser"
+				user = &entities.User{
+					Username:     "testuser",
+					PasswordHash: "testtest",
+					Rights:       []string{"admin"},
+					Contacts:     map[string]string{"email": "test@test.com"},
+				}
 			}
 
-			if tc.args.notNilPassword {
-				password = "testtest"
-			}
-
-			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, user, password, rights, contacts)
+			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, user)
 			if tc.wantErr {
 				require.ErrorIs(t, err, tc.resErr)
 				require.Nil(t, command)
@@ -249,7 +230,15 @@ func TestAddUserCommand_Exec(t *testing.T) {
 			password := "testpass"
 			rights := []string{"admin"}
 			contacts := map[string]string{"email": "test@test.com"}
-			user := &entities.User{
+
+			inputUser := &entities.User{
+				Username:     login,
+				PasswordHash: password,
+				Rights:       rights,
+				Contacts:     contacts,
+			}
+
+			expectedUser := &entities.User{
 				ID:           "new-id",
 				Username:     login,
 				PasswordHash: "hashed-pass",
@@ -258,7 +247,7 @@ func TestAddUserCommand_Exec(t *testing.T) {
 			}
 
 			if tc.stage.GetUserByUsernameSettings != nil {
-				tc.stage.GetUserByUsernameSettings(ctx, it, storage, login, user, tc.stage.GetUserByUsernameErr)
+				tc.stage.GetUserByUsernameSettings(ctx, it, storage, login, expectedUser, tc.stage.GetUserByUsernameErr)
 			}
 
 			if tc.stage.HashSettings != nil {
@@ -270,10 +259,10 @@ func TestAddUserCommand_Exec(t *testing.T) {
 			}
 
 			if tc.stage.StoreUserSettings != nil {
-				tc.stage.StoreUserSettings(ctx, it, storage, user, tc.stage.StoreUserErr)
+				tc.stage.StoreUserSettings(ctx, it, storage, expectedUser, tc.stage.StoreUserErr)
 			}
 
-			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, login, password, rights, contacts)
+			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, inputUser)
 			require.NoError(it, err)
 			require.NotNil(it, command)
 
@@ -285,7 +274,7 @@ func TestAddUserCommand_Exec(t *testing.T) {
 			}
 
 			require.NoError(it, err)
-			require.Equal(it, &entities.CommandResult{Success: true, Message: user.ID}, res)
+			require.Equal(it, &entities.CommandResult{Success: true, Message: expectedUser.ID}, res)
 		})
 	}
 }

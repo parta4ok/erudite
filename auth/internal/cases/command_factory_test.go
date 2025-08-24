@@ -143,7 +143,11 @@ func TestCommandFactory_NewAddUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewAddUserCommand(context.TODO(), "login", "pass", []string{"admin"}, map[string]string{"email": "test@test.com"})
+	user, err := entities.NewUser(uuid.NewString(), uuid.NewString(), uuid.NewString(),
+		[]string{"student"}, nil, "")
+	require.NoError(t, err)
+
+	cmd, err := factory.NewAddUserCommand(context.TODO(), user)
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }

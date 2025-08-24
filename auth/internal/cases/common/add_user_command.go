@@ -18,16 +18,12 @@ type AddUserCommand struct {
 	hasher    Hasher
 	generator IDGenerator
 
-	login    string
-	password string
-	rights   []string
-	contacts map[string]string
-	ctx      context.Context
+	user *entities.User
+	ctx  context.Context
 }
 
 func NewAddUserCommand(ctx context.Context, storage Storage, hasher Hasher, generator IDGenerator,
-	login, password string,
-	rights []string, contacts map[string]string) (*AddUserCommand, error) {
+	user *entities.User) (*AddUserCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
 	}
@@ -40,8 +36,8 @@ func NewAddUserCommand(ctx context.Context, storage Storage, hasher Hasher, gene
 		return nil, errors.Wrap(entities.ErrInvalidParam, "generator not set")
 	}
 
-	if login == "" || password == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "login or password is incorrect")
+	if user == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user not set")
 	}
 
 	return &AddUserCommand{
@@ -49,18 +45,15 @@ func NewAddUserCommand(ctx context.Context, storage Storage, hasher Hasher, gene
 		hasher:    hasher,
 		generator: generator,
 
-		ctx:      ctx,
-		login:    login,
-		password: password,
-		rights:   rights,
-		contacts: contacts,
+		ctx:  ctx,
+		user: user,
 	}, nil
 }
 
 func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 	slog.Info("AddUserCommand exec started")
 
-	_, err := command.storage.GetUserByUsername(command.ctx, command.login)
+	_, err := command.storage.GetUserByUsername(command.ctx, command.user.Username)
 	if err != nil {
 		if !errors.Is(err, entities.ErrNotFound) {
 			err = errors.Wrap(err, "get user by user id")
@@ -70,7 +63,8 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 	}
 
 	if err == nil {
-		err = errors.Wrapf(entities.ErrAlreadyExists, "user name %s already exists", command.login)
+		err = errors.Wrapf(entities.ErrAlreadyExists, "user name %s already exists",
+			command.user.Username)
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -82,7 +76,7 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 		return nil, err
 	}
 
-	hash, err := command.hasher.Hash(command.ctx, command.password)
+	hash, err := command.hasher.Hash(command.ctx, command.user.PasswordHash)
 	if err != nil {
 		err := errors.Wrap(err, "hash password failure")
 		slog.Error(err.Error())
@@ -91,10 +85,12 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 
 	user := &entities.User{
 		ID:           userID,
-		Username:     command.login,
+		Username:     command.user.Username,
 		PasswordHash: hash,
-		Rights:       command.rights,
-		Contacts:     command.contacts,
+		FullName:     command.user.FullName,
+		Rights:       command.user.Rights,
+		Contacts:     command.user.Contacts,
+		LinkedID:     command.user.LinkedID,
 	}
 
 	if err := command.storage.StoreUser(command.ctx, user); err != nil {

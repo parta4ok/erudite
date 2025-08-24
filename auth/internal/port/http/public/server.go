@@ -270,8 +270,21 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	addUserCommand, err := s.factory.NewAddUserCommand(req.Context(), requestDTO.Username,
-		requestDTO.Password, requestDTO.Rights, requestDTO.Contacts)
+	user, err := entities.NewUser(requestDTO.Username,
+		requestDTO.Password,
+		requestDTO.FullName,
+		requestDTO.Rights,
+		requestDTO.Contacts,
+		requestDTO.LinkedID,
+	)
+	if err != nil {
+		err := errors.Wrap(err, "create base user user failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	addUserCommand, err := s.factory.NewAddUserCommand(req.Context(), user)
 	if err != nil {
 		err := errors.Wrap(err, "new add user failure")
 		slog.Error(err.Error())

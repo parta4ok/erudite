@@ -68,7 +68,7 @@ func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.Use
 	slog.Info("Get user by userID started")
 
 	params := []interface{}{userID}
-	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id, fullname FROM
 	auth.users where uid = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -79,7 +79,7 @@ func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*enti
 	slog.Info("Get user by name started")
 
 	params := []interface{}{userName}
-	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id, fullname FROM
 	auth.users where name = $1 LIMIT 1`
 
 	return s.processRow(s.db.QueryRow(ctx, query, params...))
@@ -95,9 +95,18 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 		rights       []string
 		contactsRaw  []byte
 		linkedID     string
+		fullname     string
 	)
 
-	if err := row.Scan(&id, &username, &passwordHash, &rights, &contactsRaw, &linkedID); err != nil {
+	if err := row.Scan(
+		&id,
+		&username,
+		&passwordHash,
+		&rights,
+		&contactsRaw,
+		&linkedID,
+		&fullname,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrap(entities.ErrNotFound, "user not found")
 			slog.Error(err.Error())
@@ -120,6 +129,7 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 		ID:           id,
 		Username:     username,
 		PasswordHash: passwordHash,
+		FullName:     fullname,
 		Rights:       rights,
 		Contacts:     contacts,
 		LinkedID:     linkedID,
@@ -172,9 +182,9 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	}
 
 	var params = []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights,
-		contactsRaw, user.LinkedID}
-	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts, linked_id)
-				VALUES ($1, $2, $3, $4, $5, $6)`
+		contactsRaw, user.LinkedID, user.FullName}
+	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts, linked_id, fullname)
+				VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	if _, err = tx.Exec(ctx, query, params...); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "save user failure: %v", err)
@@ -225,10 +235,11 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 		password_hash = COALESCE($2, password_hash),
 		rights = COALESCE($3, rights),
 		contacts = COALESCE($4, contacts),
-		linked_id = COALESCE($5, linked_id)
-	WHERE uid = $6;
+		linked_id = COALESCE($5, linked_id),
+		fullname = COALESCE($6, fullname)
+	WHERE uid = $7;
 	`
-	args := make([]interface{}, 6)
+	args := make([]interface{}, 7)
 
 	if user.Username != "" {
 		args[0] = user.Username
@@ -250,7 +261,11 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 		args[4] = user.LinkedID
 	}
 
-	args[5] = user.ID
+	if user.FullName != "" {
+		args[5] = user.FullName
+	}
+
+	args[6] = user.ID
 
 	tag, err := s.db.Exec(ctx, query, args...)
 	if err != nil {
@@ -273,15 +288,23 @@ func (s *Storage) GetUserByLinkedID(ctx context.Context, userID string) (*entiti
 
 	args := []interface{}{userID}
 
-	query := `SELECT uid, name, password_hash, rights, contacts, linked_id FROM
+	query := `SELECT uid, name, password_hash, rights, contacts, linked_id, fullname FROM
 	auth.users where uid = (SELECT linked_id from auth.users WHERE uid = $1)`
 
-	var uid, name, passwordHash, linkedID string
+	var uid, name, passwordHash, linkedID, fullname string
 	var rights []string
 	var contacts map[string]string
 
 	row := s.db.QueryRow(ctx, query, args...)
-	if err := row.Scan(&uid, &name, &passwordHash, &rights, &contacts, &linkedID); err != nil {
+	if err := row.Scan(
+		&uid,
+		&name,
+		&passwordHash,
+		&rights,
+		&contacts,
+		&linkedID,
+		&fullname,
+	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrapf(entities.ErrNotFound, "user not found: %v", err)
 			slog.Error(err.Error())
@@ -297,6 +320,7 @@ func (s *Storage) GetUserByLinkedID(ctx context.Context, userID string) (*entiti
 		ID:           uid,
 		Username:     name,
 		PasswordHash: passwordHash,
+		FullName:     fullname,
 		Rights:       rights,
 		Contacts:     contacts,
 		LinkedID:     linkedID,

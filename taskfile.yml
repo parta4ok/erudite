@@ -98,7 +98,7 @@ tasks:
             - docker-compose --profile l1 down -v
             - docker-compose --profile l1 up -d --force-recreate
             - task: postgres:migrate:up
-            - go test -v -tags=KVS_TEST_L1 ./...
+            - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L1 ./...
             - docker-compose --profile l1 down -v
 
     l2_test:
@@ -107,7 +107,7 @@ tasks:
             - docker-compose --profile l2 down -v
             - docker-compose --profile l2 up -d --force-recreate
             - task: postgres:migrate:up
-            - go test -v -tags=KVS_TEST_L2 ./...
+            - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L2 ./...
             - docker-compose --profile l2 down -v
 
     swag_gen:

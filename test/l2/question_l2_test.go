@@ -461,14 +461,6 @@ func TestUpdateUser(t *testing.T) {
 	t.Run("StudentCannotCreateUser", func(t *testing.T) {
 		client := &http.Client{Timeout: timeout}
 
-		// Пытаемся создать пользователя под студентом
-		type AddUserDTO struct {
-			Username string            `json:"name"`
-			Password string            `json:"password"`
-			Rights   []string          `json:"rights"`
-			Contacts map[string]string `json:"contacts,omitempty"`
-		}
-
 		bodyDTO := &AddUserDTO{
 			Username: "test_user_" + uuid.New().String(),
 			Password: "test_password",
@@ -581,17 +573,6 @@ func getNewUserJwt(t *testing.T, login, pass string) string {
 func createUser(t *testing.T, adminJWT string, userStatus string) (string, string) {
 	t.Helper()
 
-	type AddUserDTO struct {
-		// required: true
-		Username string `json:"name"`
-		// required: true
-		Password string `json:"password"`
-		// required: true
-		Rights   []string          `json:"rights"`
-		Contacts map[string]string `json:"contacts,omitempty"`
-		LinkedID string            `json:"linked_id,omitempty"`
-	}
-
 	var rights []string
 	switch userStatus {
 	case "Admin":
@@ -607,6 +588,7 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 	bodyDTO := &AddUserDTO{
 		Username: uuid.NewString(),
 		Password: uuid.NewString(),
+		FullName: uuid.NewString(),
 		Rights:   rights,
 		Contacts: map[string]string{"phone": uuid.NewString(), "telegram": uuid.NewString()},
 		LinkedID: "2",
@@ -833,22 +815,16 @@ func updateUserLinkedID(t *testing.T, adminJWT string, userID string, linkedID s
 func createMentorWithEmail(t *testing.T, adminJWT string, email string) (string, string) {
 	t.Helper()
 
-	type AddUserDTO struct {
-		Username string            `json:"name"`
-		Password string            `json:"password"`
-		Rights   []string          `json:"rights"`
-		Contacts map[string]string `json:"contacts,omitempty"`
-		LinkedID string            `json:"linked_id,omitempty"`
-	}
-
 	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions"}
 
 	mentorUsername := uuid.NewString()
 	mentorPassword := uuid.NewString()
+	mentorFullName := uuid.NewString()
 
 	bodyDTO := &AddUserDTO{
 		Username: mentorUsername,
 		Password: mentorPassword,
+		FullName: mentorFullName,
 		Rights:   rights,
 		Contacts: map[string]string{
 			"email":    email,
@@ -900,7 +876,6 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 
-	
 	studentID, studentJWT := createUser(t, adminJWT, "Student")
 	require.NotEmpty(t, studentID)
 	require.NotEmpty(t, studentJWT)
@@ -997,22 +972,16 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) (string, string) {
 	t.Helper()
 
-	type AddUserDTO struct {
-		Username string            `json:"name"`
-		Password string            `json:"password"`
-		Rights   []string          `json:"rights"`
-		Contacts map[string]string `json:"contacts,omitempty"`
-		LinkedID string            `json:"linked_id,omitempty"`
-	}
-
 	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions"}
 
 	mentorUsername := uuid.NewString()
 	mentorPassword := uuid.NewString()
+	mentorFullName := uuid.NewString()
 
 	bodyDTO := &AddUserDTO{
 		Username: mentorUsername,
 		Password: mentorPassword,
+		FullName: mentorFullName,
 		Rights:   rights,
 		Contacts: map[string]string{
 			"telegram": telegramID,
@@ -1052,4 +1021,17 @@ func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) 
 	mentorJWT := getNewUserJwt(t, mentorUsername, mentorPassword)
 
 	return addUserRespDTO.UserID, mentorJWT
+}
+
+type AddUserDTO struct {
+	// required: true
+	Username string `json:"name"`
+	// required: true
+	Password string `json:"password"`
+	// required: true
+	FullName string `json:"fullname"`
+	// required: true
+	Rights   []string          `json:"rights"`
+	Contacts map[string]string `json:"contacts,omitempty"`
+	LinkedID string            `json:"linked_id,omitempty"`
 }

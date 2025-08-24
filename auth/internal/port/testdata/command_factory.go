@@ -36,18 +36,18 @@ func (m *MockCommandFactory) EXPECT() *MockCommandFactoryMockRecorder {
 }
 
 // NewAddUserCommand mocks base method.
-func (m *MockCommandFactory) NewAddUserCommand(ctx context.Context, login, password string, rights []string, contacts map[string]string) (entities.Command, error) {
+func (m *MockCommandFactory) NewAddUserCommand(ctx context.Context, user *entities.User) (entities.Command, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NewAddUserCommand", ctx, login, password, rights, contacts)
+	ret := m.ctrl.Call(m, "NewAddUserCommand", ctx, user)
 	ret0, _ := ret[0].(entities.Command)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NewAddUserCommand indicates an expected call of NewAddUserCommand.
-func (mr *MockCommandFactoryMockRecorder) NewAddUserCommand(ctx, login, password, rights, contacts interface{}) *gomock.Call {
+func (mr *MockCommandFactoryMockRecorder) NewAddUserCommand(ctx, user interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAddUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewAddUserCommand), ctx, login, password, rights, contacts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAddUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewAddUserCommand), ctx, user)
 }
 
 // NewDeleteUserCommand mocks base method.

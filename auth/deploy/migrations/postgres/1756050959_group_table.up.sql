@@ -1,0 +1,10 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS auth.groups (
+    id SERIAL PRIMARY KEY,
+    gid TEXT NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL UNIQUE,
+    linked_id TEXT NOT NULL
+);
+
+END;

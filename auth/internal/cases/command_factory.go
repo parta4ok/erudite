@@ -86,15 +86,9 @@ func (cf *CommandFactory) NewSignInCommand(
 	return common.NewSignInCommand(ctx, cf.storage, cf.jwtProvider, cf.hasher, userName, password)
 }
 
-func (cf *CommandFactory) NewAddUserCommand(
-	ctx context.Context,
-	login string,
-	password string,
-	rights []string,
-	contacts map[string]string,
+func (cf *CommandFactory) NewAddUserCommand(ctx context.Context, user *entities.User,
 ) (entities.Command, error) {
-	return common.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, login, password,
-		rights, contacts)
+	return common.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, user)
 }
 
 func (cf *CommandFactory) NewDeleteUserCommand(

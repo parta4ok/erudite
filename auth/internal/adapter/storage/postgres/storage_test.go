@@ -77,6 +77,7 @@ func TestStorage_StoreUser(t *testing.T) {
 		ID:           id,
 		Username:     uuid.New().String(),
 		PasswordHash: uuid.New().String(),
+		FullName:     uuid.NewString(),
 		Rights:       []string{"read", "write"},
 		Contacts:     map[string]string{"phone": "891111-11", "tg": "@JDoe"},
 	}
@@ -188,6 +189,17 @@ func TestStorage_UpdateUser(t *testing.T) {
 				checkFunc: linkedIDUpdatedCheck,
 			},
 		},
+		{
+			name: "update fullname",
+			args: args{
+				updatedUser: &entities.User{
+					FullName: uuid.NewString(),
+				},
+			},
+			fields: fields{
+				checkFunc: fullnameUpdatedCheck,
+			},
+		},
 	}
 	for _, tc := range tests {
 		tc := tc
@@ -204,6 +216,7 @@ func TestStorage_UpdateUser(t *testing.T) {
 				ID:           uuid.NewString(),
 				Username:     uuid.NewString(),
 				PasswordHash: uuid.NewString(),
+				FullName:     uuid.NewString(),
 				Rights:       []string{uuid.NewString()},
 				Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
 				LinkedID:     uuid.NewString(),
@@ -234,6 +247,7 @@ func userNameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
 	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.FullName, updated.FullName)
 }
 
 func passwordHashUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
@@ -245,6 +259,8 @@ func passwordHashUpdatedCheck(t *testing.T, base, updated, changes *entities.Use
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
 	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.FullName, updated.FullName)
+
 }
 
 func rightsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
@@ -256,6 +272,8 @@ func rightsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, changes.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
 	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.FullName, updated.FullName)
+
 }
 
 func contactsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
@@ -267,6 +285,8 @@ func contactsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, changes.Contacts, updated.Contacts)
 	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.FullName, updated.FullName)
+
 }
 
 func linkedIDUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
@@ -278,6 +298,20 @@ func linkedIDUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
 	require.Equal(t, changes.LinkedID, updated.LinkedID)
+	require.Equal(t, base.FullName, updated.FullName)
+
+}
+
+func fullnameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
+	t.Helper()
+
+	require.Equal(t, base.ID, updated.ID)
+	require.Equal(t, base.Username, updated.Username)
+	require.Equal(t, base.PasswordHash, updated.PasswordHash)
+	require.Equal(t, base.Rights, updated.Rights)
+	require.Equal(t, base.Contacts, updated.Contacts)
+	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, changes.FullName, updated.FullName)
 }
 
 func TestStorage_GetUserByLinkedID(t *testing.T) {

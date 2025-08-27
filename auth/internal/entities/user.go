@@ -9,7 +9,7 @@ type User struct {
 	FullName     string
 	Rights       []string
 	Contacts     map[string]string
-	LinkedID     string
+	GroupID      string
 }
 
 func NewUser(username string,
@@ -17,7 +17,7 @@ func NewUser(username string,
 	fullName string,
 	rights []string,
 	contacts map[string]string,
-	linkedID string) (*User, error) {
+	groupID string) (*User, error) {
 	if username == "" || password == "" || fullName == "" {
 		return nil, errors.Wrap(ErrInvalidParam,
 			"some of required fields is empty: username, password, fullname")
@@ -33,6 +33,6 @@ func NewUser(username string,
 		FullName:     fullName,
 		Rights:       rights,
 		Contacts:     contacts,
-		LinkedID:     linkedID,
+		GroupID:      groupID,
 	}, nil
 }

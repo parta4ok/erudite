@@ -13,5 +13,6 @@ type CommandFactory interface {
 	NewAddUserCommand(ctx context.Context, user *entities.User) (entities.Command, error)
 	NewDeleteUserCommand(ctx context.Context, userID string) (entities.Command, error)
 	NewUpdateUserCommand(ctx context.Context, user *entities.User) (entities.Command, error)
-	NewGetLinkedUserCommand(ctx context.Context, userID string) (entities.Command, error)
+	NewGetLinkedUsersCommand(ctx context.Context, userID string) (entities.Command, error)
+	NewAddGroupCommand(ctx context.Context, title string, linkedID string) (entities.Command, error)
 }

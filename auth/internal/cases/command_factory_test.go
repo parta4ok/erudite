@@ -192,7 +192,7 @@ func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
 	require.NotNil(t, cmd)
 }
 
-func TestCommandFactory_NewGetLinkedCommand(t *testing.T) {
+func TestCommandFactory_NewGetLinkedUsersCommand(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
@@ -207,7 +207,7 @@ func TestCommandFactory_NewGetLinkedCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewGetLinkedUserCommand(context.TODO(), uuid.NewString())
+	cmd, err := factory.NewGetLinkedUsersCommand(context.TODO(), uuid.NewString())
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }

@@ -90,7 +90,7 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 		FullName:     command.user.FullName,
 		Rights:       command.user.Rights,
 		Contacts:     command.user.Contacts,
-		LinkedID:     command.user.LinkedID,
+		GroupID:      command.user.GroupID,
 	}
 
 	if err := command.storage.StoreUser(command.ctx, user); err != nil {

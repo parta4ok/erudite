@@ -35,17 +35,17 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 	return m.recorder
 }
 
-// GetRecipientByID mocks base method.
-func (m *MockAuthClient) GetRecipientByID(ctx context.Context, id string) (*entities.Recipient, error) {
+// GetLinkedUsers mocks base method.
+func (m *MockAuthClient) GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedUsers, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRecipientByID", ctx, id)
-	ret0, _ := ret[0].(*entities.Recipient)
+	ret := m.ctrl.Call(m, "GetLinkedUsers", ctx, id)
+	ret0, _ := ret[0].(*entities.LinkedUsers)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetRecipientByID indicates an expected call of GetRecipientByID.
-func (mr *MockAuthClientMockRecorder) GetRecipientByID(ctx, id interface{}) *gomock.Call {
+// GetLinkedUsers indicates an expected call of GetLinkedUsers.
+func (mr *MockAuthClientMockRecorder) GetLinkedUsers(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRecipientByID", reflect.TypeOf((*MockAuthClient)(nil).GetRecipientByID), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinkedUsers", reflect.TypeOf((*MockAuthClient)(nil).GetLinkedUsers), ctx, id)
 }

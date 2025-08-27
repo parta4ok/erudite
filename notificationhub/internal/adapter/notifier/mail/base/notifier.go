@@ -71,14 +71,14 @@ func (m *MailNotifier) Next() cases.Notifier {
 }
 
 func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
-	recipient *entities.Recipient) error {
+	linkedUsers *entities.LinkedUsers) error {
 	slog.Info("Notify for mail notifier started")
 
-	to := m.checkMailInContacts(recipient)
+	to := m.checkMailInContacts(linkedUsers)
 	if to == "" {
 		slog.Warn("Recipient mail address not found")
 		if nextNotifier := m.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, recipient)
+			return nextNotifier.Notify(sessionResult, linkedUsers)
 		}
 		slog.Warn("Mail notifier is last. Message not be sent")
 		return nil
@@ -90,12 +90,12 @@ func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
 		resultStr += fmt.Sprintf("Вопрос: %s. Ответ пользователя: %s\n", question, answersJoined)
 	}
 
-	subject := fmt.Sprintf(TitlePrefix, sessionResult.GetUserID())
-	body := fmt.Sprintf("Topics: \n%s\n\n", strings.Join(sessionResult.Topics, ";\n"))
-	body += fmt.Sprintf("Answer:\n%s\n\n", strings.TrimSpace(resultStr))
+	subject := fmt.Sprintf(TitlePrefix, linkedUsers.Student.Fullname)
+	body := fmt.Sprintf("Темы: \n%s\n\n", strings.Join(sessionResult.Topics, ";\n"))
+	body += fmt.Sprintf("Оценка: %s\n", sessionResult.Resume)
+	body += fmt.Sprintf("Сдал: %t\n\n", sessionResult.IsSuccess)
+	body += fmt.Sprintf("Ответы:\n%s\n\n", strings.TrimSpace(resultStr))
 	body += fmt.Sprintf("IsExpired: %t\n\n", sessionResult.IsExpire)
-	body += fmt.Sprintf("IsSuccess: %t\n\n", sessionResult.IsSuccess)
-	body += fmt.Sprintf("Resume: %s\n", sessionResult.Resume)
 
 	message := fmt.Sprintf("Subject: %s\r\nTo: %s\r\n\r\n%s\r\n", subject, to, body)
 
@@ -108,7 +108,7 @@ func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
 		err := errors.Wrapf(entities.ErrInternal, "failed to send email: %v", err)
 		slog.Error(err.Error())
 		if next := m.Next(); next != nil {
-			return next.Notify(sessionResult, recipient)
+			return next.Notify(sessionResult, linkedUsers)
 		}
 		return err
 	}
@@ -123,13 +123,13 @@ func (m *MailNotifier) processErr(failureArg string) (*MailNotifier, error) {
 	return nil, err
 }
 
-func (m *MailNotifier) checkMailInContacts(recipient *entities.Recipient) string {
+func (m *MailNotifier) checkMailInContacts(linkedUsers *entities.LinkedUsers) string {
 	slog.Info("Checking mail in contacts started")
 
 	contacts := []string{"mail", "email", "e-mail", "почта", "электронная почта", "почтовый ящик"}
 
 	for _, probableContact := range contacts {
-		recipientMailAddress, ok := recipient.Contacts[probableContact]
+		recipientMailAddress, ok := linkedUsers.Recipient.Contacts[probableContact]
 		if ok {
 			slog.Info("Checking mail in contacts finished, mail found")
 			return recipientMailAddress

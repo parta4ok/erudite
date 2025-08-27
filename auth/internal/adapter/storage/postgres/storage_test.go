@@ -179,17 +179,6 @@ func TestStorage_UpdateUser(t *testing.T) {
 			},
 		},
 		{
-			name: "update linkedID",
-			args: args{
-				updatedUser: &entities.User{
-					LinkedID: uuid.NewString(),
-				},
-			},
-			fields: fields{
-				checkFunc: linkedIDUpdatedCheck,
-			},
-		},
-		{
 			name: "update fullname",
 			args: args{
 				updatedUser: &entities.User{
@@ -219,7 +208,6 @@ func TestStorage_UpdateUser(t *testing.T) {
 				FullName:     uuid.NewString(),
 				Rights:       []string{uuid.NewString()},
 				Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
-				LinkedID:     uuid.NewString(),
 			}
 
 			err := db.StoreUser(ctx, baseUser)
@@ -246,7 +234,7 @@ func userNameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.PasswordHash, updated.PasswordHash)
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
-	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.GroupID, updated.GroupID)
 	require.Equal(t, base.FullName, updated.FullName)
 }
 
@@ -258,7 +246,7 @@ func passwordHashUpdatedCheck(t *testing.T, base, updated, changes *entities.Use
 	require.Equal(t, changes.PasswordHash, updated.PasswordHash)
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
-	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.GroupID, updated.GroupID)
 	require.Equal(t, base.FullName, updated.FullName)
 
 }
@@ -271,7 +259,7 @@ func rightsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.PasswordHash, updated.PasswordHash)
 	require.Equal(t, changes.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
-	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.GroupID, updated.GroupID)
 	require.Equal(t, base.FullName, updated.FullName)
 
 }
@@ -284,20 +272,7 @@ func contactsUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.PasswordHash, updated.PasswordHash)
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, changes.Contacts, updated.Contacts)
-	require.Equal(t, base.LinkedID, updated.LinkedID)
-	require.Equal(t, base.FullName, updated.FullName)
-
-}
-
-func linkedIDUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
-	t.Helper()
-
-	require.Equal(t, base.ID, updated.ID)
-	require.Equal(t, base.Username, updated.Username)
-	require.Equal(t, base.PasswordHash, updated.PasswordHash)
-	require.Equal(t, base.Rights, updated.Rights)
-	require.Equal(t, base.Contacts, updated.Contacts)
-	require.Equal(t, changes.LinkedID, updated.LinkedID)
+	require.Equal(t, base.GroupID, updated.GroupID)
 	require.Equal(t, base.FullName, updated.FullName)
 
 }
@@ -310,11 +285,48 @@ func fullnameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, base.PasswordHash, updated.PasswordHash)
 	require.Equal(t, base.Rights, updated.Rights)
 	require.Equal(t, base.Contacts, updated.Contacts)
-	require.Equal(t, base.LinkedID, updated.LinkedID)
+	require.Equal(t, base.GroupID, updated.GroupID)
 	require.Equal(t, changes.FullName, updated.FullName)
 }
 
-func TestStorage_GetUserByLinkedID(t *testing.T) {
+// func TestStorage_GetUserByGroupID(t *testing.T) {
+// 	t.Parallel()
+
+// 	db := makeDB(t)
+// 	defer db.Close()
+
+// 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// 	defer cancel()
+
+// 	mentor := &entities.User{
+// 		ID:           uuid.NewString(),
+// 		Username:     uuid.NewString(),
+// 		PasswordHash: uuid.NewString(),
+// 		Rights:       []string{"mentor"},
+// 		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+// 	}
+
+// 	student := &entities.User{
+// 		ID:           uuid.NewString(),
+// 		Username:     uuid.NewString(),
+// 		PasswordHash: uuid.NewString(),
+// 		Rights:       []string{"mentor"},
+// 		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+// 		GroupID:     mentor.ID,
+// 	}
+
+// 	err := db.StoreUser(ctx, mentor)
+// 	require.NoError(t, err)
+
+// 	err = db.StoreUser(ctx, student)
+// 	require.NoError(t, err)
+
+// 	user, err := db.GetUserByGroupID(ctx, student.ID)
+// 	require.NoError(t, err)
+// 	require.Equal(t, mentor, user)
+// }
+
+func TestStorage_FlowWithGroupAndLinkedUsers(t *testing.T) {
 	t.Parallel()
 
 	db := makeDB(t)
@@ -327,26 +339,37 @@ func TestStorage_GetUserByLinkedID(t *testing.T) {
 		ID:           uuid.NewString(),
 		Username:     uuid.NewString(),
 		PasswordHash: uuid.NewString(),
-		Rights:       []string{"mentor"},
+		FullName:     uuid.NewString(),
+		Rights:       []string{uuid.NewString()},
 		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
-	}
-
-	student := &entities.User{
-		ID:           uuid.NewString(),
-		Username:     uuid.NewString(),
-		PasswordHash: uuid.NewString(),
-		Rights:       []string{"mentor"},
-		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
-		LinkedID:     mentor.ID,
 	}
 
 	err := db.StoreUser(ctx, mentor)
 	require.NoError(t, err)
 
+	gid := uuid.NewString()
+	gTitle := uuid.NewString()
+
+	err = db.AddGroup(ctx, gid, gTitle, mentor.ID)
+	require.NoError(t, err)
+
+	student := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     uuid.NewString(),
+		Rights:       []string{uuid.NewString()},
+		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
+		GroupID:      gid,
+	}
+
 	err = db.StoreUser(ctx, student)
 	require.NoError(t, err)
 
-	user, err := db.GetUserByLinkedID(ctx, student.ID)
+	pair, err := db.GetLinkedUsers(ctx, student.ID)
 	require.NoError(t, err)
-	require.Equal(t, mentor, user)
+
+	require.Equal(t, mentor, pair.Recipient)
+	require.Equal(t, student, pair.Student)
+
 }

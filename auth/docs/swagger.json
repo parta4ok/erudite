@@ -12,6 +12,82 @@
     "host": "localhost:8090",
     "basePath": "/auth/v1",
     "paths": {
+        "/auth/v1/add-group": {
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add new group with title and linked mentor ID. Requires admin rights.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Add new group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Group data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddGroupRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "New group created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddGroupResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/v1/add-user": {
             "put": {
                 "security": [
@@ -293,6 +369,27 @@
         }
     },
     "definitions": {
+        "github_com_parta4ok_kvs_auth_pkg_dto.AddGroupRequestDTO": {
+            "type": "object",
+            "properties": {
+                "linked_id": {
+                    "description": "required: true",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "required: true",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.AddGroupResponseDTO": {
+            "type": "object",
+            "properties": {
+                "group_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_parta4ok_kvs_auth_pkg_dto.AddUserDTO": {
             "type": "object",
             "properties": {
@@ -306,7 +403,7 @@
                     "description": "required: true",
                     "type": "string"
                 },
-                "linked_id": {
+                "group_id": {
                     "type": "string"
                 },
                 "name": {
@@ -318,6 +415,7 @@
                     "type": "string"
                 },
                 "rights": {
+                    "description": "required: true",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -377,7 +475,7 @@
                         "type": "string"
                     }
                 },
-                "linked_id": {
+                "group_id": {
                     "type": "string"
                 },
                 "name": {

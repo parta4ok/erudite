@@ -32,14 +32,14 @@ func NewTelegramNotifier(next cases.Notifier, token string) (*TelegramNotifier, 
 }
 
 func (tg *TelegramNotifier) Notify(sessionResult *entities.SessionResult,
-	recipient *entities.Recipient) error {
+	linkedUsers *entities.LinkedUsers) error {
 	slog.Info("Notify for telegram notifier started")
 
-	recipientID := tg.checkTelegramInContacts(recipient)
+	recipientID := tg.checkTelegramInContacts(linkedUsers)
 	if recipientID == "" {
 		slog.Warn("Recipient telegram address not found")
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, recipient)
+			return nextNotifier.Notify(sessionResult, linkedUsers)
 		}
 		slog.Warn("Telegram notifier is last. Message not be sent")
 		return nil
@@ -49,20 +49,20 @@ func (tg *TelegramNotifier) Notify(sessionResult *entities.SessionResult,
 	if err != nil {
 		slog.Warn("Recipient telegram address incorrect")
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, recipient)
+			return nextNotifier.Notify(sessionResult, linkedUsers)
 		}
 		slog.Warn("Telegram notifier is last. Message not be sent")
 		return nil
 	}
 
-	message := tg.generateMessage(sessionResult)
+	message := tg.generateMessage(sessionResult, linkedUsers)
 
 	msg := tgbotapi.NewMessage(id, message)
 	_, err = tg.bot.Send(msg)
 	if err != nil {
 		slog.Warn("Recipient telegram send message failure:" + err.Error())
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, recipient)
+			return nextNotifier.Notify(sessionResult, linkedUsers)
 		}
 		slog.Warn("Telegram notifier is last. Message not be sent")
 		return nil
@@ -84,9 +84,10 @@ func (tg *TelegramNotifier) Next() cases.Notifier {
 	return tg.next
 }
 
-func (tg *TelegramNotifier) generateMessage(sessionResult *entities.SessionResult) string {
-	message := fmt.Sprintf("userID: %s\n\ntopics: %s\n\nresult: %s\n\nsuccess: %t\n\n",
-		sessionResult.GetUserID(), strings.Join(sessionResult.Topics, "; "), sessionResult.Resume,
+func (tg *TelegramNotifier) generateMessage(sessionResult *entities.SessionResult,
+	users *entities.LinkedUsers) string {
+	message := fmt.Sprintf("студент: %s\n\nтемы: %s\n\nоценка: %s\n\nсдал: %t\n\n",
+		users.Student.Fullname, strings.Join(sessionResult.Topics, "; "), sessionResult.Resume,
 		sessionResult.IsSuccess)
 
 	var resultStr string
@@ -102,13 +103,13 @@ func (tg *TelegramNotifier) generateMessage(sessionResult *entities.SessionResul
 	return message
 }
 
-func (tg *TelegramNotifier) checkTelegramInContacts(recipient *entities.Recipient) string {
+func (tg *TelegramNotifier) checkTelegramInContacts(linkedUsers *entities.LinkedUsers) string {
 	slog.Info("Checking mail in contacts started")
 
 	contacts := []string{"tg", "telegram", "тг", "телеграм"}
 
 	for _, probableContact := range contacts {
-		recipientTelegramAddress, ok := recipient.Contacts[probableContact]
+		recipientTelegramAddress, ok := linkedUsers.Recipient.Contacts[probableContact]
 		if ok {
 			slog.Info("Checking telegram in contacts finished, telegram found")
 			return recipientTelegramAddress

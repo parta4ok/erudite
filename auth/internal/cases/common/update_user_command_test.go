@@ -202,8 +202,8 @@ func TestUpdateUserCommand_Exec(t *testing.T) {
 			storage := testdata.NewMockStorage(ctrl)
 			hasher := testdata.NewMockHasher(ctrl)
 			updatedUser := &entities.User{
-				ID:       uuid.NewString(),
-				LinkedID: uuid.NewString(),
+				ID:      uuid.NewString(),
+				GroupID: uuid.NewString(),
 			}
 
 			if tc.fields.changedPass {

@@ -50,17 +50,17 @@ func (mr *MockNotifierMockRecorder) Next() *gomock.Call {
 }
 
 // Notify mocks base method.
-func (m *MockNotifier) Notify(sessionResult *entities.SessionResult, recipient *entities.Recipient) error {
+func (m *MockNotifier) Notify(sessionResult *entities.SessionResult, linkedUsers *entities.LinkedUsers) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Notify", sessionResult, recipient)
+	ret := m.ctrl.Call(m, "Notify", sessionResult, linkedUsers)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Notify indicates an expected call of Notify.
-func (mr *MockNotifierMockRecorder) Notify(sessionResult, recipient interface{}) *gomock.Call {
+func (mr *MockNotifierMockRecorder) Notify(sessionResult, linkedUsers interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), sessionResult, recipient)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), sessionResult, linkedUsers)
 }
 
 // SetNextNotifier mocks base method.

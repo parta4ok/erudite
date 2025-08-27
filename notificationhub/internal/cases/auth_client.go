@@ -8,5 +8,5 @@ import (
 
 //go:generate mockgen -source=auth_client.go -destination=testdata/auth_client.go -package=testdata
 type AuthClient interface {
-	GetRecipientByID(ctx context.Context, id string) (*entities.Recipient, error)
+	GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedUsers, error)
 }

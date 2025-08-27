@@ -25,6 +25,7 @@ const (
 	addUserPath    = "/add-user"
 	deleteUserPath = "/delete-user"
 	updateUserPath = "/update-user"
+	addGroupPath   = "/add-group"
 
 	right_admin = "admin"
 )
@@ -148,6 +149,7 @@ func (s *Server) registerRoutes() {
 
 	s.router.Post(basePath+signinPath, s.Signin)
 	s.router.Put(basePath+addUserPath, s.AddUser)
+	s.router.Put(basePath+addGroupPath, s.AddGroup)
 	s.router.Route(basePath, func(r chi.Router) {
 		r.Delete(deleteUserPath+"/{user_id}", s.DeleteUser)
 		r.Patch(updateUserPath+"/{user_id}", s.UpdateUser)
@@ -275,7 +277,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 		requestDTO.FullName,
 		requestDTO.Rights,
 		requestDTO.Contacts,
-		requestDTO.LinkedID,
+		requestDTO.GroupID,
 	)
 	if err != nil {
 		err := errors.Wrap(err, "create base user user failure")
@@ -447,7 +449,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 		PasswordHash: updateUserDTO.Password,
 		Rights:       updateUserDTO.Rights,
 		Contacts:     updateUserDTO.Contacts,
-		LinkedID:     updateUserDTO.LinkedID,
+		GroupID:      updateUserDTO.GroupID,
 	}
 
 	updateUserCommand, err := s.factory.NewUpdateUserCommand(req.Context(), updateUser)
@@ -486,6 +488,90 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// Add new group
+//
+// @Summary      Add new group
+// @Description  Add new group with title and linked mentor ID. Requires admin rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        request body dto.AddGroupRequestDTO true "Group data"
+// @Success      201 {object} dto.AddGroupResponseDTO "New group created"
+// @Failure      400 {object} dto.ErrorDTO "Invalid request parameters"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      409 {object} dto.ErrorDTO "Conflict"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/add-group [put]
+//
+//nolint:funlen //ok
+func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("AddGroup started")
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	var requestDTO dto.AddGroupRequestDTO
+	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInvalidParam,
+			"decode req body to requestDTO failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	addGroupCommand, err := s.factory.NewAddGroupCommand(req.Context(), requestDTO.Title,
+		requestDTO.LinkedID)
+	if err != nil {
+		err := errors.Wrap(err, "new add group command failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	addGroupResult, err := addGroupCommand.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "add group command exec failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !addGroupResult.Success {
+		err := errors.Wrap(entities.ErrInternal, "add group failure")
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	responseDTO := &dto.AddGroupResponseDTO{
+		GroupID: addGroupResult.Message,
+	}
+
+	data, err := json.Marshal(responseDTO)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
+		slog.Error(err.Error())
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusCreated)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())

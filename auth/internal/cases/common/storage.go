@@ -10,8 +10,9 @@ import (
 type Storage interface {
 	GetUserByID(ctx context.Context, userID string) (*entities.User, error)
 	GetUserByUsername(ctx context.Context, userName string) (*entities.User, error)
-	GetUserByLinkedID(ctx context.Context, userID string) (*entities.User, error)
+	GetLinkedUsers(ctx context.Context, userID string) (*entities.LinkedUsers, error)
 	StoreUser(ctx context.Context, user *entities.User) error
 	UpdateUser(ctx context.Context, user *entities.User) error
 	RemoveUser(ctx context.Context, userID string) error
+	AddGroup(ctx context.Context, gid, title, mentorID string) error
 }

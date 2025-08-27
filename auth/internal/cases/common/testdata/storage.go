@@ -35,6 +35,35 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// AddGroup mocks base method.
+func (m *MockStorage) AddGroup(ctx context.Context, gid, title, mentorID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddGroup", ctx, gid, title, mentorID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddGroup indicates an expected call of AddGroup.
+func (mr *MockStorageMockRecorder) AddGroup(ctx, gid, title, mentorID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGroup", reflect.TypeOf((*MockStorage)(nil).AddGroup), ctx, gid, title, mentorID)
+}
+
+// GetLinkedUsers mocks base method.
+func (m *MockStorage) GetLinkedUsers(ctx context.Context, userID string) (*entities.LinkedUsers, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLinkedUsers", ctx, userID)
+	ret0, _ := ret[0].(*entities.LinkedUsers)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLinkedUsers indicates an expected call of GetLinkedUsers.
+func (mr *MockStorageMockRecorder) GetLinkedUsers(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinkedUsers", reflect.TypeOf((*MockStorage)(nil).GetLinkedUsers), ctx, userID)
+}
+
 // GetUserByID mocks base method.
 func (m *MockStorage) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	m.ctrl.T.Helper()
@@ -48,21 +77,6 @@ func (m *MockStorage) GetUserByID(ctx context.Context, userID string) (*entities
 func (mr *MockStorageMockRecorder) GetUserByID(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockStorage)(nil).GetUserByID), ctx, userID)
-}
-
-// GetUserByLinkedID mocks base method.
-func (m *MockStorage) GetUserByLinkedID(ctx context.Context, userID string) (*entities.User, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserByLinkedID", ctx, userID)
-	ret0, _ := ret[0].(*entities.User)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserByLinkedID indicates an expected call of GetUserByLinkedID.
-func (mr *MockStorageMockRecorder) GetUserByLinkedID(ctx, userID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByLinkedID", reflect.TypeOf((*MockStorage)(nil).GetUserByLinkedID), ctx, userID)
 }
 
 // GetUserByUsername mocks base method.

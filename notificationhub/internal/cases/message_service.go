@@ -35,14 +35,14 @@ func (ms *MessageService) SendMessage(ctx context.Context,
 		return err
 	}
 
-	recipient, err := ms.authClient.GetRecipientByID(ctx, sessionResult.GetUserID())
+	linkedUsers, err := ms.authClient.GetLinkedUsers(ctx, sessionResult.GetUserID())
 	if err != nil {
 		err = errors.Wrap(err, "failed to get recipient")
 		slog.Error(err.Error())
 		return err
 	}
 
-	if err := ms.notifier.Notify(sessionResult, recipient); err != nil {
+	if err := ms.notifier.Notify(sessionResult, linkedUsers); err != nil {
 		err = errors.Wrap(err, "failed to notify recipient")
 		slog.Error(err.Error())
 		return err

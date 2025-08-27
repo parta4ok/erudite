@@ -281,28 +281,29 @@ func (x *LinkedID) GetLinkedID() string {
 	return ""
 }
 
-type UserInfoResponse struct {
+type LinkedUsersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserInfo      *UserInfo              `protobuf:"bytes,1,opt,name=userInfo,proto3" json:"userInfo,omitempty"`
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	Recipient     *UserInfo              `protobuf:"bytes,1,opt,name=Recipient,proto3" json:"Recipient,omitempty"`
+	Student       *UserInfo              `protobuf:"bytes,2,opt,name=Student,proto3" json:"Student,omitempty"`
+	Error         *Error                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *UserInfoResponse) Reset() {
-	*x = UserInfoResponse{}
+func (x *LinkedUsersResponse) Reset() {
+	*x = LinkedUsersResponse{}
 	mi := &file_api_grpc_v1_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *UserInfoResponse) String() string {
+func (x *LinkedUsersResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*UserInfoResponse) ProtoMessage() {}
+func (*LinkedUsersResponse) ProtoMessage() {}
 
-func (x *UserInfoResponse) ProtoReflect() protoreflect.Message {
+func (x *LinkedUsersResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_api_grpc_v1_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -314,19 +315,26 @@ func (x *UserInfoResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use UserInfoResponse.ProtoReflect.Descriptor instead.
-func (*UserInfoResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use LinkedUsersResponse.ProtoReflect.Descriptor instead.
+func (*LinkedUsersResponse) Descriptor() ([]byte, []int) {
 	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *UserInfoResponse) GetUserInfo() *UserInfo {
+func (x *LinkedUsersResponse) GetRecipient() *UserInfo {
 	if x != nil {
-		return x.UserInfo
+		return x.Recipient
 	}
 	return nil
 }
 
-func (x *UserInfoResponse) GetError() *Error {
+func (x *LinkedUsersResponse) GetStudent() *UserInfo {
+	if x != nil {
+		return x.Student
+	}
+	return nil
+}
+
+func (x *LinkedUsersResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
@@ -337,9 +345,10 @@ type UserInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Rights        []string               `protobuf:"bytes,3,rep,name=rights,proto3" json:"rights,omitempty"`
-	Contacts      map[string]string      `protobuf:"bytes,4,rep,name=contacts,proto3" json:"contacts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	LinkedID      string                 `protobuf:"bytes,5,opt,name=linkedID,proto3" json:"linkedID,omitempty"`
+	Fullname      string                 `protobuf:"bytes,3,opt,name=fullname,proto3" json:"fullname,omitempty"`
+	Rights        []string               `protobuf:"bytes,4,rep,name=rights,proto3" json:"rights,omitempty"`
+	Contacts      map[string]string      `protobuf:"bytes,5,rep,name=contacts,proto3" json:"contacts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	GroupId       string                 `protobuf:"bytes,6,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -388,6 +397,13 @@ func (x *UserInfo) GetUsername() string {
 	return ""
 }
 
+func (x *UserInfo) GetFullname() string {
+	if x != nil {
+		return x.Fullname
+	}
+	return ""
+}
+
 func (x *UserInfo) GetRights() []string {
 	if x != nil {
 		return x.Rights
@@ -402,9 +418,9 @@ func (x *UserInfo) GetContacts() map[string]string {
 	return nil
 }
 
-func (x *UserInfo) GetLinkedID() string {
+func (x *UserInfo) GetGroupId() string {
 	if x != nil {
-		return x.LinkedID
+		return x.GroupId
 	}
 	return ""
 }
@@ -429,23 +445,25 @@ const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\x05Error\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"&\n" +
 	"\bLinkedID\x12\x1a\n" +
-	"\bLinkedID\x18\x01 \x01(\tR\bLinkedID\"a\n" +
-	"\x10UserInfoResponse\x12*\n" +
-	"\buserInfo\x18\x01 \x01(\v2\x0e.auth.UserInfoR\buserInfo\x12!\n" +
-	"\x05error\x18\x02 \x01(\v2\v.auth.ErrorR\x05error\"\xe1\x01\n" +
+	"\bLinkedID\x18\x01 \x01(\tR\bLinkedID\"\x90\x01\n" +
+	"\x13LinkedUsersResponse\x12,\n" +
+	"\tRecipient\x18\x01 \x01(\v2\x0e.auth.UserInfoR\tRecipient\x12(\n" +
+	"\aStudent\x18\x02 \x01(\v2\x0e.auth.UserInfoR\aStudent\x12!\n" +
+	"\x05error\x18\x03 \x01(\v2\v.auth.ErrorR\x05error\"\xfc\x01\n" +
 	"\bUserInfo\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x16\n" +
-	"\x06rights\x18\x03 \x03(\tR\x06rights\x128\n" +
-	"\bcontacts\x18\x04 \x03(\v2\x1c.auth.UserInfo.ContactsEntryR\bcontacts\x12\x1a\n" +
-	"\blinkedID\x18\x05 \x01(\tR\blinkedID\x1a;\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1a\n" +
+	"\bfullname\x18\x03 \x01(\tR\bfullname\x12\x16\n" +
+	"\x06rights\x18\x04 \x03(\tR\x06rights\x128\n" +
+	"\bcontacts\x18\x05 \x03(\v2\x1c.auth.UserInfo.ContactsEntryR\bcontacts\x12\x19\n" +
+	"\bgroup_id\x18\x06 \x01(\tR\agroupId\x1a;\n" +
 	"\rContactsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x87\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x8b\x01\n" +
 	"\vAuthService\x12?\n" +
 	"\n" +
-	"Introspect\x12\x17.auth.IntrospectRequest\x1a\x18.auth.IntrospectResponse\x127\n" +
-	"\rGetLinkedUser\x12\x0e.auth.LinkedID\x1a\x16.auth.UserInfoResponseB\x14Z\x12api/grpc/v1;authv1b\x06proto3"
+	"Introspect\x12\x17.auth.IntrospectRequest\x1a\x18.auth.IntrospectResponse\x12;\n" +
+	"\x0eGetLinkedUsers\x12\x0e.auth.LinkedID\x1a\x19.auth.LinkedUsersResponseB\x14Z\x12api/grpc/v1;authv1b\x06proto3"
 
 var (
 	file_api_grpc_v1_auth_proto_rawDescOnce sync.Once
@@ -461,30 +479,31 @@ func file_api_grpc_v1_auth_proto_rawDescGZIP() []byte {
 
 var file_api_grpc_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_api_grpc_v1_auth_proto_goTypes = []any{
-	(*IntrospectRequest)(nil),  // 0: auth.IntrospectRequest
-	(*IntrospectResponse)(nil), // 1: auth.IntrospectResponse
-	(*UserClaims)(nil),         // 2: auth.UserClaims
-	(*Error)(nil),              // 3: auth.Error
-	(*LinkedID)(nil),           // 4: auth.LinkedID
-	(*UserInfoResponse)(nil),   // 5: auth.UserInfoResponse
-	(*UserInfo)(nil),           // 6: auth.UserInfo
-	nil,                        // 7: auth.UserInfo.ContactsEntry
+	(*IntrospectRequest)(nil),   // 0: auth.IntrospectRequest
+	(*IntrospectResponse)(nil),  // 1: auth.IntrospectResponse
+	(*UserClaims)(nil),          // 2: auth.UserClaims
+	(*Error)(nil),               // 3: auth.Error
+	(*LinkedID)(nil),            // 4: auth.LinkedID
+	(*LinkedUsersResponse)(nil), // 5: auth.LinkedUsersResponse
+	(*UserInfo)(nil),            // 6: auth.UserInfo
+	nil,                         // 7: auth.UserInfo.ContactsEntry
 }
 var file_api_grpc_v1_auth_proto_depIdxs = []int32{
 	2, // 0: auth.IntrospectResponse.claims:type_name -> auth.UserClaims
 	3, // 1: auth.IntrospectResponse.error:type_name -> auth.Error
-	6, // 2: auth.UserInfoResponse.userInfo:type_name -> auth.UserInfo
-	3, // 3: auth.UserInfoResponse.error:type_name -> auth.Error
-	7, // 4: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
-	0, // 5: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
-	4, // 6: auth.AuthService.GetLinkedUser:input_type -> auth.LinkedID
-	1, // 7: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
-	5, // 8: auth.AuthService.GetLinkedUser:output_type -> auth.UserInfoResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 2: auth.LinkedUsersResponse.Recipient:type_name -> auth.UserInfo
+	6, // 3: auth.LinkedUsersResponse.Student:type_name -> auth.UserInfo
+	3, // 4: auth.LinkedUsersResponse.error:type_name -> auth.Error
+	7, // 5: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
+	0, // 6: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
+	4, // 7: auth.AuthService.GetLinkedUsers:input_type -> auth.LinkedID
+	1, // 8: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
+	5, // 9: auth.AuthService.GetLinkedUsers:output_type -> auth.LinkedUsersResponse
+	8, // [8:10] is the sub-list for method output_type
+	6, // [6:8] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_api_grpc_v1_auth_proto_init() }

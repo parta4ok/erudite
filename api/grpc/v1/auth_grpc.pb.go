@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Introspect_FullMethodName    = "/auth.AuthService/Introspect"
-	AuthService_GetLinkedUser_FullMethodName = "/auth.AuthService/GetLinkedUser"
+	AuthService_Introspect_FullMethodName     = "/auth.AuthService/Introspect"
+	AuthService_GetLinkedUsers_FullMethodName = "/auth.AuthService/GetLinkedUsers"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
 	Introspect(ctx context.Context, in *IntrospectRequest, opts ...grpc.CallOption) (*IntrospectResponse, error)
-	GetLinkedUser(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*UserInfoResponse, error)
+	GetLinkedUsers(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*LinkedUsersResponse, error)
 }
 
 type authServiceClient struct {
@@ -49,10 +49,10 @@ func (c *authServiceClient) Introspect(ctx context.Context, in *IntrospectReques
 	return out, nil
 }
 
-func (c *authServiceClient) GetLinkedUser(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*UserInfoResponse, error) {
+func (c *authServiceClient) GetLinkedUsers(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*LinkedUsersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UserInfoResponse)
-	err := c.cc.Invoke(ctx, AuthService_GetLinkedUser_FullMethodName, in, out, cOpts...)
+	out := new(LinkedUsersResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetLinkedUsers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *authServiceClient) GetLinkedUser(ctx context.Context, in *LinkedID, opt
 // for forward compatibility.
 type AuthServiceServer interface {
 	Introspect(context.Context, *IntrospectRequest) (*IntrospectResponse, error)
-	GetLinkedUser(context.Context, *LinkedID) (*UserInfoResponse, error)
+	GetLinkedUsers(context.Context, *LinkedID) (*LinkedUsersResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -78,8 +78,8 @@ type UnimplementedAuthServiceServer struct{}
 func (UnimplementedAuthServiceServer) Introspect(context.Context, *IntrospectRequest) (*IntrospectResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Introspect not implemented")
 }
-func (UnimplementedAuthServiceServer) GetLinkedUser(context.Context, *LinkedID) (*UserInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLinkedUser not implemented")
+func (UnimplementedAuthServiceServer) GetLinkedUsers(context.Context, *LinkedID) (*LinkedUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLinkedUsers not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -120,20 +120,20 @@ func _AuthService_Introspect_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_GetLinkedUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _AuthService_GetLinkedUsers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LinkedID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).GetLinkedUser(ctx, in)
+		return srv.(AuthServiceServer).GetLinkedUsers(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_GetLinkedUser_FullMethodName,
+		FullMethod: AuthService_GetLinkedUsers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).GetLinkedUser(ctx, req.(*LinkedID))
+		return srv.(AuthServiceServer).GetLinkedUsers(ctx, req.(*LinkedID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -150,8 +150,8 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AuthService_Introspect_Handler,
 		},
 		{
-			MethodName: "GetLinkedUser",
-			Handler:    _AuthService_GetLinkedUser_Handler,
+			MethodName: "GetLinkedUsers",
+			Handler:    _AuthService_GetLinkedUsers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

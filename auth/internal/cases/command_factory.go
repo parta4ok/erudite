@@ -105,9 +105,17 @@ func (cf *CommandFactory) NewUpdateUserCommand(
 	return common.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
 }
 
-func (cf *CommandFactory) NewGetLinkedUserCommand(
+func (cf *CommandFactory) NewGetLinkedUsersCommand(
 	ctx context.Context,
 	userID string,
 ) (entities.Command, error) {
-	return common.NewGetLinkedUserCommand(ctx, cf.storage, userID)
+	return common.NewGetLinkedUsersCommand(ctx, cf.storage, userID)
+}
+
+func (cf *CommandFactory) NewAddGroupCommand(
+	ctx context.Context,
+	title string,
+	linkedID string,
+) (entities.Command, error) {
+	return common.NewAddGroupCommand(ctx, cf.storage, cf.idGenerator, title, linkedID)
 }

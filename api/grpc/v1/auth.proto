@@ -6,7 +6,7 @@ option go_package = "api/grpc/v1;authv1";
 
 service AuthService {
   rpc Introspect (IntrospectRequest) returns (IntrospectResponse);
-  rpc GetLinkedUser(LinkedID) returns (UserInfoResponse);
+  rpc GetLinkedUsers(LinkedID) returns (LinkedUsersResponse);
 }
 
 message IntrospectRequest {
@@ -34,15 +34,17 @@ message LinkedID {
 	string LinkedID = 1;
 }
 
-message UserInfoResponse {
-	UserInfo userInfo = 1;
-	Error error = 2;
+message LinkedUsersResponse {
+	UserInfo Recipient = 1;
+  UserInfo Student = 2;
+	Error error = 3;
 }
 
 message UserInfo {
   string id = 1;
   string username = 2;
-  repeated string rights = 3;
-  map<string, string> contacts = 4;
-  string linkedID = 5;
+  string fullname = 3;
+  repeated string rights = 4;
+  map<string, string> contacts = 5;
+  string group_id = 6;
 }

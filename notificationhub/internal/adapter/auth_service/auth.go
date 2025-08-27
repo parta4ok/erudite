@@ -35,37 +35,51 @@ func NewAuthService(port string) (*AuthService, error) {
 	return &AuthService{client: c}, nil
 }
 
-func (srv *AuthService) GetRecipientByID(ctx context.Context, id string,
-) (*entities.Recipient, error) {
-	slog.Info("GetRecipientByID started", slog.String("id", id))
+func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
+) (*entities.LinkedUsers, error) {
+	slog.Info("GetLinkedUsers started", slog.String("id", id))
 
 	req := &authv1.LinkedID{
 		LinkedID: id,
 	}
 
-	info, err := srv.client.GetLinkedUser(ctx, req)
+	linkedUsers, err := srv.client.GetLinkedUsers(ctx, req)
 	if err != nil {
-		err = errors.Wrapf(entities.ErrInternal, "GetLinkedUser failure: %v", err)
+		err = errors.Wrapf(entities.ErrInternal, "GetLinkedUsers failure: %v", err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
-	if info.Error.Message != "" {
-		err := errors.Wrapf(entities.ErrInternal, "error message: %s", info.Error.Message)
+	if linkedUsers.Error.Message != "" {
+		err := errors.Wrapf(entities.ErrInternal, "error message: %s", linkedUsers.Error.Message)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
-	if info.UserInfo == nil {
-		err := errors.Wrap(entities.ErrInternal, "nil user info")
+	if linkedUsers.Recipient == nil || linkedUsers.Student == nil {
+		err := errors.Wrap(entities.ErrInternal, "nil users info")
 		slog.Error(err.Error())
 		return nil, err
 	}
 
-	slog.Info("GetRecipientByID completed")
+	slog.Info("GetLinkedUsers completed")
 
-	return &entities.Recipient{
-		ID:       info.UserInfo.Id,
-		Contacts: info.UserInfo.Contacts,
+	return &entities.LinkedUsers{
+		Recipient: &entities.User{
+			ID:       linkedUsers.Recipient.Id,
+			Name:     linkedUsers.Recipient.Username,
+			Fullname: linkedUsers.Recipient.Fullname,
+			Rights:   linkedUsers.Recipient.Rights,
+			Contacts: linkedUsers.Recipient.Contacts,
+			GroupID:  linkedUsers.Recipient.GroupId,
+		},
+		Student: &entities.User{
+			ID:       linkedUsers.Student.Id,
+			Name:     linkedUsers.Student.Username,
+			Fullname: linkedUsers.Student.Fullname,
+			Rights:   linkedUsers.Student.Rights,
+			Contacts: linkedUsers.Student.Contacts,
+			GroupID:  linkedUsers.Student.GroupId,
+		},
 	}, nil
 }

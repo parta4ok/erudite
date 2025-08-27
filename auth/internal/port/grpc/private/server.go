@@ -90,27 +90,29 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 }
 
 //nolint:funlen,dupl //ok
-func (a *AuthService) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
-) (*authv1.UserInfoResponse, error) {
+func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
+) (*authv1.LinkedUsersResponse, error) {
 	slog.Info("GetLinkedUser started")
 
 	userID := req.LinkedID
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is empty")
 		slog.Error(err.Error())
-		return &authv1.UserInfoResponse{
-			UserInfo: nil,
-			Error:    &authv1.Error{Message: err.Error()},
+		return &authv1.LinkedUsersResponse{
+			Recipient: nil,
+			Student:   nil,
+			Error:     &authv1.Error{Message: err.Error()},
 		}, nil
 	}
 
-	command, err := a.factory.NewGetLinkedUserCommand(ctx, userID)
+	command, err := a.factory.NewGetLinkedUsersCommand(ctx, userID)
 	if err != nil {
 		err := errors.Wrap(err, "create get user command failure")
 		slog.Error(err.Error())
-		return &authv1.UserInfoResponse{
-			UserInfo: nil,
-			Error:    &authv1.Error{Message: err.Error()},
+		return &authv1.LinkedUsersResponse{
+			Recipient: nil,
+			Student:   nil,
+			Error:     &authv1.Error{Message: err.Error()},
 		}, nil
 	}
 
@@ -118,9 +120,10 @@ func (a *AuthService) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
 	if err != nil {
 		err := errors.Wrap(err, "get user command exec failure")
 		slog.Error(err.Error())
-		return &authv1.UserInfoResponse{
-			UserInfo: nil,
-			Error:    &authv1.Error{Message: err.Error()},
+		return &authv1.LinkedUsersResponse{
+			Recipient: nil,
+			Student:   nil,
+			Error:     &authv1.Error{Message: err.Error()},
 		}, nil
 	}
 
@@ -128,30 +131,41 @@ func (a *AuthService) GetLinkedUser(ctx context.Context, req *authv1.LinkedID,
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "get user command exec failure")
 			slog.Error(err.Error())
-			return &authv1.UserInfoResponse{
-				UserInfo: nil,
-				Error:    &authv1.Error{Message: err.Error()},
+			return &authv1.LinkedUsersResponse{
+				Recipient: nil,
+				Student:   nil,
+				Error:     &authv1.Error{Message: err.Error()},
 			}, nil
 		}
 	}
 
-	userData, ok := res.Payload.(*entities.User)
+	userData, ok := res.Payload.(*entities.LinkedUsers)
 	if !ok {
-		err := errors.Wrap(entities.ErrInvalidJWT, "assert user data failure")
+		err := errors.Wrap(entities.ErrInvalidJWT, "assert linked users data failure")
 		slog.Error(err.Error())
-		return &authv1.UserInfoResponse{
-			UserInfo: nil,
-			Error:    &authv1.Error{Message: err.Error()},
+		return &authv1.LinkedUsersResponse{
+			Recipient: nil,
+			Student:   nil,
+			Error:     &authv1.Error{Message: err.Error()},
 		}, nil
 	}
 
-	resp := &authv1.UserInfoResponse{
-		UserInfo: &authv1.UserInfo{
-			Id:       userData.ID,
-			Username: userData.Username,
-			Rights:   userData.Rights,
-			Contacts: userData.Contacts,
-			LinkedID: userData.LinkedID,
+	resp := &authv1.LinkedUsersResponse{
+		Recipient: &authv1.UserInfo{
+			Id:       userData.Recipient.ID,
+			Username: userData.Recipient.Username,
+			Fullname: userData.Recipient.FullName,
+			Rights:   userData.Recipient.Rights,
+			Contacts: userData.Recipient.Contacts,
+			GroupId:  userData.Recipient.GroupID,
+		},
+		Student: &authv1.UserInfo{
+			Id:       userData.Student.ID,
+			Username: userData.Student.Username,
+			Fullname: userData.Student.FullName,
+			Rights:   userData.Student.Rights,
+			Contacts: userData.Student.Contacts,
+			GroupId:  userData.Student.GroupID,
 		},
 		Error: &authv1.Error{
 			Message: "",

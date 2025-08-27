@@ -461,7 +461,7 @@ func TestUpdateUser(t *testing.T) {
 	t.Run("StudentCannotCreateUser", func(t *testing.T) {
 		client := &http.Client{Timeout: timeout}
 
-		bodyDTO := &AddUserDTO{
+		bodyDTO := &UserDTO{
 			Username: "test_user_" + uuid.New().String(),
 			Password: "test_password",
 			Rights:   []string{"student"},
@@ -585,13 +585,12 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 		rights = []string{"student", "view_topic_list", "start_session", "complete_session"}
 	}
 
-	bodyDTO := &AddUserDTO{
+	bodyDTO := &UserDTO{
 		Username: uuid.NewString(),
 		Password: uuid.NewString(),
 		FullName: uuid.NewString(),
 		Rights:   rights,
 		Contacts: map[string]string{"phone": uuid.NewString(), "telegram": uuid.NewString()},
-		LinkedID: "2",
 	}
 
 	client := &http.Client{Timeout: timeout}
@@ -652,15 +651,7 @@ func deleteUser(t *testing.T, adminJWT string, userID string) {
 func updateUserToStudentWithCredentials(t *testing.T, adminJWT string, userID string, newLogin string, newPassword string) {
 	t.Helper()
 
-	type UpdateUserDTO struct {
-		Username string            `json:"name,omitempty"`
-		Password string            `json:"password,omitempty"`
-		Rights   []string          `json:"rights,omitempty"`
-		Contacts map[string]string `json:"contacts,omitempty"`
-		LinkedID string            `json:"linked_id,omitempty"`
-	}
-
-	updateDTO := &UpdateUserDTO{
+	updateDTO := &UserDTO{
 		Username: newLogin,
 		Password: newPassword,
 		Rights:   []string{"student", "view_topic_list", "start_session", "complete_session"},
@@ -692,11 +683,12 @@ func TestCompleteStudentWorkflowWithLinkedID(t *testing.T) {
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 
-	studentID, studentJWT := createUser(t, adminJWT, "Student")
+	groupID := createGroup(t, adminJWT, "Test Group Email"+uuid.NewString(), mentorID)
+	require.NotEmpty(t, groupID)
+
+	studentID, studentJWT := createStudentWithGroup(t, adminJWT, groupID)
 	require.NotEmpty(t, studentID)
 	require.NotEmpty(t, studentJWT)
-
-	updateUserLinkedID(t, adminJWT, studentID, mentorID)
 
 	sessionRequestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
@@ -780,27 +772,26 @@ func TestCompleteStudentWorkflowWithLinkedID(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotEmpty(t, resultResponse.Grade)
-
-	t.Logf("Test completed successfully. Mentor %s (nvmaslenko@gmail.com), Student %s with LinkedID=%s completed session %s with grade: %s, success: %v",
-		mentorID, studentID, mentorID, sessionResponse.SessionID, resultResponse.Grade, resultResponse.IsSuccess)
 }
 
-func updateUserLinkedID(t *testing.T, adminJWT string, userID string, linkedID string) {
+func createGroup(t *testing.T, adminJWT string, title string, mentorID string) string {
 	t.Helper()
 
-	type UpdateUserDTO struct {
+	type AddGroupRequestDTO struct {
+		Title    string `json:"title"`
 		LinkedID string `json:"linked_id"`
 	}
 
-	updateDTO := &UpdateUserDTO{
-		LinkedID: linkedID,
+	groupDTO := &AddGroupRequestDTO{
+		Title:    title,
+		LinkedID: mentorID,
 	}
 
 	client := &http.Client{Timeout: timeout}
-	data, err := json.Marshal(updateDTO)
+	data, err := json.Marshal(groupDTO)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodPatch, "http://localhost:8090/auth/v1/update-user/"+userID, bytes.NewReader(data))
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-group", bytes.NewReader(data))
 	require.NoError(t, err)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
 	req.Header.Add("Content-Type", "application/json")
@@ -809,7 +800,74 @@ func updateUserLinkedID(t *testing.T, adminJWT string, userID string, linkedID s
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddGroupResponseDTO struct {
+		GroupID string `json:"group_id"`
+	}
+
+	var addGroupRespDTO AddGroupResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addGroupRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addGroupRespDTO.GroupID)
+
+	return addGroupRespDTO.GroupID
+}
+
+func createStudentWithGroup(t *testing.T, adminJWT string, groupID string) (string, string) {
+	t.Helper()
+
+	rights := []string{"student", "view_topic_list", "start_session", "complete_session"}
+
+	studentUsername := uuid.NewString()
+	studentPassword := uuid.NewString()
+	studentFullName := "Student " + uuid.NewString()
+
+	bodyDTO := &UserDTO{
+		Username: studentUsername,
+		Password: studentPassword,
+		FullName: studentFullName,
+		Rights:   rights,
+		Contacts: map[string]string{
+			"email":    studentUsername + "@student.test.com",
+			"phone":    uuid.NewString(),
+			"telegram": uuid.NewString(),
+		},
+		GroupID: groupID,
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer func() {
+		closeErr := resp.Body.Close()
+		require.NoError(t, closeErr)
+	}()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		UserID string `json:"user_id"`
+	}
+
+	var addUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addUserRespDTO.UserID)
+
+	studentJWT := getNewUserJwt(t, studentUsername, studentPassword)
+
+	return addUserRespDTO.UserID, studentJWT
 }
 
 func createMentorWithEmail(t *testing.T, adminJWT string, email string) (string, string) {
@@ -821,7 +879,7 @@ func createMentorWithEmail(t *testing.T, adminJWT string, email string) (string,
 	mentorPassword := uuid.NewString()
 	mentorFullName := uuid.NewString()
 
-	bodyDTO := &AddUserDTO{
+	bodyDTO := &UserDTO{
 		Username: mentorUsername,
 		Password: mentorPassword,
 		FullName: mentorFullName,
@@ -876,11 +934,12 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 
-	studentID, studentJWT := createUser(t, adminJWT, "Student")
+	groupID := createGroup(t, adminJWT, "Test Group Telegram", mentorID)
+	require.NotEmpty(t, groupID)
+
+	studentID, studentJWT := createStudentWithGroup(t, adminJWT, groupID)
 	require.NotEmpty(t, studentID)
 	require.NotEmpty(t, studentJWT)
-
-	updateUserLinkedID(t, adminJWT, studentID, mentorID)
 
 	sessionRequestBody := map[string]interface{}{
 		"topics": []string{"Базы данных", "Базовые типы в Go"},
@@ -964,9 +1023,6 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotEmpty(t, resultResponse.Grade)
-
-	t.Logf("Test completed successfully. Mentor %s (telegram: 164718531), Student %s with LinkedID=%s completed session %s with grade: %s, success: %v",
-		mentorID, studentID, mentorID, sessionResponse.SessionID, resultResponse.Grade, resultResponse.IsSuccess)
 }
 
 func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) (string, string) {
@@ -978,7 +1034,7 @@ func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) 
 	mentorPassword := uuid.NewString()
 	mentorFullName := uuid.NewString()
 
-	bodyDTO := &AddUserDTO{
+	bodyDTO := &UserDTO{
 		Username: mentorUsername,
 		Password: mentorPassword,
 		FullName: mentorFullName,
@@ -1023,7 +1079,7 @@ func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) 
 	return addUserRespDTO.UserID, mentorJWT
 }
 
-type AddUserDTO struct {
+type UserDTO struct {
 	// required: true
 	Username string `json:"name"`
 	// required: true
@@ -1033,5 +1089,5 @@ type AddUserDTO struct {
 	// required: true
 	Rights   []string          `json:"rights"`
 	Contacts map[string]string `json:"contacts,omitempty"`
-	LinkedID string            `json:"linked_id,omitempty"`
+	GroupID  string            `json:"group_id,omitempty"`
 }

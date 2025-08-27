@@ -5,7 +5,7 @@ type UpdateUserDTO struct {
 	Password string            `json:"password,omitempty"`
 	Rights   []string          `json:"rights,omitempty"`
 	Contacts map[string]string `json:"contacts,omitempty"`
-	LinkedID string            `json:"linked_id,omitempty"`
+	GroupID  string            `json:"group_id,omitempty"`
 }
 
 type UpdateUserResponseDTO struct {

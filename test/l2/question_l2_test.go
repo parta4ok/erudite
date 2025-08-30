@@ -1091,3 +1091,94 @@ type UserDTO struct {
 	Contacts map[string]string `json:"contacts,omitempty"`
 	GroupID  string            `json:"group_id,omitempty"`
 }
+
+func TestCompleteSessionWithExpiredTime(t *testing.T) {
+	t.Skip("this test skipped becouse time_to_respond" +
+		" in deployment file of question service has value > 1s")
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+
+	userID, jwt := createUser(t, adminJWT, "Student")
+
+	requestBody := map[string]interface{}{
+		"topics": []string{"Базы данных"},
+	}
+
+	jsonBody, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	client := &http.Client{Timeout: timeout}
+	url := fmt.Sprintf("%s/%s/start_session", baseURL, userID)
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(body, &sessionResponse)
+	require.NoError(t, err)
+
+	require.NotEqual(t, sessionResponse.SessionID, "")
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	time.Sleep(11 * time.Second)
+	jsonBody, err = json.Marshal(completeBody)
+	require.NoError(t, err)
+	url = fmt.Sprintf("%s/%s/%s/complete_session", baseURL, userID, sessionResponse.SessionID)
+	req, err = http.NewRequest(http.MethodPost, url, bytes.NewReader(jsonBody))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Add("Content-Type", "application/json")
+
+	require.NoError(t, err)
+
+	resp, err = client.Do(req)
+	defer func() {
+		err = resp.Body.Close()
+		require.NoError(t, err)
+	}()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err = io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	var resultResponse struct {
+		IsSuccess bool   `json:"is_success"`
+		Grade     string `json:"grade"`
+	}
+	err = json.Unmarshal(body, &resultResponse)
+	require.NoError(t, err)
+
+	require.Contains(t, resultResponse.Grade, "session expired")
+	require.NotEmpty(t, resultResponse.Grade)
+}

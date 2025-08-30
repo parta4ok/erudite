@@ -43,7 +43,7 @@ func TestNewSessionServiceBase_WithCustomDuration(t *testing.T) {
 	customDuration := time.Minute * 15
 
 	service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator,
-		cases.WithCustomSessionDuration(customDuration))
+		cases.WithCustomRespondTime(customDuration))
 
 	require.NoError(t, err)
 	require.NotNil(t, service)

@@ -51,7 +51,7 @@ func (app *App) Start() {
 	authClient := app.initAuthServiceClient(cfg)
 	accessor := app.initAccessor(cfg)
 
-	service := app.initSessionServiceBase(storage, sessionStorage, generator)
+	service := app.initSessionServiceBase(cfg, storage, sessionStorage, generator)
 	broker := app.initBroker(cfg)
 
 	wrappedService := app.initWrappedSessionService(cfg, service, broker)
@@ -184,14 +184,19 @@ func (app *App) initNatsPub(cfg *config.Config) *publisher.Publisher {
 	return pub
 }
 
-func (app *App) initSessionServiceBase(storage cases.Storage,
+func (app *App) initSessionServiceBase(
+	cfg *config.Config,
+	storage cases.Storage,
 	sessionStorage entities.SessionStorage,
 	generator entities.IDGenerator) cases.SessionService {
 	slog.Info("init session_service started")
 
 	var sessionService cases.SessionService
 
-	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
+	respondTime := cfg.GetTimeToRespond()
+
+	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator,
+		cases.WithCustomRespondTime(respondTime))
 	if err != nil {
 		err := errors.Wrap(err, "NewSessionServiceBase")
 		app.panic(err)
@@ -320,7 +325,7 @@ func (app *App) shutdown() {
 	slog.Info("Application shutdown completed")
 }
 
-func (app *App) Stop() { 
+func (app *App) Stop() {
 	if app.cancel != nil {
 		app.cancel()
 	}

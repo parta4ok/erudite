@@ -96,3 +96,11 @@ func (cfg *Config) GetNatsURL() string {
 func (cfg *Config) GetNatsSubject() string {
 	return cfg.viper.GetString("nats.subject")
 }
+
+func (cfg *Config) GetTimeToRespond() time.Duration {
+	return cfg.viper.GetDuration("kvs.session.time_to_respond")
+}
+
+func (cfg *Config) GetSessionLimit() int {
+	return cfg.viper.GetInt("kvs.session.day_session_limit")
+}

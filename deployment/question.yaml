@@ -12,6 +12,9 @@ kvs:
         level: info
         format: json
         add_source: true
+    session:
+        time_to_respond: 1m
+        day_session_limit: 1
 postgres:
     connection: postgresql://postgres:password@postgres:5432/knowledge
 auth_service:

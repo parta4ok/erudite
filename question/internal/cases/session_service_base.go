@@ -18,7 +18,7 @@ type SessionServiceBase struct {
 	storage        Storage
 	sessionStorage entities.SessionStorage
 	generator      entities.IDGenerator
-	topicDuration  time.Duration
+	respondTime    time.Duration
 }
 
 func NewSessionServiceBase(storage Storage, sessionStorage entities.SessionStorage,
@@ -39,7 +39,7 @@ func NewSessionServiceBase(storage Storage, sessionStorage entities.SessionStora
 		storage:        storage,
 		sessionStorage: sessionStorage,
 		generator:      generator,
-		topicDuration:  defaultTopicDuration,
+		respondTime:    defaultTopicDuration,
 	}
 
 	service.setOptions(opts...)
@@ -49,9 +49,9 @@ func NewSessionServiceBase(storage Storage, sessionStorage entities.SessionStora
 
 type SessionServiceOption func(*SessionServiceBase)
 
-func WithCustomSessionDuration(dur time.Duration) SessionServiceOption {
+func WithCustomRespondTime(dur time.Duration) SessionServiceOption {
 	return func(srv *SessionServiceBase) {
-		srv.topicDuration = dur
+		srv.respondTime = dur
 	}
 }
 
@@ -105,7 +105,10 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 		questionsMap[question.ID()] = question
 	}
 
-	if err = session.SetQuestions(questionsMap, srv.topicDuration); err != nil {
+	if err = session.SetQuestions(
+		questionsMap,
+		time.Duration(len(questions))*srv.respondTime,
+	); err != nil {
 		slog.Error(err.Error())
 		return "", nil, errors.Wrap(err, "SetQuestions")
 	}

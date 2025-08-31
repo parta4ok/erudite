@@ -26,7 +26,7 @@ func TestNewSession(t *testing.T) {
 	generator := testdata.NewMockIDGenerator(ctrl)
 	generator.EXPECT().GenerateID().Return("2")
 	storage := testdata.NewMockSessionStorage(ctrl)
-	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics).Return(false, nil)
+	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics, 1).Return(false, nil)
 
 	question := testdata.NewMockQuestion(ctrl)
 
@@ -36,7 +36,7 @@ func TestNewSession(t *testing.T) {
 
 	require.Equal(t, entities.InitState, session.GetStatus())
 
-	forbidden, err := session.IsDailySessionLimitReached(ctx, userID, topics)
+	forbidden, err := session.IsDailySessionLimitReached(ctx, userID, topics, 1)
 	require.False(t, forbidden)
 	require.NoError(t, err)
 

@@ -51,9 +51,9 @@ func (mr *MockSessionServiceMockRecorder) CompleteSession(ctx, sessionID, answer
 }
 
 // CreateSession mocks base method.
-func (m *MockSessionService) CreateSession(ctx context.Context, userID string, topics []string) (string, map[string]entities.Question, error) {
+func (m *MockSessionService) CreateSession(ctx context.Context, userID string, topics []string, dailyLimit int) (string, map[string]entities.Question, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSession", ctx, userID, topics)
+	ret := m.ctrl.Call(m, "CreateSession", ctx, userID, topics, dailyLimit)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(map[string]entities.Question)
 	ret2, _ := ret[2].(error)
@@ -61,9 +61,9 @@ func (m *MockSessionService) CreateSession(ctx context.Context, userID string, t
 }
 
 // CreateSession indicates an expected call of CreateSession.
-func (mr *MockSessionServiceMockRecorder) CreateSession(ctx, userID, topics interface{}) *gomock.Call {
+func (mr *MockSessionServiceMockRecorder) CreateSession(ctx, userID, topics, dailyLimit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockSessionService)(nil).CreateSession), ctx, userID, topics)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSession", reflect.TypeOf((*MockSessionService)(nil).CreateSession), ctx, userID, topics, dailyLimit)
 }
 
 // GetAllCompletedUserSessions mocks base method.

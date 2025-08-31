@@ -577,10 +577,10 @@ func createUser(t *testing.T, adminJWT string, userStatus string) (string, strin
 	switch userStatus {
 	case "Admin":
 		rights = []string{"admin", "add_user", "delete_user", "view_topic_list", "start_session",
-			"complete_session", "view_completed_sessions"}
+			"complete_session", "view_completed_sessions", "inifinity_session_start"}
 	case "Mentor":
 		rights = []string{"mentor", "view_topic_list", "start_session", "complete_session",
-			"view_completed_sessions"}
+			"view_completed_sessions", "inifinity_session_start"}
 	default:
 		rights = []string{"student", "view_topic_list", "start_session", "complete_session"}
 	}
@@ -873,7 +873,7 @@ func createStudentWithGroup(t *testing.T, adminJWT string, groupID string) (stri
 func createMentorWithEmail(t *testing.T, adminJWT string, email string) (string, string) {
 	t.Helper()
 
-	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions"}
+	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions", "inifinity_session_start"}
 
 	mentorUsername := uuid.NewString()
 	mentorPassword := uuid.NewString()
@@ -934,7 +934,7 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 
-	groupID := createGroup(t, adminJWT, "Test Group Telegram", mentorID)
+	groupID := createGroup(t, adminJWT, "Test Group Telegram_"+uuid.NewString(), mentorID)
 	require.NotEmpty(t, groupID)
 
 	studentID, studentJWT := createStudentWithGroup(t, adminJWT, groupID)
@@ -1028,7 +1028,7 @@ func TestCompleteStudentWorkflowWithTelegramLinkedID(t *testing.T) {
 func createMentorWithTelegram(t *testing.T, adminJWT string, telegramID string) (string, string) {
 	t.Helper()
 
-	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions"}
+	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions", "inifinity_session_start"}
 
 	mentorUsername := uuid.NewString()
 	mentorPassword := uuid.NewString()
@@ -1181,4 +1181,246 @@ func TestCompleteSessionWithExpiredTime(t *testing.T) {
 
 	require.Contains(t, resultResponse.Grade, "session expired")
 	require.NotEmpty(t, resultResponse.Grade)
+}
+
+func TestMentorCanCreateMultipleSessionsPerDay(t *testing.T) {
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	require.NotEmpty(t, adminJWT)
+
+	mentorID, mentorJWT := createUser(t, adminJWT, "Mentor")
+	require.NotEmpty(t, mentorID)
+	require.NotEmpty(t, mentorJWT)
+
+	// Общие темы для тестов
+	topics := []string{"Базы данных", "Базовые типы в Go"}
+	client := &http.Client{Timeout: timeout}
+
+	sessionBody := map[string]interface{}{
+		"topics": topics,
+	}
+	sessionJSON, err := json.Marshal(sessionBody)
+	require.NoError(t, err)
+
+	sessionURL := fmt.Sprintf("%s/%s/start_session", baseURL, mentorID)
+	req, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "First mentor session should be created successfully")
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(body, &sessionResponse)
+	require.NoError(t, err)
+	require.NotEmpty(t, sessionResponse.SessionID)
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	completeJSON, err := json.Marshal(completeBody)
+	require.NoError(t, err)
+
+	completeURL := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, mentorID, sessionResponse.SessionID)
+	completeReq, err := http.NewRequest(http.MethodPost, completeURL, bytes.NewReader(completeJSON))
+	require.NoError(t, err)
+	completeReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+	completeReq.Header.Add("Content-Type", "application/json")
+
+	completeResp, err := client.Do(completeReq)
+	require.NoError(t, err)
+	defer completeResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, completeResp.StatusCode, "First mentor session should be completed successfully")
+
+	secondReq, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+	secondReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+	secondReq.Header.Add("Content-Type", "application/json")
+
+	secondResp, err := client.Do(secondReq)
+	require.NoError(t, err)
+	defer secondResp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, secondResp.StatusCode, "Second mentor session should be created successfully")
+
+	var secondSessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+
+	secondBody, err := io.ReadAll(secondResp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(secondBody, &secondSessionResponse)
+	require.NoError(t, err)
+	require.NotEmpty(t, secondSessionResponse.SessionID)
+
+	var secondAnswers []UserAnswerDTO
+	for _, question := range secondSessionResponse.Questions {
+		secondAnswers = append(secondAnswers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	secondCompleteBody := UserAnswersListDTO{
+		AnswersList: secondAnswers,
+	}
+
+	secondCompleteJSON, err := json.Marshal(secondCompleteBody)
+	require.NoError(t, err)
+
+	secondCompleteURL := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, mentorID, secondSessionResponse.SessionID)
+	secondCompleteReq, err := http.NewRequest(http.MethodPost, secondCompleteURL, bytes.NewReader(secondCompleteJSON))
+	require.NoError(t, err)
+	secondCompleteReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+	secondCompleteReq.Header.Add("Content-Type", "application/json")
+
+	secondCompleteResp, err := client.Do(secondCompleteReq)
+	require.NoError(t, err)
+	defer secondCompleteResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, secondCompleteResp.StatusCode, "Second mentor session should be completed successfully")
+
+	deleteUser(t, adminJWT, mentorID)
+}
+
+func TestStudentCannotCreateSecondSessionAfterCompletingFirst(t *testing.T) {
+	t.Skip("skipped because depend on day_session_limit parameter from question.yaml")
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	require.NotEmpty(t, adminJWT)
+
+	studentID, studentJWT := createUser(t, adminJWT, "Student")
+	require.NotEmpty(t, studentID)
+	require.NotEmpty(t, studentJWT)
+
+	topics := []string{"Базы данных", "Базовые типы в Go"}
+	client := &http.Client{Timeout: timeout}
+
+	sessionBody := map[string]interface{}{
+		"topics": topics,
+	}
+	sessionJSON, err := json.Marshal(sessionBody)
+	require.NoError(t, err)
+
+	sessionURL := fmt.Sprintf("%s/%s/start_session", baseURL, studentID)
+	req, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "First student session should be created successfully")
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(body, &sessionResponse)
+	require.NoError(t, err)
+	require.NotEmpty(t, sessionResponse.SessionID)
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	completeJSON, err := json.Marshal(completeBody)
+	require.NoError(t, err)
+
+	completeURL := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, studentID, sessionResponse.SessionID)
+	completeReq, err := http.NewRequest(http.MethodPost, completeURL, bytes.NewReader(completeJSON))
+	require.NoError(t, err)
+	completeReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	completeReq.Header.Add("Content-Type", "application/json")
+
+	completeResp, err := client.Do(completeReq)
+	require.NoError(t, err)
+	defer completeResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, completeResp.StatusCode, "First student session should be completed successfully")
+
+	completeBodyResult, err := io.ReadAll(completeResp.Body)
+	require.NoError(t, err)
+
+	var resultResponse struct {
+		IsSuccess bool   `json:"is_success"`
+		Grade     string `json:"grade"`
+	}
+	err = json.Unmarshal(completeBodyResult, &resultResponse)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, resultResponse.Grade)
+
+	secondReq, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+	secondReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	secondReq.Header.Add("Content-Type", "application/json")
+
+	secondResp, err := client.Do(secondReq)
+	require.NoError(t, err)
+	defer secondResp.Body.Close()
+
+	require.Equal(t, http.StatusForbidden, secondResp.StatusCode, "Second student session should be forbidden after completing first session")
+
+	deleteUser(t, adminJWT, studentID)
 }

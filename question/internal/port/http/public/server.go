@@ -25,10 +25,13 @@ const (
 	completeSessionPath      = "/complete_session"
 	allCompletedSessionsPath = "/completed_sessions"
 
-	right_view_topic_list         = "view_topic_list"
-	right_start_session           = "start_session"
-	right_complete_session        = "complete_session"
-	right_view_completed_sessions = "view_completed_sessions"
+	rightViewTopicList        = "view_topic_list"
+	rightStartSession          = "start_session"
+	rightInfinitySessionsStart = "inifinity_session_start"
+	rightCompleteSession       = "complete_session"
+	rightViewCompletedSessions = "view_completed_sessions"
+
+	defaultDailySessionLimit = 1
 )
 
 type Server struct {
@@ -38,6 +41,7 @@ type Server struct {
 	introspector Introspector
 	accessor     Accessor
 	cfg          *ServerCfg
+	sessionLimit int
 }
 
 type ServerCfg struct {
@@ -68,6 +72,12 @@ func WithIntrospector(introspector Introspector) ServerOption {
 func WithAccessor(accessor Accessor) ServerOption {
 	return func(s *Server) {
 		s.accessor = accessor
+	}
+}
+
+func WithCustomDailySessionLimit(limit int) ServerOption {
+	return func(s *Server) {
+		s.sessionLimit = limit
 	}
 }
 
@@ -114,6 +124,10 @@ func New(opts ...ServerOption) (*Server, error) {
 		err := errors.Wrap(entities.ErrInternal, "port not set")
 		slog.Error(err.Error())
 		return nil, err
+	}
+
+	if serv.sessionLimit == 0 {
+		serv.sessionLimit = defaultDailySessionLimit
 	}
 
 	return serv, nil
@@ -189,7 +203,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetTopics started")
 	resp.Header().Set("Content-Type", "application/json")
 
-	if err := s.checkUserRights(req.Context(), []string{right_view_topic_list}); err != nil {
+	if err := s.checkUserRights(req.Context(), []string{rightViewTopicList}); err != nil {
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -241,10 +255,15 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
 
-	if err := s.checkUserRights(req.Context(), []string{right_start_session}); err != nil {
+	if err := s.checkUserRights(req.Context(), []string{rightStartSession}); err != nil {
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
+	}
+
+	var limit = s.sessionLimit
+	if err := s.checkUserRights(req.Context(), []string{rightInfinitySessionsStart}); err == nil{
+		limit = 999_999
 	}
 
 	resp.Header().Set("Content-Type", "application/json")
@@ -267,7 +286,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	sessionID, questions, err := s.service.CreateSession(req.Context(), userID,
-		topicsDTO.Topics)
+		topicsDTO.Topics, limit)
 	if err != nil {
 		err := errors.Wrap(err, "CreateSession failure")
 		slog.Error(err.Error())
@@ -330,7 +349,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession started")
 
-	if err := s.checkUserRights(req.Context(), []string{right_complete_session}); err != nil {
+	if err := s.checkUserRights(req.Context(), []string{rightCompleteSession}); err != nil {
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return
@@ -417,7 +436,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetAllCompletedUserSessions started")
 
-	if err := s.checkUserRights(req.Context(), []string{right_view_completed_sessions}); err != nil {
+	if err := s.checkUserRights(req.Context(), []string{rightViewCompletedSessions}); err != nil {
 		slog.Error(err.Error())
 		s.errProcessing(resp, err)
 		return

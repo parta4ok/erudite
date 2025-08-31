@@ -75,7 +75,7 @@ func (srv *SessionServiceBase) ShowTopics(ctx context.Context) ([]string, error)
 }
 
 func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
-	topics []string) (string, map[string]entities.Question, error) {
+	topics []string, dailyLimit int) (string, map[string]entities.Question, error) {
 	slog.Info("CreateSession started")
 
 	session, err := entities.NewSession(userID, topics, srv.generator, srv.sessionStorage)
@@ -84,7 +84,7 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 		return "", nil, errors.Wrap(err, "NewSession")
 	}
 
-	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics)
+	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics, dailyLimit)
 	if err != nil {
 		slog.Error(err.Error())
 		return "", nil, errors.Wrap(err, "IsDailySessionLimitReached")

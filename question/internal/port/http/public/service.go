@@ -10,7 +10,7 @@ import (
 type Service interface {
 	CompleteSession(ctx context.Context, sessionID string, answers []*entities.UserAnswer) (
 		*entities.SessionResult, error)
-	CreateSession(ctx context.Context, userID string, topics []string) (string,
+	CreateSession(ctx context.Context, userID string, topics []string, dayLimit int) (string,
 		map[string]entities.Question, error)
 	ShowTopics(ctx context.Context) ([]string, error)
 	GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error)

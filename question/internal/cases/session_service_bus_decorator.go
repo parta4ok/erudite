@@ -82,10 +82,10 @@ func (service *SessionServiceBusDecorator) CompleteSession(ctx context.Context, 
 }
 
 func (service *SessionServiceBusDecorator) CreateSession(ctx context.Context, userID string,
-	topics []string) (
+	topics []string, dailyLimit int) (
 	string, map[string]entities.Question, error) {
 	slog.Info("CreateSession in SessionServiceBusDecorator started")
-	sessionID, questions, err := service.sessionService.CreateSession(ctx, userID, topics)
+	sessionID, questions, err := service.sessionService.CreateSession(ctx, userID, topics, dailyLimit)
 	if err != nil {
 		err = errors.Wrap(err, "CreateSession in SessionServiceBusDecorator")
 		slog.Error(err.Error())

@@ -35,16 +35,16 @@ func (m *MockSessionStorage) EXPECT() *MockSessionStorageMockRecorder {
 }
 
 // IsDailySessionLimitReached mocks base method.
-func (m *MockSessionStorage) IsDailySessionLimitReached(ctx context.Context, userID string, topics []string) (bool, error) {
+func (m *MockSessionStorage) IsDailySessionLimitReached(ctx context.Context, userID string, topics []string, dailyLimit int) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsDailySessionLimitReached", ctx, userID, topics)
+	ret := m.ctrl.Call(m, "IsDailySessionLimitReached", ctx, userID, topics, dailyLimit)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // IsDailySessionLimitReached indicates an expected call of IsDailySessionLimitReached.
-func (mr *MockSessionStorageMockRecorder) IsDailySessionLimitReached(ctx, userID, topics interface{}) *gomock.Call {
+func (mr *MockSessionStorageMockRecorder) IsDailySessionLimitReached(ctx, userID, topics, dailyLimit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsDailySessionLimitReached", reflect.TypeOf((*MockSessionStorage)(nil).IsDailySessionLimitReached), ctx, userID, topics)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsDailySessionLimitReached", reflect.TypeOf((*MockSessionStorage)(nil).IsDailySessionLimitReached), ctx, userID, topics, dailyLimit)
 }

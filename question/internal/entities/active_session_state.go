@@ -96,8 +96,8 @@ func (state *ActiveSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 		ErrInvalidState, "%s not support `GetUserAnswers`", state.GetStatus())
 }
 
-func (state *ActiveSessionState) IsDailySessionLimitReached(ctx context.Context, userID string,
-	topics []string) (bool, error) {
+func (state *ActiveSessionState) IsDailySessionLimitReached(_ context.Context, _ string,
+	_ []string, _ int) (bool, error) {
 	return false, errors.Wrapf(
 		ErrInvalidState, "%s not support `IsDailySessionLimitReached`", state.GetStatus())
 }

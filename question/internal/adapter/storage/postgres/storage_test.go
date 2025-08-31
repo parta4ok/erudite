@@ -188,7 +188,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	session, err := entities.NewSession(userID, topics, cryptoprocessing.NewUint64Generator(), db)
 	require.NoError(t, err)
 
-	forbidden, err := session.IsDailySessionLimitReached(ctx, session.GetUserID(), session.GetTopics())
+	forbidden, err := session.IsDailySessionLimitReached(ctx, session.GetUserID(), session.GetTopics(), 1)
 	require.NoError(t, err)
 	require.False(t, forbidden)
 
@@ -224,7 +224,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	require.Equal(t, entities.InitState, secondSession.GetStatus())
 
 	forbidden, err = secondSession.IsDailySessionLimitReached(ctx, secondSession.GetUserID(),
-		secondSession.GetTopics())
+		secondSession.GetTopics(), 1)
 	require.NoError(t, err)
 	require.True(t, forbidden)
 }

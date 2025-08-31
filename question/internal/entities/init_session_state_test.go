@@ -209,9 +209,9 @@ func TestInitSessionState_IsDailySessionLimitReached_Success(t *testing.T) {
 
 	state := entities.NewInitSessionState(holder, storage)
 
-	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics).Return(false, nil).Times(1)
+	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics, 1).Return(false, nil).Times(1)
 
-	result, err := state.IsDailySessionLimitReached(ctx, userID, topics)
+	result, err := state.IsDailySessionLimitReached(ctx, userID, topics, 1)
 
 	require.NoError(t, err)
 	require.False(t, result)
@@ -231,9 +231,9 @@ func TestInitSessionState_IsDailySessionLimitReached_LimitReached(t *testing.T) 
 
 	state := entities.NewInitSessionState(holder, storage)
 
-	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics).Return(true, nil).Times(1)
+	storage.EXPECT().IsDailySessionLimitReached(ctx, userID, topics, 1).Return(true, nil).Times(1)
 
-	result, err := state.IsDailySessionLimitReached(ctx, userID, topics)
+	result, err := state.IsDailySessionLimitReached(ctx, userID, topics, 1)
 
 	require.NoError(t, err)
 	require.True(t, result)

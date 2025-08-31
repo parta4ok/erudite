@@ -538,7 +538,7 @@ func (s *Storage) getQuestionsIDs(session *entities.Session) ([]string, error) {
 }
 
 func (s *Storage) IsDailySessionLimitReached(ctx context.Context, userID string,
-	topics []string) (bool, error) {
+	topics []string, dailyLimit int) (bool, error) {
 	slog.Info("IsDailySessionLimitReached started")
 
 	query := `
@@ -582,7 +582,7 @@ ORDER BY
 	}
 
 	slog.Info("IsDailySessionLimitReached completed")
-	if cnt >= 1 {
+	if cnt >= dailyLimit {
 		return true, nil
 	}
 

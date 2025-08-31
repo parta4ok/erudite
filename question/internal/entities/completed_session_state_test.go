@@ -278,7 +278,7 @@ func TestCompletedSessionState_IsDailySessionLimitReached(t *testing.T) {
 
 	state := entities.NewCompletedSessionState(questions, holder, answers, startedAt, false)
 
-	result, err := state.IsDailySessionLimitReached(context.TODO(), "1", []string{"topic"})
+	result, err := state.IsDailySessionLimitReached(context.TODO(), "1", []string{"topic"}, 1)
 
 	require.Error(t, err)
 	require.False(t, result)

@@ -201,7 +201,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
-					[]string{"Go"}).Return(false, nil)
+					[]string{"Go"}, 1).Return(false, nil)
 
 				mockQuestion := entitiesTestdata.NewMockQuestion(ctrl)
 				mockQuestion.EXPECT().ID().Return("1").AnyTimes()
@@ -227,7 +227,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
-					[]string{"Go"}).Return(true, nil)
+					[]string{"Go"}, 1).Return(true, nil)
 
 				return storage, sessionStorage, generator
 			},
@@ -246,7 +246,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
-					[]string{"Go"}).Return(false, errors.New("storage error"))
+					[]string{"Go"}, 1).Return(false, errors.New("storage error"))
 
 				return storage, sessionStorage, generator
 			},
@@ -265,7 +265,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(),
-					"1", []string{"Go"}).Return(false, nil)
+					"1", []string{"Go"}, 1).Return(false, nil)
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(nil,
 					errors.New("questions error"))
 
@@ -286,7 +286,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
-					[]string{"Go"}).Return(false, nil)
+					[]string{"Go"}, 1).Return(false, nil)
 
 				mockQuestion := entitiesTestdata.NewMockQuestion(ctrl)
 				mockQuestion.EXPECT().ID().Return("1").AnyTimes()
@@ -342,7 +342,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 
 				generator.EXPECT().GenerateID().Return("123")
 				sessionStorage.EXPECT().IsDailySessionLimitReached(gomock.Any(), "1",
-					[]string{"Go"}).Return(false, nil)
+					[]string{"Go"}, 1).Return(false, nil)
 
 				storage.EXPECT().GetQuesions(gomock.Any(), []string{"Go"}).Return(
 					[]entities.Question{}, nil)
@@ -365,7 +365,7 @@ func TestSessionServiceBase_CreateSession(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := context.Background()
-			sessionID, questions, err := service.CreateSession(ctx, tc.userID, tc.topics)
+			sessionID, questions, err := service.CreateSession(ctx, tc.userID, tc.topics, 1)
 
 			if tc.expectedError != "" {
 				require.Error(t, err)

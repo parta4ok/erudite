@@ -142,6 +142,6 @@ func (s *Session) GetUserAnswers() ([]*UserAnswer, error) {
 }
 
 func (s *Session) IsDailySessionLimitReached(ctx context.Context, userID string,
-	topics []string) (bool, error) {
-	return s.state.IsDailySessionLimitReached(ctx, userID, topics)
+	topics []string, dailyLimit int) (bool, error) {
+	return s.state.IsDailySessionLimitReached(ctx, userID, topics, dailyLimit)
 }

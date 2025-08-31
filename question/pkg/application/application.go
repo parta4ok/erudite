@@ -252,8 +252,10 @@ func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase cases.Sess
 
 	port := cfg.GetPublicPort()
 	timeout := cfg.GetPublicTimeout()
+	dailyLimit := cfg.GetSessionLimit()
 
 	server, err := public.New(
+		public.WithCustomDailySessionLimit(dailyLimit),
 		public.WithService(sessionServiceBase),
 		public.WithIntrospector(authClient),
 		public.WithConfig(&public.ServerCfg{

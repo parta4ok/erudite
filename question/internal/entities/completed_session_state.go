@@ -131,8 +131,8 @@ func (state *CompletedSessionState) GetUserAnswers() ([]*UserAnswer, error) {
 	return state.answers, nil
 }
 
-func (state *CompletedSessionState) IsDailySessionLimitReached(ctx context.Context, userID string,
-	topics []string) (bool, error) {
+func (state *CompletedSessionState) IsDailySessionLimitReached(_ context.Context, _ string,
+	_ []string, _ int) (bool, error) {
 	return false, errors.Wrapf(
 		ErrInvalidState, "%s not support `IsDailySessionLimitReached`", state.GetStatus())
 }

@@ -22,7 +22,8 @@ type SessionState interface {
 	GetSessionResult() (*SessionResult, error)
 	GetSessionDurationLimit() (time.Duration, error)
 	IsExpired() (bool, error)
-	IsDailySessionLimitReached(ctx context.Context, userID string, topics []string) (bool, error)
+	IsDailySessionLimitReached(ctx context.Context, userID string, topics []string,
+		dailyLimit int) (bool, error)
 }
 
 type StateHolder interface {

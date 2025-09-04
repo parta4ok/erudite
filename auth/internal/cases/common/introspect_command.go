@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -38,18 +39,22 @@ func NewIntrospectCommand(ctx context.Context, jwt string, storage Storage,
 
 func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 	slog.Info("IntrospectCommand exec started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "IntrospectCommandExecSpan")
+	defer cancel()
 
 	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
 		err = errors.Wrap(err, "Introspect")
 		slog.Error(err.Error())
+		span.SetError(err, "Introspect")
 		return nil, err
 	}
 
-	user, err := command.storage.GetUserByID(command.ctx, userClaims.Subject)
+	user, err := command.storage.GetUserByID(ctx, userClaims.Subject)
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByID")
 		slog.Error(err.Error())
+		span.SetError(err, "GetUserByID")
 		return nil, err
 	}
 
@@ -57,6 +62,7 @@ func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
 		if !slices.Contains(user.Rights, reqRight) {
 			err := errors.Wrapf(entities.ErrForbidden, "not enough rights")
 			slog.Error(err.Error())
+			span.SetError(err, "not enough rights")
 			return nil, err
 		}
 	}

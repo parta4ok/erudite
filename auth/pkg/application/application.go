@@ -22,6 +22,9 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/port/grpc/private"
 	"github.com/parta4ok/kvs/auth/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
+
 	"github.com/pkg/errors"
 )
 
@@ -31,6 +34,7 @@ type App struct {
 	publicServer  *public.Server
 	cancel        context.CancelFunc
 	wg            sync.WaitGroup
+	tracing       bool
 }
 
 func NewApp(cfgPath string) *App {
@@ -48,6 +52,8 @@ func (app *App) Start() {
 
 	app.initConfiguredLogger(cfg)
 	slog.Info("Logger configuration completed")
+
+	app.initTracer(cfg)
 
 	storage := app.initStorage(cfg)
 
@@ -127,6 +133,36 @@ func parseLogLevel(levelStr string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+func (app *App) initTracer(cfg *config.Config) {
+	slog.Info("init tracer started")
+
+	if !cfg.IsTracingEnabled() {
+		slog.Info("Tracing disabled")
+		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
+		return
+	}
+
+	app.tracing = true
+	systemName := cfg.GetTracingType()
+	serviceName := cfg.TracingSystemName()
+	serviceURL := cfg.GetTracingInfraURL(systemName)
+
+	tracer, err := projectTracer.NewJaegerTracer(serviceName, serviceURL)
+	if err != nil {
+		err := errors.Wrap(err, "jaeger tracer init failure")
+		slog.Error(err.Error())
+		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
+		app.panic(err)
+	}
+
+	tracing.InitGlobalTracer(tracer)
+	slog.Info("Tracer initialized successfully",
+		slog.String("type", systemName),
+		slog.String("service", serviceName),
+		slog.String("endpoint", serviceURL),
+	)
 }
 
 func (app *App) initStorage(cfg *config.Config) common.Storage {
@@ -294,6 +330,12 @@ func (app *App) shutdown() {
 		slog.Info("Stopping private server...")
 		app.privateServer.Stop()
 		app.publicServer.Stop()
+	}
+
+	if app.tracing {
+		if err := tracing.CloseGlobalTracer(); err != nil {
+			slog.Error(err.Error())
+		}
 	}
 
 	done := make(chan struct{})

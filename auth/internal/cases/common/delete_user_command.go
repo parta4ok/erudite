@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -38,10 +39,13 @@ func NewDeleteUserCommand(ctx context.Context, storage Storage, userID string) (
 
 func (command *DeleteUserCommand) Exec() (*entities.CommandResult, error) {
 	slog.Info("DeleteUserCommand started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "DeleteUserCommandExecSpan")
+	defer cancel()
 
-	if err := command.storage.RemoveUser(command.ctx, command.userID); err != nil {
+	if err := command.storage.RemoveUser(ctx, command.userID); err != nil {
 		err = errors.Wrap(err, "RemoveUser failure")
 		slog.Error(err.Error())
+		span.SetError(err, "RemoveUser failure")
 		return nil, err
 	}
 

@@ -15,6 +15,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -25,7 +26,7 @@ const (
 	completeSessionPath      = "/complete_session"
 	allCompletedSessionsPath = "/completed_sessions"
 
-	rightViewTopicList        = "view_topic_list"
+	rightViewTopicList         = "view_topic_list"
 	rightStartSession          = "start_session"
 	rightInfinitySessionsStart = "inifinity_session_start"
 	rightCompleteSession       = "complete_session"
@@ -202,16 +203,20 @@ func (s *Server) registerRoutes() {
 func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetTopics started")
 	resp.Header().Set("Content-Type", "application/json")
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "GetTopicsHandlerSpan")
+	defer cancel()
 
-	if err := s.checkUserRights(req.Context(), []string{rightViewTopicList}); err != nil {
+	if err := s.checkUserRights(ctx, []string{rightViewTopicList}); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "checkUserRights")
 		s.errProcessing(resp, err)
 		return
 	}
 
-	topics, err := s.service.ShowTopics(req.Context())
+	topics, err := s.service.ShowTopics(ctx)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "ShowTopics")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -222,6 +227,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "marshal")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -230,6 +236,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "write response")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -254,15 +261,18 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 //nolint:funlen //ok
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "StartSessionHandlerSpan")
+	defer cancel()
 
-	if err := s.checkUserRights(req.Context(), []string{rightStartSession}); err != nil {
+	if err := s.checkUserRights(ctx, []string{rightStartSession}); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "checkUserRights")
 		s.errProcessing(resp, err)
 		return
 	}
 
 	var limit = s.sessionLimit
-	if err := s.checkUserRights(req.Context(), []string{rightInfinitySessionsStart}); err == nil{
+	if err := s.checkUserRights(req.Context(), []string{rightInfinitySessionsStart}); err == nil {
 		limit = 999_999
 	}
 
@@ -273,6 +283,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
 		slog.Error(err.Error())
+		span.SetError(err, "userID invalid")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -281,15 +292,16 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&topicsDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to topicsDTO failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "decode request body")
 		s.errProcessing(resp, err)
 		return
 	}
 
-	sessionID, questions, err := s.service.CreateSession(req.Context(), userID,
-		topicsDTO.Topics, limit)
+	sessionID, questions, err := s.service.CreateSession(ctx, userID, topicsDTO.Topics, limit)
 	if err != nil {
 		err := errors.Wrap(err, "CreateSession failure")
 		slog.Error(err.Error())
+		span.SetError(err, "CreateSession")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -315,6 +327,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "marshal")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -323,6 +336,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "write response")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -348,9 +362,12 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 //nolint:funlen //ok
 func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "CompleteSessionHandlerSpan")
+	defer cancel()
 
-	if err := s.checkUserRights(req.Context(), []string{rightCompleteSession}); err != nil {
+	if err := s.checkUserRights(ctx, []string{rightCompleteSession}); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "checkUserRights")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -362,6 +379,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if sessionID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "sessionID invalid")
 		slog.Error(err.Error())
+		span.SetError(err, "sessionID invalid")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -371,6 +389,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode request body to userAnswersListDTO failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "decode request body")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -381,16 +400,18 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			err := errors.Wrapf(entities.ErrInvalidParam, "create user answer failure: %v", err)
 			slog.Error(err.Error())
+			span.SetError(err, "create user answer")
 			s.errProcessing(resp, err)
 			return
 		}
 		userAnswers = append(userAnswers, userAnswer)
 	}
 
-	sessionResult, err := s.service.CompleteSession(req.Context(), sessionID, userAnswers)
+	sessionResult, err := s.service.CompleteSession(ctx, sessionID, userAnswers)
 	if err != nil {
 		err := errors.Wrap(err, "CompleteSession failure")
 		slog.Error(err.Error())
+		span.SetError(err, "CompleteSession")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -404,6 +425,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "marshal")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -412,6 +434,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "write response")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -433,11 +456,17 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 // @Failure      404 {object} dto.ErrorDTO "No completed sessions found"
 // @Failure      500 {object} dto.ErrorDTO "Internal server error"
 // @Router       /{user_id}/completed_sessions [get]
+//
+// //nolint:funlen //ok
 func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetAllCompletedUserSessions started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(),
+		"GetAllCompletedUserSessionsHandlerSpan")
+	defer cancel()
 
-	if err := s.checkUserRights(req.Context(), []string{rightViewCompletedSessions}); err != nil {
+	if err := s.checkUserRights(ctx, []string{rightViewCompletedSessions}); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "checkUserRights")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -449,14 +478,16 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
 		slog.Error(err.Error())
+		span.SetError(err, "userID invalid")
 		s.errProcessing(resp, err)
 		return
 	}
 
-	sessions, err := s.service.GetAllCompletedUserSessions(req.Context(), userID)
+	sessions, err := s.service.GetAllCompletedUserSessions(ctx, userID)
 	if err != nil {
 		err := errors.Wrap(err, "GetAllCompletedUserSessions failure")
 		slog.Error(err.Error())
+		span.SetError(err, "GetAllCompletedUserSessions")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -469,6 +500,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 		if err != nil {
 			err = errors.Wrap(err, "extractDataFromCompleteSession failure")
 			slog.Error(err.Error())
+			span.SetError(err, "extractDataFromCompleteSession")
 			s.errProcessing(resp, err)
 			return
 		}
@@ -480,6 +512,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "marshal")
 		s.errProcessing(resp, err)
 		return
 	}
@@ -488,6 +521,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "write response")
 		s.errProcessing(resp, err)
 		return
 	}

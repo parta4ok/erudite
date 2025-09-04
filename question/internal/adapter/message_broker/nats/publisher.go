@@ -9,6 +9,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +39,9 @@ func NewPublisher(pub *publisher.Publisher, subject string) (*Publisher, error) 
 
 func (p *Publisher) SessionFinishedEvent(ctx context.Context,
 	sessionResult *entities.SessionResult) error {
+	slog.Info("Publisher: SessionFinishedEvent started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "NATSPublisherSessionFinishedEventSpan")
+	defer cancel()
 
 	event := dto.EventDTO{
 		EventType: SessionFinishedEventType,
@@ -56,6 +60,7 @@ func (p *Publisher) SessionFinishedEvent(ctx context.Context,
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "failed to marshal payload: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "failed to marshal payload")
 		return err
 	}
 
@@ -68,6 +73,7 @@ func (p *Publisher) SessionFinishedEvent(ctx context.Context,
 			err = errors.Wrapf(entities.ErrInvalidParam, "publish failure: %v", err)
 		}
 		slog.Error(err.Error())
+		span.SetError(err, "publish failure")
 		return err
 	}
 

@@ -1322,7 +1322,7 @@ func TestMentorCanCreateMultipleSessionsPerDay(t *testing.T) {
 }
 
 func TestStudentCannotCreateSecondSessionAfterCompletingFirst(t *testing.T) {
-	t.Skip("skipped because depend on day_session_limit parameter from question.yaml")
+	// t.Skip("skipped because depend on day_session_limit parameter from question.yaml")
 	t.Parallel()
 
 	adminJWT := getJwt(t)

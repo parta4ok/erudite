@@ -8,6 +8,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/parta4ok/kvs/question/internal/entities"
+
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
 
 const (
@@ -63,10 +65,13 @@ func (srv *SessionServiceBase) setOptions(opts ...SessionServiceOption) {
 
 func (srv *SessionServiceBase) ShowTopics(ctx context.Context) ([]string, error) {
 	slog.Info("ShowTopics started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "ShowTopicsSpan")
+	defer cancel()
 
 	topics, err := srv.storage.GetTopics(ctx)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "GetTopics")
 		return nil, errors.Wrap(err, "GetTopics")
 	}
 
@@ -77,26 +82,33 @@ func (srv *SessionServiceBase) ShowTopics(ctx context.Context) ([]string, error)
 func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 	topics []string, dailyLimit int) (string, map[string]entities.Question, error) {
 	slog.Info("CreateSession started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "CreateSessionSpan")
+	defer cancel()
 
 	session, err := entities.NewSession(userID, topics, srv.generator, srv.sessionStorage)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "NewSession")
 		return "", nil, errors.Wrap(err, "NewSession")
 	}
 
 	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics, dailyLimit)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "IsDailySessionLimitReached")
 		return "", nil, errors.Wrap(err, "IsDailySessionLimitReached")
 	}
 
 	if forbidded {
-		return "", nil, errors.Wrap(entities.ErrForbidden, "creating new session for this user")
+		err := errors.Wrap(entities.ErrForbidden, "creating new session for this user")
+		span.SetError(err, "creating new session for this user")
+		return "", nil, err
 	}
 
 	questions, err := srv.storage.GetQuesions(ctx, topics)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "GetQuesions")
 		return "", nil, errors.Wrap(err, "GetQuesions")
 	}
 
@@ -115,6 +127,7 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 
 	if err := srv.storage.StoreSession(ctx, session); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "StoreSession")
 		return "", nil, errors.Wrap(err, "StoreSession")
 	}
 
@@ -127,26 +140,32 @@ func (srv *SessionServiceBase) CompleteSession(
 	sessionID string,
 	answers []*entities.UserAnswer) (*entities.SessionResult, error) {
 	slog.Info("CompleteSession started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "CompleteSessionSpan")
+	defer cancel()
 
 	session, err := srv.storage.GetSessionBySessionID(ctx, sessionID)
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "GetSessionBySessionID")
 		return nil, errors.Wrap(err, "GetSessionBySessionID")
 	}
 
 	if err := session.SetUserAnswer(answers); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "SetUserAnswer")
 		return nil, errors.Wrap(err, "SetUserAnswer")
 	}
 
 	sessionResult, err := session.GetSessionResult()
 	if err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "GetSessionResult")
 		return nil, errors.Wrap(err, "GetSessionResult")
 	}
 
 	if err = srv.storage.StoreSession(ctx, session); err != nil {
 		slog.Error(err.Error())
+		span.SetError(err, "StoreSession")
 		return nil, errors.Wrap(err, "StoreSession")
 	}
 
@@ -159,10 +178,13 @@ func (srv *SessionServiceBase) CompleteSession(
 func (srv *SessionServiceBase) GetAllCompletedUserSessions(ctx context.Context, userID string) (
 	[]*entities.Session, error) {
 	slog.Info("GetAllCompletedUserSessions started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetAllCompletedUserSessionsSpan")
+	defer cancel()
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID not set")
 		slog.Error(err.Error())
+		span.SetError(err, "userID not set")
 		return nil, err
 	}
 
@@ -170,6 +192,7 @@ func (srv *SessionServiceBase) GetAllCompletedUserSessions(ctx context.Context, 
 	if err != nil {
 		err = errors.Wrap(err, "get all completed user sessions failure")
 		slog.Error(err.Error())
+		span.SetError(err, "GetAllCompletedUserSessions")
 		return nil, err
 	}
 

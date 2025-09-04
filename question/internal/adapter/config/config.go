@@ -104,3 +104,23 @@ func (cfg *Config) GetTimeToRespond() time.Duration {
 func (cfg *Config) GetSessionLimit() int {
 	return cfg.viper.GetInt("kvs.session.day_session_limit")
 }
+
+func (cfg *Config) GetTracingType() string {
+	return cfg.viper.GetString("tracing.system")
+}
+
+func (cfg *Config) TracingSystemName() string {
+	return cfg.viper.GetString("tracing.servicename")
+}
+
+func (cfg *Config) IsTracingEnabled() bool {
+	return cfg.viper.GetBool("tracing.enabled")
+}
+
+func (cfg *Config) GetTracingInfraURL(tracingSystemName string) string {
+	return cfg.viper.GetString(fmt.Sprintf("%s.address", tracingSystemName))
+}
+
+func (cfg *Config) GetTracingInfraProbability(tracingSystemName string) string {
+	return cfg.viper.GetString(fmt.Sprintf("%s.probability", tracingSystemName))
+}

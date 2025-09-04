@@ -23,3 +23,10 @@ nats:
     url: nats://nats:4222
     subject: sessions.result
     event_timeout: 5s
+tracing:
+    system: jaeger
+    servicename: question
+    enabled: false
+jaeger:
+    address: jaeger:6831
+    probability: 1.0

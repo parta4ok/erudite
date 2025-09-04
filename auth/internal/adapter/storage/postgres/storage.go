@@ -13,6 +13,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
 
 var (
@@ -66,6 +67,8 @@ func (s *Storage) Close() {
 
 func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	slog.Info("Get user by userID started")
+	ctx, _, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDPostgresSpan")
+	defer cancel()
 
 	params := []interface{}{userID}
 	query := `SELECT uid, name, password_hash, rights, contacts, group_id, fullname FROM
@@ -77,6 +80,8 @@ func (s *Storage) GetUserByID(ctx context.Context, userID string) (*entities.Use
 
 func (s *Storage) GetUserByUsername(ctx context.Context, userName string) (*entities.User, error) {
 	slog.Info("Get user by name started")
+	ctx, _, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByUsernamePostgresSpan")
+	defer cancel()
 
 	params := []interface{}{userName}
 	query := `SELECT uid, name, password_hash, rights, contacts, group_id, fullname FROM
@@ -144,11 +149,14 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 //nolint:funlen //use spaces for visual division of block code
 func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	slog.Info("StoreUser started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "StoreUserPostgresSpan")
+	defer cancel()
 
 	contactsRaw, err := json.Marshal(user.Contacts)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "marshal failure")
 		return err
 	}
 
@@ -164,6 +172,7 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "transaction failure")
 		return err
 	}
 
@@ -177,12 +186,14 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 		err = errors.Wrapf(entities.ErrAlreadyExists, "uid = '%s' or name = '%s' already exists",
 			user.ID, user.Username)
 		slog.Error(err.Error())
+		span.SetError(err, "user already exists")
 		return err
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
 		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "transaction failure")
 		return err
 	}
 
@@ -200,12 +211,14 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	if _, err = tx.Exec(ctx, query, params...); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "save user failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "save user failure")
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "commit failure with err: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "commit failure")
 		return err
 	}
 
@@ -215,6 +228,8 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 
 func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 	slog.Info("Removing user started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "RemoveUserPostgresSpan")
+	defer cancel()
 
 	query := `DELETE FROM auth.users WHERE uid = $1`
 	args := []interface{}{userID}
@@ -223,12 +238,14 @@ func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "exec delete query failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "exec delete query failure")
 		return err
 	}
 
 	if tag.RowsAffected() == 0 {
 		err = errors.Wrapf(entities.ErrNotFound, "not found user with id='%s'", userID)
 		slog.Warn(err.Error())
+		span.SetError(err, "user not found")
 		return err
 	}
 
@@ -238,6 +255,8 @@ func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 
 func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 	slog.Info("User update started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "UpdateUserPostgresSpan")
+	defer cancel()
 
 	query := `
 	UPDATE auth.users
@@ -282,12 +301,14 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "update user failure with err: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "update user failure")
 		return err
 	}
 
 	if tag.RowsAffected() == 0 {
 		err = errors.Wrap(entities.ErrNotFound, "user with requested id not found")
 		slog.Error(err.Error())
+		span.SetError(err, "user not found")
 		return err
 	}
 
@@ -298,11 +319,13 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 ) (*entities.LinkedUsers, error) {
 	slog.Info("GetLinkedUsers started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetLinkedUsersPostgresSpan")
+	defer cancel()
 
 	args := []interface{}{userID}
 
 	query := `
-		SELECT 
+		SELECT
 			student.uid,
 			student.name,
 			student.password_hash,
@@ -353,10 +376,12 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrapf(entities.ErrNotFound, "student with id '%s' not found", userID)
 			slog.Error(err.Error())
+			span.SetError(err, "student not found")
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "get linked users failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "get linked users failure")
 		return nil, err
 	}
 
@@ -364,6 +389,7 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 	if err := json.Unmarshal(studentContactsRaw, &studentContacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal student contacts failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "unmarshal student contacts failure")
 		return nil, err
 	}
 
@@ -371,6 +397,7 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 	if err := json.Unmarshal(mentorContactsRaw, &mentorContacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal mentor contacts failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "unmarshal mentor contacts failure")
 		return nil, err
 	}
 
@@ -413,6 +440,8 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 
 func (s *Storage) AddGroup(ctx context.Context, gid, title, mentorID string) error {
 	slog.Info("AddGroup started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AddGroupPostgresSpan")
+	defer cancel()
 
 	params := []interface{}{gid, title, mentorID}
 	query := `INSERT INTO auth.groups (gid, title, linked_id) VALUES ($1, $2, $3)`
@@ -421,6 +450,7 @@ func (s *Storage) AddGroup(ctx context.Context, gid, title, mentorID string) err
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "insert group failure: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err, "insert group failure")
 		return err
 	}
 

@@ -11,6 +11,7 @@ import (
 	authv1 "github.com/parta4ok/kvs/api/grpc/v1"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/auth/internal/port"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -23,11 +24,14 @@ type AuthService struct {
 func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequest,
 ) (*authv1.IntrospectResponse, error) {
 	slog.Info("Introspect started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "IntrospectGRPCHandlerSpan")
+	defer cancel()
 
 	token := req.Token
 	if token == "" {
 		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
 		slog.Error(err.Error())
+		span.SetError(err, "token is empty")
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -38,6 +42,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if err != nil {
 		err := errors.Wrap(err, "create introspect command failure")
 		slog.Error(err.Error())
+		span.SetError(err, "create introspect command failure")
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -48,6 +53,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if err != nil {
 		err := errors.Wrap(err, "introspect command exec failure")
 		slog.Error(err.Error())
+		span.SetError(err, "introspect command exec failure")
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -58,6 +64,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
 			slog.Error(err.Error())
+			span.SetError(err, "introspect command exec failure")
 			return &authv1.IntrospectResponse{
 				Claims: nil,
 				Error:  &authv1.Error{Message: err.Error()},
@@ -69,6 +76,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert claims failure")
 		slog.Error(err.Error())
+		span.SetError(err, "assert claims failure")
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -93,11 +101,14 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 ) (*authv1.LinkedUsersResponse, error) {
 	slog.Info("GetLinkedUser started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetLinkedUsersGRPCHandlerSpan")
+	defer cancel()
 
 	userID := req.LinkedID
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is empty")
 		slog.Error(err.Error())
+		span.SetError(err, "user id is empty")
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -109,6 +120,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if err != nil {
 		err := errors.Wrap(err, "create get user command failure")
 		slog.Error(err.Error())
+		span.SetError(err, "create get user command failure")
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -120,6 +132,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if err != nil {
 		err := errors.Wrap(err, "get user command exec failure")
 		slog.Error(err.Error())
+		span.SetError(err, "get user command exec failure")
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -131,6 +144,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "get user command exec failure")
 			slog.Error(err.Error())
+			span.SetError(err, "get user command exec failure")
 			return &authv1.LinkedUsersResponse{
 				Recipient: nil,
 				Student:   nil,
@@ -143,6 +157,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert linked users data failure")
 		slog.Error(err.Error())
+		span.SetError(err, "assert linked users data failure")
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,

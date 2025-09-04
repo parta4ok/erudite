@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/parta4ok/kvs/auth/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
 
 var (
@@ -52,12 +53,15 @@ func NewAddUserCommand(ctx context.Context, storage Storage, hasher Hasher, gene
 
 func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 	slog.Info("AddUserCommand exec started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "AddUserCommandExecSpan")
+	defer cancel()
 
-	_, err := command.storage.GetUserByUsername(command.ctx, command.user.Username)
+	_, err := command.storage.GetUserByUsername(ctx, command.user.Username)
 	if err != nil {
 		if !errors.Is(err, entities.ErrNotFound) {
 			err = errors.Wrap(err, "get user by user id")
 			slog.Error(err.Error())
+			span.SetError(err, "get user by user id")
 			return nil, err
 		}
 	}
@@ -66,20 +70,23 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 		err = errors.Wrapf(entities.ErrAlreadyExists, "user name %s already exists",
 			command.user.Username)
 		slog.Error(err.Error())
+		span.SetError(err, "user name already exists")
 		return nil, err
 	}
 
-	userID, err := command.generator.Generate(command.ctx)
+	userID, err := command.generator.Generate(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "generate failure")
 		slog.Error(err.Error())
+		span.SetError(err, "generate failure")
 		return nil, err
 	}
 
-	hash, err := command.hasher.Hash(command.ctx, command.user.PasswordHash)
+	hash, err := command.hasher.Hash(ctx, command.user.PasswordHash)
 	if err != nil {
 		err := errors.Wrap(err, "hash password failure")
 		slog.Error(err.Error())
+		span.SetError(err, "hash password failure")
 		return nil, err
 	}
 
@@ -96,6 +103,7 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 	if err := command.storage.StoreUser(command.ctx, user); err != nil {
 		err = errors.Wrap(err, "store user failure")
 		slog.Error(err.Error())
+		span.SetError(err, "store user failure")
 		return nil, err
 	}
 

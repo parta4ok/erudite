@@ -1,0 +1,31 @@
+package tracing
+
+import (
+	"context"
+)
+
+type Tracer interface {
+	Start(ctx context.Context, operationName string) (context.Context, Span, func())
+	Close() error
+}
+
+type Span interface {
+	SetError(err error, message string)
+	SetTag(key string, value interface{})
+}
+
+type NoOpTracer struct{}
+
+func (n *NoOpTracer) Start(ctx context.Context, operationName string) (
+	context.Context, Span, func()) {
+	return ctx, &NoOpSpan{}, func() {}
+}
+
+func (n *NoOpTracer) Close() error {
+	return nil
+}
+
+type NoOpSpan struct{}
+
+func (n *NoOpSpan) SetError(err error, message string)   {}
+func (n *NoOpSpan) SetTag(key string, value interface{}) {}

@@ -1,10 +1,12 @@
-package common_test
+package command_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/parta4ok/kvs/auth/internal/cases/command"
+
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
@@ -114,7 +116,7 @@ func TestAddUserCommand(t *testing.T) {
 				}
 			}
 
-			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, user)
+			command, err := command.NewAddUserCommand(ctx, storage, hasher, generator, user)
 			if tc.wantErr {
 				require.ErrorIs(t, err, tc.resErr)
 				require.Nil(t, command)
@@ -262,7 +264,7 @@ func TestAddUserCommand_Exec(t *testing.T) {
 				tc.stage.StoreUserSettings(ctx, it, storage, expectedUser, tc.stage.StoreUserErr)
 			}
 
-			command, err := common.NewAddUserCommand(ctx, storage, hasher, generator, inputUser)
+			command, err := command.NewAddUserCommand(ctx, storage, hasher, generator, inputUser)
 			require.NoError(it, err)
 			require.NotNil(it, command)
 

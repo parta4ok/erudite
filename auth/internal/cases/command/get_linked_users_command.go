@@ -1,4 +1,4 @@
-package common
+package command
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
@@ -15,13 +16,13 @@ var (
 )
 
 type GetLinkedUsersCommand struct {
-	storage Storage
+	storage common.Storage
 
 	userID string
 	ctx    context.Context
 }
 
-func NewGetLinkedUsersCommand(ctx context.Context, storage Storage, userID string,
+func NewGetLinkedUsersCommand(ctx context.Context, storage common.Storage, userID string,
 ) (*GetLinkedUsersCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")

@@ -1,17 +1,16 @@
-package common_test
+package command_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/parta4ok/kvs/auth/internal/cases/command"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
 )
-
-// var errTest = entities.ErrInvalidParam
 
 func TestNewSignInCommand(t *testing.T) {
 	t.Parallel()
@@ -67,7 +66,7 @@ func TestNewSignInCommand(t *testing.T) {
 				hasher = testdata.NewMockHasher(ctrl)
 			}
 
-			command, err := common.NewSignInCommand(ctx, storage, provider, hasher, userName, password)
+			command, err := command.NewSignInCommand(ctx, storage, provider, hasher, userName, password)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
 				require.Nil(it, command)
@@ -189,7 +188,7 @@ func TestSignInCommand_Exec(t *testing.T) {
 				tc.stage.GenerateSettings(ctx, it, provider, user, jwt, tc.stage.GenerateErr)
 			}
 
-			command, err := common.NewSignInCommand(ctx, storage, provider, hasher, name, password)
+			command, err := command.NewSignInCommand(ctx, storage, provider, hasher, name, password)
 			require.NoError(t, err)
 			require.NotNil(t, command)
 

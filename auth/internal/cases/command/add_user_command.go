@@ -1,4 +1,4 @@
-package common
+package command
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
@@ -15,16 +16,16 @@ var (
 )
 
 type AddUserCommand struct {
-	storage   Storage
-	hasher    Hasher
-	generator IDGenerator
+	storage   common.Storage
+	hasher    common.Hasher
+	generator common.IDGenerator
 
 	user *entities.User
 	ctx  context.Context
 }
 
-func NewAddUserCommand(ctx context.Context, storage Storage, hasher Hasher, generator IDGenerator,
-	user *entities.User) (*AddUserCommand, error) {
+func NewAddUserCommand(ctx context.Context, storage common.Storage, hasher common.Hasher,
+	generator common.IDGenerator, user *entities.User) (*AddUserCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
 	}

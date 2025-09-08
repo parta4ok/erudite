@@ -1,4 +1,4 @@
-package common_test
+package command_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/command"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
@@ -47,7 +48,7 @@ func TestNewDeleteUserCommand(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			cmd, err := common.NewDeleteUserCommand(ctx, tc.storage, tc.userID)
+			cmd, err := command.NewDeleteUserCommand(ctx, tc.storage, tc.userID)
 			if tc.wantErr {
 				require.ErrorIs(t, err, tc.resErr)
 				require.Nil(t, cmd)
@@ -103,7 +104,7 @@ func TestDeleteUserCommand_Exec(t *testing.T) {
 			if tc.stage.RemoveUserSettings != nil {
 				tc.stage.RemoveUserSettings(ctx, t, mockStorage, userID, tc.stage.RemoveUserErr)
 			}
-			cmd, err := common.NewDeleteUserCommand(ctx, mockStorage, userID)
+			cmd, err := command.NewDeleteUserCommand(ctx, mockStorage, userID)
 			require.NoError(t, err)
 			require.NotNil(t, cmd)
 			res, err := cmd.Exec()

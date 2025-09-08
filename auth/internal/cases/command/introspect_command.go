@@ -1,10 +1,11 @@
-package common
+package command
 
 import (
 	"context"
 	"log/slog"
 	"slices"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -15,15 +16,15 @@ var (
 )
 
 type IntrospectCommand struct {
-	storage     Storage
-	jwtProvider JWTProvider
+	storage     common.Storage
+	jwtProvider common.JWTProvider
 
 	ctx context.Context
 	jwt string
 }
 
-func NewIntrospectCommand(ctx context.Context, jwt string, storage Storage,
-	provider JWTProvider) (*IntrospectCommand, error) {
+func NewIntrospectCommand(ctx context.Context, jwt string, storage common.Storage,
+	provider common.JWTProvider) (*IntrospectCommand, error) {
 	if jwt == "" {
 		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
 	}

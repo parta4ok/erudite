@@ -1,4 +1,4 @@
-package common_test
+package command_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/parta4ok/kvs/auth/internal/cases/command"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
@@ -74,7 +75,7 @@ func TestNewUpdateUserCommand(t *testing.T) {
 				ctrl.Finish()
 			})
 
-			res, err := common.NewUpdateUserCommand(
+			res, err := command.NewUpdateUserCommand(
 				ctx,
 				tc.args.storage(it, ctrl),
 				tc.args.hasher(it, ctrl),
@@ -218,7 +219,7 @@ func TestUpdateUserCommand_Exec(t *testing.T) {
 				tc.fields.updateSerrings(ctx, it, storage, updatedUser, tc.fields.updateErr)
 			}
 
-			command, err := common.NewUpdateUserCommand(ctx, storage, hasher, updatedUser)
+			command, err := command.NewUpdateUserCommand(ctx, storage, hasher, updatedUser)
 			require.NoError(it, err)
 
 			result, err := command.Exec()

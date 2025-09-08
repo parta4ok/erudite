@@ -1,9 +1,10 @@
-package common
+package command
 
 import (
 	"context"
 	"log/slog"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -14,15 +15,15 @@ var (
 )
 
 type AddGroupCommand struct {
-	storage   Storage
-	generator IDGenerator
+	storage   common.Storage
+	generator common.IDGenerator
 
 	title    string
 	linkedID string
 	ctx      context.Context
 }
 
-func NewAddGroupCommand(ctx context.Context, storage Storage, generator IDGenerator,
+func NewAddGroupCommand(ctx context.Context, storage common.Storage, generator common.IDGenerator,
 	title, linkedID string) (*AddGroupCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")

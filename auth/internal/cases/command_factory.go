@@ -3,6 +3,7 @@ package cases
 import (
 	"context"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/command"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/pkg/errors"
@@ -75,7 +76,7 @@ func (cf *CommandFactory) NewIntrospectedCommand(
 	ctx context.Context,
 	jwt string,
 ) (entities.Command, error) {
-	return common.NewIntrospectCommand(ctx, jwt, cf.storage, cf.jwtProvider)
+	return command.NewIntrospectCommand(ctx, jwt, cf.storage, cf.jwtProvider)
 }
 
 func (cf *CommandFactory) NewSignInCommand(
@@ -83,33 +84,33 @@ func (cf *CommandFactory) NewSignInCommand(
 	userName string,
 	password string,
 ) (entities.Command, error) {
-	return common.NewSignInCommand(ctx, cf.storage, cf.jwtProvider, cf.hasher, userName, password)
+	return command.NewSignInCommand(ctx, cf.storage, cf.jwtProvider, cf.hasher, userName, password)
 }
 
 func (cf *CommandFactory) NewAddUserCommand(ctx context.Context, user *entities.User,
 ) (entities.Command, error) {
-	return common.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, user)
+	return command.NewAddUserCommand(ctx, cf.storage, cf.hasher, cf.idGenerator, user)
 }
 
 func (cf *CommandFactory) NewDeleteUserCommand(
 	ctx context.Context,
 	userID string,
 ) (entities.Command, error) {
-	return common.NewDeleteUserCommand(ctx, cf.storage, userID)
+	return command.NewDeleteUserCommand(ctx, cf.storage, userID)
 }
 
 func (cf *CommandFactory) NewUpdateUserCommand(
 	ctx context.Context,
 	user *entities.User,
 ) (entities.Command, error) {
-	return common.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
+	return command.NewUpdateUserCommand(ctx, cf.storage, cf.hasher, user)
 }
 
 func (cf *CommandFactory) NewGetLinkedUsersCommand(
 	ctx context.Context,
 	userID string,
 ) (entities.Command, error) {
-	return common.NewGetLinkedUsersCommand(ctx, cf.storage, userID)
+	return command.NewGetLinkedUsersCommand(ctx, cf.storage, userID)
 }
 
 func (cf *CommandFactory) NewAddGroupCommand(
@@ -117,5 +118,5 @@ func (cf *CommandFactory) NewAddGroupCommand(
 	title string,
 	linkedID string,
 ) (entities.Command, error) {
-	return common.NewAddGroupCommand(ctx, cf.storage, cf.idGenerator, title, linkedID)
+	return command.NewAddGroupCommand(ctx, cf.storage, cf.idGenerator, title, linkedID)
 }

@@ -1,9 +1,10 @@
-package common
+package command
 
 import (
 	"context"
 	"log/slog"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -14,17 +15,17 @@ var (
 )
 
 type SignInCommand struct {
-	storage     Storage
-	jwtProvider JWTProvider
-	hasher      Hasher
+	storage     common.Storage
+	jwtProvider common.JWTProvider
+	hasher      common.Hasher
 
 	ctx      context.Context
 	userName string
 	password string
 }
 
-func NewSignInCommand(ctx context.Context, storage Storage, provider JWTProvider, hasher Hasher,
-	userName string, password string) (*SignInCommand, error) {
+func NewSignInCommand(ctx context.Context, storage common.Storage, provider common.JWTProvider,
+	hasher common.Hasher, userName string, password string) (*SignInCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
 	}

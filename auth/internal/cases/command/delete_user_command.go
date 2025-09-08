@@ -1,9 +1,10 @@
-package common
+package command
 
 import (
 	"context"
 	"log/slog"
 
+	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -14,13 +15,13 @@ var (
 )
 
 type DeleteUserCommand struct {
-	storage Storage
+	storage common.Storage
 
 	ctx    context.Context
 	userID string
 }
 
-func NewDeleteUserCommand(ctx context.Context, storage Storage, userID string) (
+func NewDeleteUserCommand(ctx context.Context, storage common.Storage, userID string) (
 	*DeleteUserCommand, error) {
 	if storage == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")

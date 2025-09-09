@@ -54,7 +54,6 @@ func (app *App) Start() {
 	slog.Info("Logger configuration completed")
 
 	app.initTracer(cfg)
-
 	storage := app.initStorage(cfg)
 
 	provider := app.initJWTProvider(cfg)

@@ -1,0 +1,42 @@
+name: 'Setup Environment'
+description: 'Setup Go, Task, Docker and environment'
+inputs:
+  go-version:
+    description: 'Go version'
+    required: false
+    default: '1.25'
+  mail-password:
+    description: 'Mail password secret'
+    required: true
+  tg-bot-token:
+    description: 'Telegram bot token secret'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Create .env from secrets
+      shell: bash
+      run: |
+        echo "MAIL_PASSWORD=${{ inputs.mail-password }}" > .env
+        echo "TG_BOT_TOKEN=${{ inputs.tg-bot-token }}" > .env
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Install Task
+      shell: bash
+      run: sh -c "$(curl -sSL https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+    - name: Install docker-compose
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+
+    - name: Install migrate
+      shell: bash
+      run: |
+        curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+        sudo mv migrate /usr/local/bin/

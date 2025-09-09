@@ -91,10 +91,7 @@ services:
             - l2
 
     question_app:
-        container_name: queston_app
-        build:
-            context: .
-            dockerfile: question/dockerfile
+        image: question-service
         restart: always
         ports:
             - "8080:8080"
@@ -112,10 +109,7 @@ services:
             - l2
 
     auth_app:
-        container_name: auth_app
-        build:
-            context: .
-            dockerfile: auth/dockerfile
+        image: auth-service
         restart: always
         ports:
             - "8091:8091"
@@ -130,11 +124,8 @@ services:
             - l2
 
     notificationhub_app:
-        container_name: notificationhub_app
+        image: notificationhub-service
         env_file: .env
-        build:
-            context: .
-            dockerfile: notificationhub/dockerfile
         restart: always
         depends_on:
             nats:

@@ -58,7 +58,7 @@ services:
             - l1
             - l2
     jaeger:
-        image: jaegertracing/all-in-one:1.50
+        image: jaegertracing/all-in-one:latest
         container_name: jaeger
         restart: always
         ports:
@@ -73,18 +73,11 @@ services:
         networks:
             - service_network
         healthcheck:
-            test:
-                [
-                    "CMD",
-                    "wget",
-                    "--no-verbose",
-                    "--tries=1",
-                    "--spider",
-                    "http://localhost:14268/api/health",
-                ]
+            test: ["CMD", "sh", "-c", "netstat -tuln | grep :14268"]
             interval: 10s
             timeout: 5s
             retries: 3
+            start_period: 30s
         profiles:
             - services
             - l1

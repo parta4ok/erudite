@@ -101,7 +101,7 @@ jobs:
       - name: Load services images
         run: docker load < /tmp/services-images.tar.gz
 
-      - name: Run L2 tests (skip build)
+      - name: Run L2 tests
         run: |
           docker-compose --profile l2 down -v
           docker-compose --profile l2 up -d

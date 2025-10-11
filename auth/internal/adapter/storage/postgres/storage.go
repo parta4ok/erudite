@@ -457,6 +457,7 @@ func (s *Storage) AddGroup(ctx context.Context, gid, title, mentorID string) err
 	return nil
 }
 
+//nolint:funlen //ok
 func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 	[]*entities.Group, error) {
 	slog.Info("GetMentorsGroups started")

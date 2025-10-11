@@ -15,4 +15,5 @@ type Storage interface {
 	UpdateUser(ctx context.Context, user *entities.User) error
 	RemoveUser(ctx context.Context, userID string) error
 	AddGroup(ctx context.Context, gid, title, mentorID string) error
+	GetMentorGroups(ctx context.Context, mentorID string) ([]*entities.Group, error)
 }

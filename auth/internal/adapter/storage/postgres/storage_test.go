@@ -289,43 +289,6 @@ func fullnameUpdatedCheck(t *testing.T, base, updated, changes *entities.User) {
 	require.Equal(t, changes.FullName, updated.FullName)
 }
 
-// func TestStorage_GetUserByGroupID(t *testing.T) {
-// 	t.Parallel()
-
-// 	db := makeDB(t)
-// 	defer db.Close()
-
-// 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-// 	defer cancel()
-
-// 	mentor := &entities.User{
-// 		ID:           uuid.NewString(),
-// 		Username:     uuid.NewString(),
-// 		PasswordHash: uuid.NewString(),
-// 		Rights:       []string{"mentor"},
-// 		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
-// 	}
-
-// 	student := &entities.User{
-// 		ID:           uuid.NewString(),
-// 		Username:     uuid.NewString(),
-// 		PasswordHash: uuid.NewString(),
-// 		Rights:       []string{"mentor"},
-// 		Contacts:     map[string]string{uuid.NewString(): uuid.NewString()},
-// 		GroupID:     mentor.ID,
-// 	}
-
-// 	err := db.StoreUser(ctx, mentor)
-// 	require.NoError(t, err)
-
-// 	err = db.StoreUser(ctx, student)
-// 	require.NoError(t, err)
-
-// 	user, err := db.GetUserByGroupID(ctx, student.ID)
-// 	require.NoError(t, err)
-// 	require.Equal(t, mentor, user)
-// }
-
 func TestStorage_FlowWithGroupAndLinkedUsers(t *testing.T) {
 	t.Parallel()
 
@@ -371,5 +334,139 @@ func TestStorage_FlowWithGroupAndLinkedUsers(t *testing.T) {
 
 	require.Equal(t, mentor, pair.Recipient)
 	require.Equal(t, student, pair.Student)
+}
 
+func TestStorage_GetMentorGroups(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	mentorID := uuid.NewString()
+	mentor := &entities.User{
+		ID:           mentorID,
+		Username:     "mentor_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Test Mentor",
+		Rights:       []string{"mentor"},
+		Contacts:     map[string]string{"email": "mentor@test.com"},
+	}
+
+	err := db.StoreUser(ctx, mentor)
+	require.NoError(t, err)
+
+	group1ID := uuid.NewString()
+	group1Title := "Group_Math_2024_" + uuid.NewString()
+	err = db.AddGroup(ctx, group1ID, group1Title, mentorID)
+	require.NoError(t, err)
+
+	group2ID := uuid.NewString()
+	group2Title := "Group_Physics_2024_" + uuid.NewString()
+	err = db.AddGroup(ctx, group2ID, group2Title, mentorID)
+	require.NoError(t, err)
+
+	student1Math := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "math_student1_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Math Student One",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "math.student1@test.com"},
+		GroupID:      group1ID,
+	}
+
+	student2Math := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "math_student2_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Math Student Two",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "math.student2@test.com"},
+		GroupID:      group1ID,
+	}
+
+	student1Physics := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "physics_student1_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Physics Student One",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "physics.student1@test.com"},
+		GroupID:      group2ID,
+	}
+
+	student2Physics := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "physics_student2_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Physics Student Two",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "physics.student2@test.com"},
+		GroupID:      group2ID,
+	}
+
+	student3Physics := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "physics_student3_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "Physics Student Three",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "physics.student3@test.com"},
+		GroupID:      group2ID,
+	}
+
+	err = db.StoreUser(ctx, student1Math)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, student2Math)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, student1Physics)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, student2Physics)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, student3Physics)
+	require.NoError(t, err)
+
+	groups, err := db.GetMentorGroups(ctx, mentorID)
+	require.NoError(t, err)
+	require.NotNil(t, groups)
+	require.Len(t, groups, 2)
+
+	var mathGroup, physicsGroup *entities.Group
+	for _, group := range groups {
+		if group.GetID() == group1ID {
+			mathGroup = group
+		} else if group.GetID() == group2ID {
+			physicsGroup = group
+		}
+	}
+
+	require.NotNil(t, mathGroup)
+	require.Equal(t, group1ID, mathGroup.GetID())
+	require.Len(t, mathGroup.GetStudents(), 2)
+
+	mathStudentIDs := make(map[string]bool)
+	for _, student := range mathGroup.GetStudents() {
+		mathStudentIDs[student.GetID()] = true
+	}
+	require.True(t, mathStudentIDs[student1Math.ID])
+	require.True(t, mathStudentIDs[student2Math.ID])
+
+	require.NotNil(t, physicsGroup)
+	require.Equal(t, group2ID, physicsGroup.GetID())
+	require.Len(t, physicsGroup.GetStudents(), 3)
+
+	physicsStudentIDs := make(map[string]bool)
+	for _, student := range physicsGroup.GetStudents() {
+		physicsStudentIDs[student.GetID()] = true
+	}
+	require.True(t, physicsStudentIDs[student1Physics.ID])
+	require.True(t, physicsStudentIDs[student2Physics.ID])
+	require.True(t, physicsStudentIDs[student3Physics.ID])
 }

@@ -64,6 +64,21 @@ func (mr *MockStorageMockRecorder) GetLinkedUsers(ctx, userID interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinkedUsers", reflect.TypeOf((*MockStorage)(nil).GetLinkedUsers), ctx, userID)
 }
 
+// GetMentorGroups mocks base method.
+func (m *MockStorage) GetMentorGroups(ctx context.Context, mentorID string) ([]*entities.Group, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMentorGroups", ctx, mentorID)
+	ret0, _ := ret[0].([]*entities.Group)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMentorGroups indicates an expected call of GetMentorGroups.
+func (mr *MockStorageMockRecorder) GetMentorGroups(ctx, mentorID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMentorGroups", reflect.TypeOf((*MockStorage)(nil).GetMentorGroups), ctx, mentorID)
+}
+
 // GetUserByID mocks base method.
 func (m *MockStorage) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	m.ctrl.T.Helper()

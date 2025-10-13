@@ -120,3 +120,10 @@ func (cf *CommandFactory) NewAddGroupCommand(
 ) (entities.Command, error) {
 	return command.NewAddGroupCommand(ctx, cf.storage, cf.idGenerator, title, linkedID)
 }
+
+func (cf *CommandFactory) NewGetMentorGroupsCommand(
+	ctx context.Context,
+	mentorID string,
+) (entities.Command, error) {
+	return command.NewGetMentorGroupsCommand(ctx, cf.storage, mentorID)
+}

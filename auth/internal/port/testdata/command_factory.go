@@ -35,6 +35,21 @@ func (m *MockCommandFactory) EXPECT() *MockCommandFactoryMockRecorder {
 	return m.recorder
 }
 
+// NewAddGroupCommand mocks base method.
+func (m *MockCommandFactory) NewAddGroupCommand(ctx context.Context, title, linkedID string) (entities.Command, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewAddGroupCommand", ctx, title, linkedID)
+	ret0, _ := ret[0].(entities.Command)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewAddGroupCommand indicates an expected call of NewAddGroupCommand.
+func (mr *MockCommandFactoryMockRecorder) NewAddGroupCommand(ctx, title, linkedID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewAddGroupCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewAddGroupCommand), ctx, title, linkedID)
+}
+
 // NewAddUserCommand mocks base method.
 func (m *MockCommandFactory) NewAddUserCommand(ctx context.Context, user *entities.User) (entities.Command, error) {
 	m.ctrl.T.Helper()
@@ -78,6 +93,21 @@ func (m *MockCommandFactory) NewGetLinkedUsersCommand(ctx context.Context, userI
 func (mr *MockCommandFactoryMockRecorder) NewGetLinkedUsersCommand(ctx, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetLinkedUsersCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetLinkedUsersCommand), ctx, userID)
+}
+
+// NewGetMentorGroupsCommand mocks base method.
+func (m *MockCommandFactory) NewGetMentorGroupsCommand(ctx context.Context, mentorID string) (entities.Command, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewGetMentorGroupsCommand", ctx, mentorID)
+	ret0, _ := ret[0].(entities.Command)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewGetMentorGroupsCommand indicates an expected call of NewGetMentorGroupsCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetMentorGroupsCommand(ctx, mentorID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetMentorGroupsCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetMentorGroupsCommand), ctx, mentorID)
 }
 
 // NewIntrospectedCommand mocks base method.

@@ -24,6 +24,14 @@ func (s *Student) GetID() string {
 	return s.id
 }
 
+func (s *Student) GetName() string {
+	return s.name
+}
+
+func (s *Student) GetFullname() string {
+	return s.fullname
+}
+
 func NewGroup(id, name string) *Group {
 	return &Group{
 		id:   id,
@@ -41,4 +49,8 @@ func (g *Group) GetID() string {
 
 func (g *Group) GetStudents() []*Student {
 	return g.students
+}
+
+func (g *Group) GetName() string {
+	return g.name
 }

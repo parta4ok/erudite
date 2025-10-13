@@ -15,7 +15,7 @@ var (
 )
 
 type GetMentorGroupsCommand struct {
-	stotrage common.Storage
+	storage  common.Storage
 	ctx      context.Context
 	mentorID string
 }
@@ -31,7 +31,7 @@ func NewGetMentorGroupsCommand(ctx context.Context, storage common.Storage, ment
 	}
 
 	return &GetMentorGroupsCommand{
-		stotrage: storage,
+		storage:  storage,
 		ctx:      ctx,
 		mentorID: mentorID,
 	}, nil
@@ -42,7 +42,7 @@ func (command *GetMentorGroupsCommand) Exec() (*entities.CommandResult, error) {
 	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "GetMentorGroupsCommandExecSpan")
 	defer cancel()
 
-	groups, err := command.stotrage.GetMentorGroups(ctx, command.mentorID)
+	groups, err := command.storage.GetMentorGroups(ctx, command.mentorID)
 	if err != nil {
 		err = errors.Wrap(err, "get mentor groups")
 		slog.Error(err.Error())

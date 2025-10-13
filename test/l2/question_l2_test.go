@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -1423,4 +1424,204 @@ func TestStudentCannotCreateSecondSessionAfterCompletingFirst(t *testing.T) {
 	require.Equal(t, http.StatusForbidden, secondResp.StatusCode, "Second student session should be forbidden after completing first session")
 
 	deleteUser(t, adminJWT, studentID)
+}
+
+func createMentorWithReadableName(t *testing.T, adminJWT string, fullName string) (string, string) {
+	t.Helper()
+
+	rights := []string{"mentor", "view_topic_list", "start_session", "complete_session", "view_completed_sessions", "inifinity_session_start"}
+
+	mentorUsername := "mentor_" + uuid.NewString()[:8]
+	mentorPassword := "password123"
+
+	bodyDTO := &UserDTO{
+		Username: mentorUsername,
+		Password: mentorPassword,
+		FullName: fullName,
+		Rights:   rights,
+		Contacts: map[string]string{
+			"email":    mentorUsername + "@mentor.test.com",
+			"phone":    "+7900" + uuid.NewString()[:7],
+			"telegram": "@" + mentorUsername,
+		},
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		UserID string `json:"user_id"`
+	}
+
+	var addUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addUserRespDTO.UserID)
+
+	mentorJWT := getNewUserJwt(t, mentorUsername, mentorPassword)
+
+	return addUserRespDTO.UserID, mentorJWT
+}
+
+func createStudentWithReadableName(t *testing.T, adminJWT string, groupID string, fullName string) (string, string) {
+	t.Helper()
+
+	rights := []string{"student", "view_topic_list", "start_session", "complete_session"}
+
+	studentUsername := "student_" + uuid.NewString()[:8]
+	studentPassword := "password123"
+
+	bodyDTO := &UserDTO{
+		Username: studentUsername,
+		Password: studentPassword,
+		FullName: fullName,
+		Rights:   rights,
+		Contacts: map[string]string{
+			"email":    studentUsername + "@student.test.com",
+			"phone":    "+7900" + uuid.NewString()[:7],
+			"telegram": "@" + studentUsername,
+		},
+		GroupID: groupID,
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		UserID string `json:"user_id"`
+	}
+
+	var addUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addUserRespDTO.UserID)
+
+	studentJWT := getNewUserJwt(t, studentUsername, studentPassword)
+
+	return addUserRespDTO.UserID, studentJWT
+}
+
+func Test_GetMentorGroups_Success(t *testing.T) {
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	require.NotEmpty(t, adminJWT)
+
+	mentorID, mentorJWT := createMentorWithReadableName(t, adminJWT, "Александр Петров")
+	require.NotEmpty(t, mentorID)
+	require.NotEmpty(t, mentorJWT)
+
+	testSuffix := uuid.NewString()[:8]
+	group1ID := createGroup(t, adminJWT, "Группа Backend Разработки "+testSuffix, mentorID)
+	require.NotEmpty(t, group1ID)
+
+	group2ID := createGroup(t, adminJWT, "Группа Frontend Разработки "+testSuffix, mentorID)
+	require.NotEmpty(t, group2ID)
+
+	student1ID, _ := createStudentWithReadableName(t, adminJWT, group1ID, "Иван Иванов")
+	require.NotEmpty(t, student1ID)
+
+	student2ID, _ := createStudentWithReadableName(t, adminJWT, group1ID, "Мария Сидорова")
+	require.NotEmpty(t, student2ID)
+
+	student3ID, _ := createStudentWithReadableName(t, adminJWT, group2ID, "Петр Смирнов")
+	require.NotEmpty(t, student3ID)
+
+	client := &http.Client{Timeout: timeout}
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8090/auth/v1/"+mentorID+"/mentor-groups", nil)
+	require.NoError(t, err)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	type StudentDTO struct {
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Fullname string `json:"fullname"`
+	}
+
+	type GroupDTO struct {
+		ID       string       `json:"id"`
+		Name     string       `json:"name"`
+		Students []StudentDTO `json:"students"`
+	}
+
+	var groups []GroupDTO
+	err = json.NewDecoder(resp.Body).Decode(&groups)
+	require.NoError(t, err)
+
+	require.Len(t, groups, 2)
+
+	var backendGroup, frontendGroup GroupDTO
+	var backendFound, frontendFound bool
+
+	for _, group := range groups {
+		if strings.Contains(group.Name, "Backend") {
+			backendGroup = group
+			backendFound = true
+		} else if strings.Contains(group.Name, "Frontend") {
+			frontendGroup = group
+			frontendFound = true
+		}
+	}
+
+	require.True(t, backendFound, "Backend group not found")
+	require.True(t, frontendFound, "Frontend group not found")
+	require.Equal(t, group1ID, backendGroup.ID)
+	require.Len(t, backendGroup.Students, 2)
+
+	require.Equal(t, group2ID, frontendGroup.ID)
+	require.Len(t, frontendGroup.Students, 1)
+
+	studentsMap := make(map[string]StudentDTO)
+	for _, student := range backendGroup.Students {
+		studentsMap[student.Fullname] = student
+	}
+	for _, student := range frontendGroup.Students {
+		studentsMap[student.Fullname] = student
+	}
+
+	require.Contains(t, studentsMap, "Иван Иванов")
+	require.Contains(t, studentsMap, "Мария Сидорова")
+	require.Contains(t, studentsMap, "Петр Смирнов")
+
+	require.Equal(t, student1ID, studentsMap["Иван Иванов"].ID)
+	require.Equal(t, student2ID, studentsMap["Мария Сидорова"].ID)
+	require.Equal(t, student3ID, studentsMap["Петр Смирнов"].ID)
+
+	deleteUser(t, adminJWT, student1ID)
+	deleteUser(t, adminJWT, student2ID)
+	deleteUser(t, adminJWT, student3ID)
+	deleteUser(t, adminJWT, mentorID)
 }

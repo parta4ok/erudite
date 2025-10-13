@@ -366,6 +366,83 @@
                     }
                 }
             }
+        },
+        "/auth/v1/{user_id}/mentor-groups": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get all groups managed by mentor with students list. Requires mentor rights.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get mentor groups",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mentor user ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of mentor groups with students",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.GroupDTO"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -445,6 +522,23 @@
                 }
             }
         },
+        "github_com_parta4ok_kvs_auth_pkg_dto.GroupDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "students": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.StudentDTO"
+                    }
+                }
+            }
+        },
         "github_com_parta4ok_kvs_auth_pkg_dto.SigninRequestDTO": {
             "type": "object",
             "properties": {
@@ -462,6 +556,20 @@
             "type": "object",
             "properties": {
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_parta4ok_kvs_auth_pkg_dto.StudentDTO": {
+            "type": "object",
+            "properties": {
+                "fullname": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }

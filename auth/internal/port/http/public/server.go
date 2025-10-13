@@ -21,14 +21,16 @@ import (
 )
 
 const (
-	basePath       = "/auth/v1"
-	signinPath     = "/signin"
-	addUserPath    = "/add-user"
-	deleteUserPath = "/delete-user"
-	updateUserPath = "/update-user"
-	addGroupPath   = "/add-group"
+	basePath            = "/auth/v1"
+	signinPath          = "/signin"
+	addUserPath         = "/add-user"
+	deleteUserPath      = "/delete-user"
+	updateUserPath      = "/update-user"
+	addGroupPath        = "/add-group"
+	getMentorGroupsPath = "/mentor-groups"
 
-	right_admin = "admin"
+	right_admin  = "admin"
+	right_mentor = "mentor"
 )
 
 type Server struct {
@@ -154,6 +156,7 @@ func (s *Server) registerRoutes() {
 	s.router.Route(basePath, func(r chi.Router) {
 		r.Delete(deleteUserPath+"/{user_id}", s.DeleteUser)
 		r.Patch(updateUserPath+"/{user_id}", s.UpdateUser)
+		r.Get("/{user_id}"+getMentorGroupsPath, s.GetMentorGroups)
 	})
 }
 
@@ -621,6 +624,118 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	resp.WriteHeader(http.StatusCreated)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "write response")
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// Get mentor groups
+//
+// @Summary      Get mentor groups
+// @Description  Get all groups managed by mentor with students list. Requires mentor rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Param        user_id path string true "Mentor user ID"
+// @Success      200 {array} dto.GroupDTO "List of mentor groups with students"
+// @Failure      400 {object} dto.ErrorDTO "Invalid request parameters"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      404 {object} dto.ErrorDTO "User not found"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/{user_id}/mentor-groups [get]
+//
+//nolint:funlen //ok
+func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("GetMentorGroups started")
+
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "GetMentorGroupsHandlerSpan")
+	defer cancel()
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_mentor}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		span.SetError(err, "getValidatedAuthContext")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	userID := chi.URLParam(req, "user_id")
+
+	if userID == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
+		slog.Error(err.Error())
+		span.SetError(err, "userID invalid")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	command, err := s.factory.NewGetMentorGroupsCommand(ctx, userID)
+	if err != nil {
+		err := errors.Wrap(err, "get mentor groups command create failure")
+		slog.Error(err.Error())
+		span.SetError(err, "create GetMentorGroupsCommand")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	res, err := command.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "get mentor groups command exec failure")
+		slog.Error(err.Error())
+		span.SetError(err, "exec GetMentorGroupsCommand")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	groups, ok := res.Payload.([]*entities.Group)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
+		slog.Error(err.Error())
+		span.SetError(err, "result assertion failure")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	groupDTOs := make([]dto.GroupDTO, 0, len(groups))
+	for _, group := range groups {
+		groupDTO := dto.GroupDTO{
+			ID:       group.GetID(),
+			Name:     group.GetName(),
+			Students: make([]dto.StudentDTO, 0),
+		}
+
+		for _, student := range group.GetStudents() {
+			studentDTO := dto.StudentDTO{
+				ID:       student.GetID(),
+				Name:     student.GetName(),
+				Fullname: student.GetFullname(),
+			}
+
+			groupDTO.Students = append(groupDTO.Students, studentDTO)
+		}
+
+		groupDTOs = append(groupDTOs, groupDTO)
+	}
+
+	data, err := json.Marshal(groupDTOs)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "marshal GroupsDTO")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())

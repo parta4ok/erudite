@@ -779,3 +779,92 @@ func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) erro
 	}
 	return nil
 }
+
+//nolint:funlen //ok
+func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
+	map[string][]*entities.Topic, error) {
+	slog.Info("GetPassedUserTopics started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedUserTopicsPostgresSpan")
+	defer cancel()
+
+	passedTopics := make(map[string][]*entities.Topic, 0)
+
+	topicQuery := `SELECT topic_id, name FROM kvs.topics`
+	rows, err := s.db.Query(ctx, topicQuery)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err := errors.Wrapf(entities.ErrNotFound, "not found existed topics")
+			slog.Warn(err.Error())
+			return nil, err
+		}
+		err := errors.Wrapf(entities.ErrInternal, "not found existed topics failure: %v", err)
+		slog.Warn(err.Error())
+		span.SetError(err, "db.Query not found existed topics")
+		return nil, err
+	}
+
+	allTopicsMap := make(map[string]int, 0)
+	for rows.Next() {
+		var (
+			id    int
+			title string
+		)
+
+		rows.Scan(&id, &title) //nolint:errcheck,gosec //ok
+		allTopicsMap[title] = id
+	}
+
+	if rows.Err() != nil {
+		err := errors.Wrapf(entities.ErrInternal, "rows with titles had failure: %v", err)
+		slog.Warn(err.Error())
+		span.SetError(err, "rows with titles had failure")
+		return nil, err
+	}
+
+	args := []interface{}{studentds}
+
+	query := `SELECT user_id, topics from kvs.sessions WHERE state = 'completed state' AND
+ 	is_passed = TRUE AND user_id = ANY($1)`
+
+	rows, err = s.db.Query(ctx, query, args...)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err := errors.Wrapf(entities.ErrNotFound, "not found passed topics for users")
+			slog.Warn(err.Error())
+			return nil, err
+		}
+		err := errors.Wrapf(entities.ErrInternal, "search passed users topics failure: %v", err)
+		slog.Warn(err.Error())
+		span.SetError(err, "db.Query search passed users topics")
+		return nil, err
+	}
+
+	for rows.Next() {
+		topicsMap := make(map[string]struct{}, 0)
+
+		var (
+			userID string
+			topics []string
+		)
+
+		rows.Scan(&userID, &topics) //nolint:errcheck,gosec //ok
+		for _, topic := range topics {
+			topicsMap[topic] = struct{}{}
+		}
+
+		for topic := range topicsMap {
+			passedTopics[userID] = append(passedTopics[userID], &entities.Topic{
+				ID:    allTopicsMap[topic],
+				Title: topic,
+			})
+		}
+	}
+	if rows.Err() != nil {
+		err := errors.Wrapf(entities.ErrInternal, "rows with passed titles had failure: %v", err)
+		slog.Warn(err.Error())
+		span.SetError(err, "rows with passed titles had failure")
+		return nil, err
+	}
+
+	return passedTopics, nil
+}

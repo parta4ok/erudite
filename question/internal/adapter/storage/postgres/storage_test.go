@@ -299,3 +299,155 @@ func mustAnswer(t *testing.T, q entities.Question) *entities.UserAnswer {
 	require.NoError(t, err)
 	return answer
 }
+
+func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx := context.Background()
+	generator := cryptoprocessing.NewUint64Generator()
+
+	student1ID := fmt.Sprintf("student1_%d", time.Now().UnixNano())
+	student2ID := fmt.Sprintf("student2_%d", time.Now().UnixNano())
+
+	session1, err := entities.NewSession(student1ID, []string{"Базы данных"}, generator, db)
+	require.NoError(t, err)
+
+	questions1, err := db.GetQuesions(ctx, []string{"Базы данных"})
+	require.NoError(t, err)
+	require.NotEmpty(t, questions1)
+
+	questionsMap1 := make(map[string]entities.Question, len(questions1))
+	for _, q := range questions1 {
+		questionsMap1[q.ID()] = q
+	}
+
+	err = session1.SetQuestions(questionsMap1, time.Minute*10)
+	require.NoError(t, err)
+	require.Equal(t, entities.ActiveState, session1.GetStatus())
+
+	answers1 := make([]*entities.UserAnswer, 0)
+	for _, q := range questions1 {
+		correctAnswer := findCorrectAnswer(q)
+		answer, err := entities.NewUserAnswer(q.ID(), correctAnswer)
+		require.NoError(t, err)
+		answers1 = append(answers1, answer)
+	}
+
+	err = session1.SetUserAnswer(answers1)
+	require.NoError(t, err)
+	require.Equal(t, entities.CompletedState, session1.GetStatus())
+
+	err = db.StoreSession(ctx, session1)
+	require.NoError(t, err)
+
+	session2, err := entities.NewSession(student2ID, []string{"Базы данных", "Базовые типы в Go"}, generator, db)
+	require.NoError(t, err)
+
+	questions2, err := db.GetQuesions(ctx, []string{"Базы данных", "Базовые типы в Go"})
+	require.NoError(t, err)
+	require.NotEmpty(t, questions2)
+
+	questionsMap2 := make(map[string]entities.Question, len(questions2))
+	for _, q := range questions2 {
+		questionsMap2[q.ID()] = q
+	}
+
+	err = session2.SetQuestions(questionsMap2, time.Minute*10)
+	require.NoError(t, err)
+
+	answers2 := make([]*entities.UserAnswer, 0)
+	for _, q := range questions2 {
+		correctAnswer := findCorrectAnswer(q)
+		answer, err := entities.NewUserAnswer(q.ID(), correctAnswer)
+		require.NoError(t, err)
+		answers2 = append(answers2, answer)
+	}
+
+	err = session2.SetUserAnswer(answers2)
+	require.NoError(t, err)
+	require.Equal(t, entities.CompletedState, session2.GetStatus())
+
+	err = db.StoreSession(ctx, session2)
+	require.NoError(t, err)
+
+	session3, err := entities.NewSession(student2ID, []string{"Составные типы в Go"}, generator, db)
+	require.NoError(t, err)
+
+	questions3, err := db.GetQuesions(ctx, []string{"Составные типы в Go"})
+	require.NoError(t, err)
+	require.NotEmpty(t, questions3)
+
+	questionsMap3 := make(map[string]entities.Question, len(questions3))
+	for _, q := range questions3 {
+		questionsMap3[q.ID()] = q
+	}
+
+	err = session3.SetQuestions(questionsMap3, time.Minute*10)
+	require.NoError(t, err)
+
+	answers3 := make([]*entities.UserAnswer, 0)
+	for _, q := range questions3 {
+		wrongAnswers := []string{q.Variants()[len(q.Variants())-1]}
+		answer, err := entities.NewUserAnswer(q.ID(), wrongAnswers)
+		require.NoError(t, err)
+		answers3 = append(answers3, answer)
+	}
+
+	err = session3.SetUserAnswer(answers3)
+	require.NoError(t, err)
+	require.Equal(t, entities.CompletedState, session3.GetStatus())
+
+	err = db.StoreSession(ctx, session3)
+	require.NoError(t, err)
+
+	students := []string{student1ID, student2ID}
+	passedTopics, err := db.GetPassedUserTopics(ctx, students)
+	require.NoError(t, err)
+	require.NotNil(t, passedTopics)
+
+	require.Contains(t, passedTopics, student1ID)
+	student1Topics := passedTopics[student1ID]
+	require.Len(t, student1Topics, 1)
+	require.Equal(t, "Базы данных", student1Topics[0].Title)
+
+	require.Contains(t, passedTopics, student2ID)
+	student2Topics := passedTopics[student2ID]
+	require.Len(t, student2Topics, 2)
+
+	student2TopicsMap := make(map[string]bool)
+	for _, topic := range student2Topics {
+		student2TopicsMap[topic.Title] = true
+	}
+
+	require.True(t, student2TopicsMap["Базы данных"], "Student 2 should have passed 'Базы данных'")
+	require.True(t, student2TopicsMap["Базовые типы в Go"], "Student 2 should have passed 'Базовые типы в Go'")
+	require.False(t, student2TopicsMap["Составные типы в Go"], "Student 2 should NOT have passed 'Составные типы в Go'")
+}
+
+func findCorrectAnswer(q entities.Question) []string {
+	for _, variant := range q.Variants() {
+		userAnswer, err := entities.NewUserAnswer(q.ID(), []string{variant})
+		if err != nil {
+			continue
+		}
+		if q.IsAnswerCorrect(userAnswer) {
+			return []string{variant}
+		}
+	}
+
+	variants := q.Variants()
+	for i := 0; i < len(variants); i++ {
+		for j := i + 1; j < len(variants); j++ {
+			userAnswer, err := entities.NewUserAnswer(q.ID(), []string{variants[i], variants[j]})
+			if err != nil {
+				continue
+			}
+			if q.IsAnswerCorrect(userAnswer) {
+				return []string{variants[i], variants[j]}
+			}
+		}
+	}
+
+	return []string{q.Variants()[0]}
+}

@@ -307,12 +307,9 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	ctx := context.Background()
 	generator := cryptoprocessing.NewUint64Generator()
 
-	// Данные для тестирования
 	student1ID := fmt.Sprintf("student1_%d", time.Now().UnixNano())
 	student2ID := fmt.Sprintf("student2_%d", time.Now().UnixNano())
 
-	// Создаем сессии с известными результатами
-	// Студент 1: успешно сдает "Базы данных"
 	session1, err := entities.NewSession(student1ID, []string{"Базы данных"}, generator, db)
 	require.NoError(t, err)
 
@@ -320,21 +317,17 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, questions1)
 
-	// Создаем карту вопросов для сессии
 	questionsMap1 := make(map[string]entities.Question, len(questions1))
 	for _, q := range questions1 {
 		questionsMap1[q.ID()] = q
 	}
 
-	// Устанавливаем вопросы в сессию
 	err = session1.SetQuestions(questionsMap1, time.Minute*10)
 	require.NoError(t, err)
 	require.Equal(t, entities.ActiveState, session1.GetStatus())
 
-	// Формируем правильные ответы для первого студента
 	answers1 := make([]*entities.UserAnswer, 0)
 	for _, q := range questions1 {
-		// Находим правильный ответ для вопроса
 		correctAnswer := findCorrectAnswer(q)
 		answer, err := entities.NewUserAnswer(q.ID(), correctAnswer)
 		require.NoError(t, err)
@@ -345,11 +338,9 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, entities.CompletedState, session1.GetStatus())
 
-	// Сохраняем сессию
 	err = db.StoreSession(ctx, session1)
 	require.NoError(t, err)
 
-	// Студент 2: успешно сдает "Базы данных" и "Базовые типы в Go"
 	session2, err := entities.NewSession(student2ID, []string{"Базы данных", "Базовые типы в Go"}, generator, db)
 	require.NoError(t, err)
 
@@ -380,7 +371,6 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	err = db.StoreSession(ctx, session2)
 	require.NoError(t, err)
 
-	// Студент 2: неудачно сдает "Составные типы в Go"
 	session3, err := entities.NewSession(student2ID, []string{"Составные типы в Go"}, generator, db)
 	require.NoError(t, err)
 
@@ -398,8 +388,7 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 
 	answers3 := make([]*entities.UserAnswer, 0)
 	for _, q := range questions3 {
-		// Даем намеренно неправильные ответы
-		wrongAnswers := []string{q.Variants()[len(q.Variants())-1]} // Берем последний вариант
+		wrongAnswers := []string{q.Variants()[len(q.Variants())-1]}
 		answer, err := entities.NewUserAnswer(q.ID(), wrongAnswers)
 		require.NoError(t, err)
 		answers3 = append(answers3, answer)
@@ -412,24 +401,20 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	err = db.StoreSession(ctx, session3)
 	require.NoError(t, err)
 
-	// Выполняем тестируемый метод
 	students := []string{student1ID, student2ID}
 	passedTopics, err := db.GetPassedUserTopics(ctx, students)
 	require.NoError(t, err)
 	require.NotNil(t, passedTopics)
 
-	// Проверяем результаты для студента 1
 	require.Contains(t, passedTopics, student1ID)
 	student1Topics := passedTopics[student1ID]
 	require.Len(t, student1Topics, 1)
 	require.Equal(t, "Базы данных", student1Topics[0].Title)
 
-	// Проверяем результаты для студента 2 (должен пройти только 2 темы)
 	require.Contains(t, passedTopics, student2ID)
 	student2Topics := passedTopics[student2ID]
 	require.Len(t, student2Topics, 2)
 
-	// Создаем карту тем для проверки
 	student2TopicsMap := make(map[string]bool)
 	for _, topic := range student2Topics {
 		student2TopicsMap[topic.Title] = true
@@ -440,9 +425,7 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	require.False(t, student2TopicsMap["Составные типы в Go"], "Student 2 should NOT have passed 'Составные типы в Go'")
 }
 
-// findCorrectAnswer находит правильный ответ для вопроса путем проверки всех вариантов
 func findCorrectAnswer(q entities.Question) []string {
-	// Проверяем каждый вариант ответа
 	for _, variant := range q.Variants() {
 		userAnswer, err := entities.NewUserAnswer(q.ID(), []string{variant})
 		if err != nil {
@@ -453,9 +436,7 @@ func findCorrectAnswer(q entities.Question) []string {
 		}
 	}
 
-	// Для вопросов с множественным выбором попробуем все комбинации
 	variants := q.Variants()
-	// Попробуем комбинации из 2 ответов
 	for i := 0; i < len(variants); i++ {
 		for j := i + 1; j < len(variants); j++ {
 			userAnswer, err := entities.NewUserAnswer(q.ID(), []string{variants[i], variants[j]})
@@ -468,6 +449,5 @@ func findCorrectAnswer(q entities.Question) []string {
 		}
 	}
 
-	// Если не нашли правильный ответ, возвращаем первый вариант
 	return []string{q.Variants()[0]}
 }

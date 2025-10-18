@@ -125,6 +125,11 @@ tasks:
             - export $(grep -v '^#' .env | xargs) && go test -v -tags=KVS_TEST_L2 ./...
             - docker-compose --profile l2 down -v
 
+    concurrent_test:
+        desc: Run concurrent test with -race flag
+        cmds:
+            - go test -race -tags=KVS_TEST_CONCURRENT ./...
+
     swag_gen:
         desc: Generate swagger specification (JSON only)
         cmds:

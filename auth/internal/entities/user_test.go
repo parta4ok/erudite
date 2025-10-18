@@ -19,7 +19,7 @@ func TestNewUser(t *testing.T) {
 		fullName string
 		rights   []string
 		contacts map[string]string
-		groupID string
+		groupID  string
 		wantErr  bool
 		errCheck func(t *testing.T, err error)
 	}{
@@ -34,7 +34,7 @@ func TestNewUser(t *testing.T) {
 				"telegram": uuid.NewString(),
 			},
 			groupID: "mentor-123",
-			wantErr:  false,
+			wantErr: false,
 		},
 		{
 			name:     "valid user with minimal fields",
@@ -43,7 +43,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  false,
 		},
 		{
@@ -53,7 +53,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "User Two",
 			rights:   []string{"read", "write"},
 			contacts: map[string]string{},
-			groupID: "student-456",
+			groupID:  "student-456",
 			wantErr:  false,
 		},
 		{
@@ -63,7 +63,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  true,
 			errCheck: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, entities.ErrInvalidParam)
@@ -77,7 +77,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  true,
 			errCheck: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, entities.ErrInvalidParam)
@@ -91,7 +91,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  true,
 			errCheck: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, entities.ErrInvalidParam)
@@ -105,7 +105,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  false,
 		},
 		{
@@ -115,7 +115,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  false,
 		},
 		{
@@ -125,7 +125,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "   ",
 			rights:   []string{"read"},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  false,
 		},
 		{
@@ -135,7 +135,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   nil,
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  true,
 			errCheck: func(t *testing.T, err error) {
 				require.ErrorIs(t, err, entities.ErrInvalidParam)
@@ -149,7 +149,7 @@ func TestNewUser(t *testing.T) {
 			fullName: "Test User",
 			rights:   []string{},
 			contacts: nil,
-			groupID: "",
+			groupID:  "",
 			wantErr:  false,
 		},
 		{
@@ -162,7 +162,7 @@ func TestNewUser(t *testing.T) {
 				"email": "student@example.com",
 			},
 			groupID: "mentor-789",
-			wantErr:  false,
+			wantErr: false,
 		},
 		{
 			name:     "valid user with multiple contacts",
@@ -176,7 +176,7 @@ func TestNewUser(t *testing.T) {
 				"phone":    "+1234567890",
 			},
 			groupID: "",
-			wantErr:  false,
+			wantErr: false,
 		},
 	}
 

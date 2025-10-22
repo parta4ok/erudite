@@ -2,17 +2,21 @@ package cases_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
-
+	"github.com/google/uuid"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/cases/testdata"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	entitiesTestdata "github.com/parta4ok/kvs/question/internal/entities/testdata"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
+)
+
+var (
+	ErrTest = errors.New("test error")
 )
 
 func TestNewSessionServiceBase_Success(t *testing.T) {
@@ -550,4 +554,94 @@ func TestSessionServiceBase_CompleteSession(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSessionServiceBase_GetPassedStudentsTopics(t *testing.T) {
+	type stages struct {
+		GetPassedTopicsSettings func(ctx context.Context, t *testing.T, storage *testdata.MockStorage, students []string, passedTopics map[string][]*entities.Topic, err error)
+		GetPassedTopicsErr      error
+	}
+
+	tests := []struct {
+		name    string
+		stages  stages
+		wantErr bool
+		resErr  error
+	}{
+		{
+			name: "1",
+			stages: stages{
+				GetPassedTopicsSettings: setGetPassedTopics,
+				GetPassedTopicsErr:      ErrTest,
+			},
+			wantErr: true,
+			resErr:  ErrTest,
+		},
+		{
+			name: "2",
+			stages: stages{
+				GetPassedTopicsSettings: setGetPassedTopics,
+			},
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(tb *testing.T) {
+			tb.Parallel()
+
+			ctrl := gomock.NewController(tb)
+			tb.Cleanup(func() {
+				ctrl.Finish()
+			})
+
+			storage := testdata.NewMockStorage(ctrl)
+			sessionStorage := entitiesTestdata.NewMockSessionStorage(ctrl)
+			generator := entitiesTestdata.NewMockIDGenerator(ctrl)
+
+			ctx := context.Background()
+			student1 := uuid.NewString()
+			student2 := uuid.NewString()
+			students := []string{student1, student2}
+
+			topic1 := &entities.Topic{
+				ID:    1,
+				Title: uuid.NewString(),
+			}
+
+			topic2 := &entities.Topic{
+				ID:    2,
+				Title: uuid.NewString(),
+			}
+
+			expectedMap := map[string][]*entities.Topic{
+				student1: {topic1, topic2},
+				student2: {topic2},
+			}
+
+			if tc.stages.GetPassedTopicsSettings != nil {
+				if tc.stages.GetPassedTopicsErr != nil {
+					expectedMap = nil
+				}
+				tc.stages.GetPassedTopicsSettings(ctx, tb, storage, students, expectedMap, tc.stages.GetPassedTopicsErr)
+			}
+
+			service, err := cases.NewSessionServiceBase(storage, sessionStorage, generator)
+			require.NoError(t, err)
+
+			result, err := service.GetPassedStudentsTopics(ctx, students)
+			if tc.wantErr {
+				require.ErrorIs(tb, err, tc.resErr)
+				require.Nil(tb, result)
+				return
+			}
+			require.NoError(tb, err)
+			require.Equal(tb, expectedMap, result)
+		})
+	}
+}
+
+func setGetPassedTopics(ctx context.Context, t *testing.T, storage *testdata.MockStorage, students []string, passedTopics map[string][]*entities.Topic, err error) {
+	t.Helper()
+
+	storage.EXPECT().GetPassedUserTopics(ctx, students).Return(passedTopics, err)
 }

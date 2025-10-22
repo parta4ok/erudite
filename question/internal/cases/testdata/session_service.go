@@ -81,6 +81,21 @@ func (mr *MockSessionServiceMockRecorder) GetAllCompletedUserSessions(ctx, userI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllCompletedUserSessions", reflect.TypeOf((*MockSessionService)(nil).GetAllCompletedUserSessions), ctx, userID)
 }
 
+// GetPassedStudentsTopics mocks base method.
+func (m *MockSessionService) GetPassedStudentsTopics(ctx context.Context, students []string) (map[string][]*entities.Topic, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPassedStudentsTopics", ctx, students)
+	ret0, _ := ret[0].(map[string][]*entities.Topic)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPassedStudentsTopics indicates an expected call of GetPassedStudentsTopics.
+func (mr *MockSessionServiceMockRecorder) GetPassedStudentsTopics(ctx, students interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPassedStudentsTopics", reflect.TypeOf((*MockSessionService)(nil).GetPassedStudentsTopics), ctx, students)
+}
+
 // ShowTopics mocks base method.
 func (m *MockSessionService) ShowTopics(ctx context.Context) ([]string, error) {
 	m.ctrl.T.Helper()

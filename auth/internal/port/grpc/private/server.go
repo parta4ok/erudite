@@ -190,6 +190,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	return resp, nil
 }
 
+//nolint:funlen //ok
 func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 ) (*authv1.GroupsResponse, error) {
 	slog.Info("GetLinkedUser started")

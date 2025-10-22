@@ -44,3 +44,8 @@ func (c *AuthClient) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	opts ...grpc.CallOption) (*authv1.LinkedUsersResponse, error) {
 	return c.client.GetLinkedUsers(ctx, req, opts...)
 }
+
+func (c *AuthClient) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
+	opts ...grpc.CallOption) (*authv1.GroupsResponse, error) {
+	return c.client.GetMentorGroups(ctx, req, opts...)
+}

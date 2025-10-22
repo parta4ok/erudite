@@ -190,6 +190,79 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	return resp, nil
 }
 
+func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
+) (*authv1.GroupsResponse, error) {
+	slog.Info("GetLinkedUser started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetMentorGroupsGRPCHandlerSpan")
+	defer cancel()
+
+	if req.GetMentorID() == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "mentorID is invalid")
+		slog.Error(err.Error())
+		span.SetError(err, "mentorID is invalid")
+		return &authv1.GroupsResponse{
+			Groups: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	cmd, err := a.factory.NewGetMentorGroupsCommand(ctx, req.GetMentorID())
+	if err != nil {
+		slog.Error(err.Error())
+		err := errors.Wrap(err, "cteating GetMentorGroupsCommand failed")
+		span.SetError(err, "cteating GetMentorGroupsCommand failed")
+		return &authv1.GroupsResponse{
+			Groups: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	res, err := cmd.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "GetMentorGroupsCommand execution failed")
+		slog.Error(err.Error())
+		span.SetError(err, "GetMentorGroupsCommand execution failed")
+		return &authv1.GroupsResponse{
+			Groups: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	groups, ok := res.Payload.([]*entities.Group)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
+		slog.Error(err.Error())
+		span.SetError(err, "cast command result failure")
+		return &authv1.GroupsResponse{
+			Groups: nil,
+			Error:  &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	groupsResp := &authv1.GroupsResponse{}
+	for _, group := range groups {
+		var (
+			groupResp = &authv1.Group{}
+		)
+		groupResp.Id = group.GetID()
+		groupResp.Name = group.GetName()
+		groupResp.Students = make([]*authv1.Student, 0, len(group.GetStudents()))
+		for _, student := range group.GetStudents() {
+			var (
+				studentResp = &authv1.Student{}
+			)
+			studentResp.Id = student.GetID()
+			studentResp.Name = student.GetName()
+			studentResp.Fullname = student.GetFullname()
+
+			groupResp.Students = append(groupResp.Students, studentResp)
+		}
+		groupsResp.Groups = append(groupsResp.Groups, groupResp)
+	}
+
+	return groupsResp, nil
+}
+
 type Server struct {
 	authService *AuthService
 	server      *grpc.Server

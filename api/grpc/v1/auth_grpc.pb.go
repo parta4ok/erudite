@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Introspect_FullMethodName     = "/auth.AuthService/Introspect"
-	AuthService_GetLinkedUsers_FullMethodName = "/auth.AuthService/GetLinkedUsers"
+	AuthService_Introspect_FullMethodName      = "/auth.AuthService/Introspect"
+	AuthService_GetLinkedUsers_FullMethodName  = "/auth.AuthService/GetLinkedUsers"
+	AuthService_GetMentorGroups_FullMethodName = "/auth.AuthService/GetMentorGroups"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -29,6 +30,7 @@ const (
 type AuthServiceClient interface {
 	Introspect(ctx context.Context, in *IntrospectRequest, opts ...grpc.CallOption) (*IntrospectResponse, error)
 	GetLinkedUsers(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*LinkedUsersResponse, error)
+	GetMentorGroups(ctx context.Context, in *MentorID, opts ...grpc.CallOption) (*GroupsResponse, error)
 }
 
 type authServiceClient struct {
@@ -59,12 +61,23 @@ func (c *authServiceClient) GetLinkedUsers(ctx context.Context, in *LinkedID, op
 	return out, nil
 }
 
+func (c *authServiceClient) GetMentorGroups(ctx context.Context, in *MentorID, opts ...grpc.CallOption) (*GroupsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GroupsResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetMentorGroups_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
 	Introspect(context.Context, *IntrospectRequest) (*IntrospectResponse, error)
 	GetLinkedUsers(context.Context, *LinkedID) (*LinkedUsersResponse, error)
+	GetMentorGroups(context.Context, *MentorID) (*GroupsResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedAuthServiceServer) Introspect(context.Context, *IntrospectReq
 }
 func (UnimplementedAuthServiceServer) GetLinkedUsers(context.Context, *LinkedID) (*LinkedUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLinkedUsers not implemented")
+}
+func (UnimplementedAuthServiceServer) GetMentorGroups(context.Context, *MentorID) (*GroupsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMentorGroups not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -138,6 +154,24 @@ func _AuthService_GetLinkedUsers_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_GetMentorGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MentorID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetMentorGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetMentorGroups_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetMentorGroups(ctx, req.(*MentorID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLinkedUsers",
 			Handler:    _AuthService_GetLinkedUsers_Handler,
+		},
+		{
+			MethodName: "GetMentorGroups",
+			Handler:    _AuthService_GetMentorGroups_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

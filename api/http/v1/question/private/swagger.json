@@ -1,0 +1,114 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a server for testing students before 1to1",
+        "title": "Erudite Service API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "email": "parta4ok@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8081",
+    "basePath": "/kvs/v1",
+    "paths": {
+        "/passed_topics": {
+            "post": {
+                "description": "Returns a map of student IDs to their completed topics.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get passed topics for multiple students",
+                "parameters": [
+                    {
+                        "description": "List of student IDs",
+                        "name": "students",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.StudentsIDsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Map of student IDs to their passed topics",
+                        "schema": {
+                            "$ref": "#/definitions/dto.StudentsTopicsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid student IDs format",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.ErrorDTO": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "description": "error message\nrequired: false\nexample: topic not set: not found",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "HTTP status code\nrequired: true\nexample: 404",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.StudentsIDsDTO": {
+            "type": "object",
+            "properties": {
+                "students_ids": {
+                    "description": "list of students id\nrequired: true",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.StudentsTopicsDTO": {
+            "type": "object",
+            "properties": {
+                "students_topics": {
+                    "description": "required: true",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/dto.TopicWithIDDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "dto.TopicWithIDDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "required: true",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "required: true",
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

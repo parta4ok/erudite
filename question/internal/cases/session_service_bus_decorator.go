@@ -122,3 +122,20 @@ func (service *SessionServiceBusDecorator) ShowTopics(ctx context.Context) ([]st
 	slog.Info("ShowTopics in SessionServiceBusDecorator completed")
 	return topics, nil
 }
+
+func (service *SessionServiceBusDecorator) GetPassedStudentsTopics(
+	ctx context.Context,
+	students []string,
+) (map[string][]*entities.Topic, error) {
+	slog.Info("GetPassedStudentsTopics in SessionServiceBusDecorator started")
+
+	passedTopics, err := service.sessionService.GetPassedStudentsTopics(ctx, students)
+	if err != nil {
+		err = errors.Wrap(err, "GetPassedStudentsTopics failure")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("GetPassedStudentsTopics in SessionServiceBusDecorator completed")
+	return passedTopics, nil
+}

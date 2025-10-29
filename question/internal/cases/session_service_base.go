@@ -199,3 +199,21 @@ func (srv *SessionServiceBase) GetAllCompletedUserSessions(ctx context.Context, 
 	slog.Info("GetAllCompletedUserSessions completed")
 	return sessions, nil
 }
+
+func (srv *SessionServiceBase) GetPassedStudentsTopics(ctx context.Context, students []string) (
+	map[string][]*entities.Topic, error) {
+	slog.Info("GetPassedStudentsTopics started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedStudentsTopicsSpan")
+	defer cancel()
+
+	passedTopics, err := srv.storage.GetPassedUserTopics(ctx, students)
+	if err != nil {
+		err = errors.Wrap(err, "GetPassedUserTopics failure")
+		slog.Error(err.Error())
+		span.SetError(err, "GetPassedUserTopics")
+		return nil, err
+	}
+
+	slog.Info("GetPassedStudentsTopics completed")
+	return passedTopics, nil
+}

@@ -133,7 +133,8 @@ tasks:
     swag_gen:
         desc: Generate swagger specification (JSON only)
         cmds:
-            - task: swag_gen_question
+            - task: swag_gen_question_public
+            - task: swag_gen_question_private
             - task: swag_gen_auth
 
     run_question_local:
@@ -151,16 +152,43 @@ tasks:
         cmds:
             - NOTIFICATIONHUB_CONFIG_PATH=./deployment/notificationhub.yaml go run ./notificationhub/cmd/app/main.go
 
-    swag_gen_question:
-        desc: Generate swagger specification for question service
+    # swag_gen_question_public:
+    #     desc: Generate swagger specification for question service (public port)
+    #     cmds:
+    #         - cd question && swag init -g ./internal/port/http/public/doc.go --output ./internal/port/http/public/ --outputTypes json --parseDependency false --pdl 1 --parseInternal false --dir ./internal/port/http/public,./internal/dto --exclude ./internal/port/http/private
+    #         - mkdir -p api/http/v1/question/public
+    #         - mv question/internal/port/http/public/swagger.json api/http/v1/question/public/
+
+    # swag_gen_question_private:
+    #     desc: Generate swagger specification for question service (private port)
+    #     cmds:
+    #         - cd question && swag init -g ./internal/port/http/private/doc.go --output ./internal/port/http/private/ --outputTypes json --parseDependency false --pdl 1 --parseInternal false --dir ./internal/port/http/private,./internal/dto --exclude ./internal/port/http/public
+    #         - mkdir -p api/http/v1/question/private
+    #         - mv question/internal/port/http/private/swagger.json api/http/v1/question/private/
+
+    # swag_gen_auth:
+    #     desc: Generate swagger specification for auth service
+    #     cmds:
+    #         - cd auth && swag init -g ./internal/port/http/public/doc.go --output ./internal/port/http/public/ --outputTypes json --parseDependency false --pdl 1 --parseInternal false --dir ./internal/port/http/public,./internal/dto --exclude ./internal/port/http/private
+    #         - mkdir -p api/http/v1/auth
+    #         - mv auth/internal/port/http/public/swagger.json api/http/v1/auth/swagger.json
+    swag_gen_question_public:
+        desc: Generate swagger specification for question service (public port)
         cmds:
-            - cd question && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
-            - mkdir -p api/http/v1/question
-            - cp question/docs/swagger.json api/http/v1/question/swagger.json
+            - cd question && swag init -g ./internal/port/http/public/doc.go --output ./internal/port/http/public/ --outputTypes json --parseDependency=false --parseInternal=false --exclude ./internal/port/http/private/
+            - mkdir -p api/http/v1/question/public
+            - mv question/internal/port/http/public/swagger.json api/http/v1/question/public/
+
+    swag_gen_question_private:
+        desc: Generate swagger specification for question service (private port)
+        cmds:
+            - cd question && swag init -g ./internal/port/http/private/doc.go --output ./internal/port/http/private/ --outputTypes json --parseDependency=false --parseInternal=false --exclude ./internal/port/http/public
+            - mkdir -p api/http/v1/question/private
+            - mv question/internal/port/http/private/swagger.json api/http/v1/question/private/
 
     swag_gen_auth:
         desc: Generate swagger specification for auth service
         cmds:
-            - cd auth && swag init -g ./internal/port/http/public/doc.go --outputTypes json --parseDependency true --parseInternal
+            - cd auth && swag init -g ./internal/port/http/public/doc.go --output ./internal/port/http/public/ --outputTypes json --parseDependency=false --parseInternal=false
             - mkdir -p api/http/v1/auth
-            - cp auth/docs/swagger.json api/http/v1/auth/swagger.json
+            - mv auth/internal/port/http/public/swagger.json api/http/v1/auth/swagger.json

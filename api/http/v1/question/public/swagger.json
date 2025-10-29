@@ -40,25 +40,25 @@
                     "200": {
                         "description": "Successfully retrieved list of topics",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO"
+                            "$ref": "#/definitions/dto.TopicsDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "No topics found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -99,25 +99,25 @@
                     "200": {
                         "description": "List of completed sessions",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionsResponseListDTO"
+                            "$ref": "#/definitions/dto.CompletedSessionsResponseListDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid user_id",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "No completed sessions found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -159,7 +159,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO"
+                            "$ref": "#/definitions/dto.TopicsDTO"
                         }
                     }
                 ],
@@ -167,25 +167,25 @@
                     "201": {
                         "description": "Successfully created session",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionDTO"
+                            "$ref": "#/definitions/dto.SessionDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "Topics not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -234,7 +234,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO"
+                            "$ref": "#/definitions/dto.UserAnswersListDTO"
                         }
                     }
                 ],
@@ -242,25 +242,25 @@
                     "200": {
                         "description": "Successfully completed session",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO"
+                            "$ref": "#/definitions/dto.SessionResultDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "Session not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -268,14 +268,14 @@
         }
     },
     "definitions": {
-        "github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionResponseDTO": {
+        "dto.CompletedSessionResponseDTO": {
             "type": "object",
             "properties": {
                 "is_expired": {
                     "type": "boolean"
                 },
                 "session_result": {
-                    "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO"
+                    "$ref": "#/definitions/dto.SessionResultDTO"
                 },
                 "started_at": {
                     "type": "string"
@@ -287,22 +287,22 @@
                     }
                 },
                 "user_answers": {
-                    "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO"
+                    "$ref": "#/definitions/dto.UserAnswersListDTO"
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionsResponseListDTO": {
+        "dto.CompletedSessionsResponseListDTO": {
             "type": "object",
             "properties": {
                 "completed_sessions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.CompletedSessionResponseDTO"
+                        "$ref": "#/definitions/dto.CompletedSessionResponseDTO"
                     }
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.ErrorDTO": {
+        "dto.ErrorDTO": {
             "type": "object",
             "properties": {
                 "error_message": {
@@ -315,7 +315,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.QuestionDTO": {
+        "dto.QuestionDTO": {
             "type": "object",
             "properties": {
                 "question_id": {
@@ -348,13 +348,13 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.SessionDTO": {
+        "dto.SessionDTO": {
             "type": "object",
             "properties": {
                 "questions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.QuestionDTO"
+                        "$ref": "#/definitions/dto.QuestionDTO"
                     }
                 },
                 "session_id": {
@@ -373,7 +373,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.SessionResultDTO": {
+        "dto.SessionResultDTO": {
             "type": "object",
             "properties": {
                 "grade": {
@@ -386,7 +386,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.TopicsDTO": {
+        "dto.TopicsDTO": {
             "type": "object",
             "properties": {
                 "topics": {
@@ -401,7 +401,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.UserAnswerDTO": {
+        "dto.UserAnswerDTO": {
             "type": "object",
             "properties": {
                 "answers": {
@@ -423,13 +423,13 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_question_pkg_dto.UserAnswersListDTO": {
+        "dto.UserAnswersListDTO": {
             "type": "object",
             "properties": {
                 "user_answers": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_parta4ok_kvs_question_pkg_dto.UserAnswerDTO"
+                        "$ref": "#/definitions/dto.UserAnswerDTO"
                     }
                 }
             }

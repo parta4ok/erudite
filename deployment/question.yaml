@@ -3,6 +3,9 @@ kvs:
         public:
             port: :8080
             timeout: 5s
+        private:
+            port: :8081
+            timeout: 5s
     storage:
         type: postgres
     logging:

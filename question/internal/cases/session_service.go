@@ -14,4 +14,6 @@ type SessionService interface {
 		string, map[string]entities.Question, error)
 	GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error)
 	ShowTopics(ctx context.Context) ([]string, error)
+	GetPassedStudentsTopics(ctx context.Context, students []string) (
+		map[string][]*entities.Topic, error)
 }

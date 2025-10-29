@@ -39,6 +39,10 @@ func (cfg *Config) GetPublicPort() string {
 	return cfg.viper.GetString("kvs.http.public.port")
 }
 
+func (cfg *Config) GetPrivatePort() string {
+	return cfg.viper.GetString("kvs.http.private.port")
+}
+
 func (cfg *Config) GetLogLevel() string {
 	return cfg.viper.GetString("kvs.logging.level")
 }
@@ -69,6 +73,20 @@ func (cfg *Config) GetStorageConnStr(storageType string) string {
 
 func (cfg *Config) GetPublicTimeout() time.Duration {
 	timeoutStr := cfg.viper.GetString("kvs.http.public.timeout")
+	if timeoutStr == "" {
+		return 30 * time.Second
+	}
+
+	timeout, err := time.ParseDuration(timeoutStr)
+	if err != nil {
+		return 30 * time.Second
+	}
+
+	return timeout
+}
+
+func (cfg *Config) GetPrivateTimeout() time.Duration {
+	timeoutStr := cfg.viper.GetString("kvs.http.private.timeout")
 	if timeoutStr == "" {
 		return 30 * time.Second
 	}

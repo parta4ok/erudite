@@ -205,7 +205,7 @@ func (srv *SessionServiceBase) GetPassedStudentsTopics(ctx context.Context, stud
 	slog.Info("GetPassedStudentsTopics started")
 	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedStudentsTopicsSpan")
 	defer cancel()
-	
+
 	passedTopics, err := srv.storage.GetPassedUserTopics(ctx, students)
 	if err != nil {
 		err = errors.Wrap(err, "GetPassedUserTopics failure")

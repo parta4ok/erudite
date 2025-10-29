@@ -44,7 +44,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddGroupRequestDTO"
+                            "$ref": "#/definitions/dto.AddGroupRequestDTO"
                         }
                     }
                 ],
@@ -52,37 +52,37 @@
                     "201": {
                         "description": "New group created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddGroupResponseDTO"
+                            "$ref": "#/definitions/dto.AddGroupResponseDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -120,7 +120,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddUserDTO"
+                            "$ref": "#/definitions/dto.AddUserDTO"
                         }
                     }
                 ],
@@ -128,37 +128,37 @@
                     "201": {
                         "description": "New user created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.AddUserResponseDTO"
+                            "$ref": "#/definitions/dto.AddUserResponseDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -205,31 +205,31 @@
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -252,7 +252,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.SigninRequestDTO"
+                            "$ref": "#/definitions/dto.SigninRequestDTO"
                         }
                     }
                 ],
@@ -260,25 +260,25 @@
                     "201": {
                         "description": "JWT created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.SigninResponseDTO"
+                            "$ref": "#/definitions/dto.SigninResponseDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -323,7 +323,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserDTO"
+                            "$ref": "#/definitions/dto.UpdateUserDTO"
                         }
                     }
                 ],
@@ -331,37 +331,37 @@
                     "200": {
                         "description": "User updated",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserResponseDTO"
+                            "$ref": "#/definitions/dto.UpdateUserResponseDTO"
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -407,38 +407,38 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.GroupDTO"
+                                "$ref": "#/definitions/dto.GroupDTO"
                             }
                         }
                     },
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO"
+                            "$ref": "#/definitions/dto.ErrorDTO"
                         }
                     }
                 }
@@ -446,7 +446,7 @@
         }
     },
     "definitions": {
-        "github_com_parta4ok_kvs_auth_pkg_dto.AddGroupRequestDTO": {
+        "dto.AddGroupRequestDTO": {
             "type": "object",
             "properties": {
                 "linked_id": {
@@ -459,7 +459,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.AddGroupResponseDTO": {
+        "dto.AddGroupResponseDTO": {
             "type": "object",
             "properties": {
                 "group_id": {
@@ -467,7 +467,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.AddUserDTO": {
+        "dto.AddUserDTO": {
             "type": "object",
             "properties": {
                 "contacts": {
@@ -500,7 +500,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.AddUserResponseDTO": {
+        "dto.AddUserResponseDTO": {
             "type": "object",
             "properties": {
                 "user_id": {
@@ -509,7 +509,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.ErrorDTO": {
+        "dto.ErrorDTO": {
             "type": "object",
             "properties": {
                 "error_message": {
@@ -522,7 +522,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.GroupDTO": {
+        "dto.GroupDTO": {
             "type": "object",
             "properties": {
                 "id": {
@@ -534,12 +534,12 @@
                 "students": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_parta4ok_kvs_auth_pkg_dto.StudentDTO"
+                        "$ref": "#/definitions/dto.StudentDTO"
                     }
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.SigninRequestDTO": {
+        "dto.SigninRequestDTO": {
             "type": "object",
             "properties": {
                 "login": {
@@ -552,7 +552,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.SigninResponseDTO": {
+        "dto.SigninResponseDTO": {
             "type": "object",
             "properties": {
                 "token": {
@@ -560,7 +560,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.StudentDTO": {
+        "dto.StudentDTO": {
             "type": "object",
             "properties": {
                 "fullname": {
@@ -574,7 +574,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserDTO": {
+        "dto.UpdateUserDTO": {
             "type": "object",
             "properties": {
                 "contacts": {
@@ -600,7 +600,7 @@
                 }
             }
         },
-        "github_com_parta4ok_kvs_auth_pkg_dto.UpdateUserResponseDTO": {
+        "dto.UpdateUserResponseDTO": {
             "type": "object",
             "properties": {
                 "user_id": {

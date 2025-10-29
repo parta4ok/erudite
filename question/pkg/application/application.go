@@ -17,6 +17,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
+	"github.com/parta4ok/kvs/question/internal/port/http/private"
 	"github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
@@ -29,6 +30,7 @@ import (
 type App struct {
 	CfgPath      string
 	publicServer *public.Server
+	privateServer *private.Server
 	cancel       context.CancelFunc
 	wg           sync.WaitGroup
 	tracing      bool
@@ -62,8 +64,11 @@ func (app *App) Start() {
 
 	wrappedService := app.initWrappedSessionService(cfg, service, broker)
 
-	server := app.initPublicPort(cfg, wrappedService, authClient, accessor)
-	app.publicServer = server
+	pubicServer := app.initPublicPort(cfg, wrappedService, authClient, accessor)
+	app.publicServer = pubicServer
+
+	privateServer := app.initPrivatePort(cfg, wrappedService)
+	app.privateServer = privateServer
 
 	app.startWithGracefulShutdown()
 }
@@ -307,6 +312,28 @@ func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase cases.Sess
 	return server
 }
 
+func (app *App) initPrivatePort(cfg *config.Config, sessionServiceBase cases.SessionService,
+	) *private.Server {
+	slog.Info("init private port started")
+
+	port := cfg.GetPrivatePort()
+	timeout := cfg.GetPrivateTimeout()
+
+	server, err := private.New(
+		private.WithService(sessionServiceBase),
+		private.WithConfig(&private.ServerCfg{
+			Port:    port,
+			Timeout: timeout,
+		}),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new private port init failure")
+		app.panic(err)
+	}
+
+	return server
+}
+
 func (app *App) startWithGracefulShutdown() {
 	ctx, cancel := context.WithCancel(context.Background())
 	app.cancel = cancel
@@ -320,6 +347,12 @@ func (app *App) startWithGracefulShutdown() {
 		slog.Info("Starting public server")
 		app.publicServer.Start()
 	}()
+
+	app.wg.Go(
+		func() {
+		slog.Info("Starting private server")
+		app.privateServer.Start()
+	})
 
 	select {
 	case sig := <-sigOSChan:
@@ -341,6 +374,11 @@ func (app *App) shutdown() {
 	if app.publicServer != nil {
 		slog.Info("Stopping public server...")
 		app.publicServer.Stop()
+	}
+
+	if app.privateServer != nil {
+		slog.Info("Stopping private server...")
+		app.privateServer.Stop()
 	}
 
 	if app.tracing {

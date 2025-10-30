@@ -60,7 +60,12 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 		return nil, errors.Wrapf(ErrInternal, "marshal failure: %v", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlRaw.String(), bytes.NewReader(data))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		urlRaw.String(),
+		bytes.NewReader(data),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(ErrInternal, "new request failure: %v", err)
 	}
@@ -72,7 +77,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 		return nil, errors.Wrapf(ErrInternal, "client.do failure: %v", err)
 	}
 
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // ok
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.Wrap(client.processErr(resp.StatusCode), "request failure")
@@ -90,7 +95,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 }
 
 func (client *Client) processErr(statusCode int) error {
-	switch statusCode {
+	switch statusCode { //nolint:gocritic // will be extension on the next steps
 	case http.StatusBadRequest:
 		return ErrBadRequest
 

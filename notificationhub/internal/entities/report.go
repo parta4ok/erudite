@@ -1,7 +1,6 @@
 package entities
 
-const ()
-
+//nolint:unused //will be fixed on the next time
 type Report struct {
 	kind      string
 	format    string

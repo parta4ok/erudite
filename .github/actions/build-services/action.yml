@@ -1,7 +1,7 @@
-name: 'Build Services'
-description: 'Build and cache Docker images for services'
+name: "Build Services"
+description: "Build and cache Docker images for services"
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
@@ -20,7 +20,7 @@ runs:
     - name: Save Docker images
       shell: bash
       run: |
-        docker save question-service auth-service notificationhub-service | gzip > /tmp/services-images.tar.gz
+        docker save question-service auth-service notificationhub-service reporting-service | gzip > /tmp/services-images.tar.gz
 
     - name: Upload services images
       uses: actions/upload-artifact@v4

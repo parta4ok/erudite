@@ -18,6 +18,11 @@ type Config struct {
 	Timeout       time.Duration
 }
 
+const (
+	sessionStreamName = "session_stream"
+	reportStreamName  = "report_stream"
+)
+
 func main() {
 	config := parseFlags()
 	setupLogging()
@@ -122,15 +127,13 @@ func connectToNATS(url string, timeout time.Duration) (*nats.Conn, nats.JetStrea
 func loadMigrations(runner *migrations.MigrationRunner) {
 	slog.Info("Loading NATS migrations...")
 
-	// Stream name constant to ensure consistency
-	const streamName = "session_stream"
-
 	sessionStream := migrations.NewStreamMigration(
 		"1754841234_session_stream",
 		"session stream",
-		streamName,
+		sessionStreamName,
 		[]string{"sessions.*"},
 	)
+
 	sessionStream.MaxAge = 7 * 24 * time.Hour
 	sessionStream.Storage = nats.FileStorage
 	runner.AddMigration(sessionStream)
@@ -138,15 +141,45 @@ func loadMigrations(runner *migrations.MigrationRunner) {
 	sessionConsumer := migrations.NewConsumerMigration(
 		"1754841235_session_consumer",
 		"session consumer",
-		streamName, // Using the same stream name as above
+		sessionStreamName,
 		"session-consumer",
 	)
-	sessionConsumer.FilterSubject = "sessions.*"
-	sessionConsumer.DeliverPolicy = nats.DeliverAllPolicy
-	sessionConsumer.AckPolicy = nats.AckExplicitPolicy
+	sessionConsumer.ConsumerConfig.FilterSubject = "sessions.*"
+	sessionConsumer.ConsumerConfig.DeliverPolicy = nats.DeliverAllPolicy
+	sessionConsumer.ConsumerConfig.AckPolicy = nats.AckExplicitPolicy
+	sessionConsumer.ConsumerConfig.MaxDeliver = -1
+	sessionConsumer.ConsumerConfig.MaxAckPending = 1000
+	sessionConsumer.ConsumerConfig.MaxWaiting = 512
+	sessionConsumer.ConsumerConfig.Durable = "session-consumer"
 	runner.AddMigration(sessionConsumer)
 
-	slog.Info("NATS migrations loaded successfully", "count", 2)
+	reportStream := migrations.NewStreamMigration(
+		"1762631764_report_stream",
+		"report stream",
+		reportStreamName,
+		[]string{"report.>"},
+	)
+
+	reportStream.MaxAge = 7 * 24 * time.Hour
+	reportStream.Storage = nats.FileStorage
+	runner.AddMigration(reportStream)
+
+	reportConsumer := migrations.NewConsumerMigration(
+		"1762631867_report_consumer",
+		"report consumer",
+		reportStreamName,
+		"report-consumer",
+	)
+	reportConsumer.ConsumerConfig.FilterSubject = "report.>"
+	reportConsumer.ConsumerConfig.DeliverPolicy = nats.DeliverAllPolicy
+	reportConsumer.ConsumerConfig.AckPolicy = nats.AckExplicitPolicy
+	reportConsumer.ConsumerConfig.MaxDeliver = -1
+	reportConsumer.ConsumerConfig.MaxAckPending = 1000
+	reportConsumer.ConsumerConfig.MaxWaiting = 512
+	reportConsumer.ConsumerConfig.Durable = "report-consumer"
+	runner.AddMigration(reportConsumer)
+
+	slog.Info("NATS migrations loaded successfully", "count", 4)
 }
 
 func checkMigrationStatus(_ context.Context, js nats.JetStreamContext) error {

@@ -7,7 +7,7 @@ import (
 
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
-	"github.com/parta4ok/kvs/question/pkg/dto"
+	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -42,25 +42,34 @@ func (p *Publisher) SessionFinishedEvent(ctx context.Context,
 	slog.Info("Publisher: SessionFinishedEvent started")
 	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "NATSPublisherSessionFinishedEventSpan")
 	defer cancel()
+	data := natsDTO.SessionResultDTO{
+		UserID:      sessionResult.UserID,
+		Topics:      sessionResult.Topics,
+		Questions:   sessionResult.Questions,
+		UserAnswers: sessionResult.UserAnswers,
+		IsExpire:    sessionResult.IsExpire,
+		IsSuccess:   sessionResult.IsSuccess,
+		Grade:       sessionResult.Grade,
+	}
 
-	event := dto.EventDTO{
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "failed to marshal session result: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "failed to marshal session result")
+		return err
+	}
+
+	event := natsDTO.EventDTO{
 		EventType: SessionFinishedEventType,
-		Payload: dto.PayloadDTO{
-			UserID:      sessionResult.UserID,
-			Topics:      sessionResult.Topics,
-			Questions:   sessionResult.Questions,
-			UserAnswers: sessionResult.UserAnswers,
-			IsExpire:    sessionResult.IsExpire,
-			IsSuccess:   sessionResult.IsSuccess,
-			Grade:       sessionResult.Grade,
-		},
+		Payload:   bytes,
 	}
 
 	message, err := json.Marshal(event)
 	if err != nil {
-		err = errors.Wrapf(entities.ErrInternal, "failed to marshal payload: %v", err)
+		err = errors.Wrapf(entities.ErrInternal, "failed to marshal event: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "failed to marshal payload")
+		span.SetError(err, "failed to marshal event")
 		return err
 	}
 

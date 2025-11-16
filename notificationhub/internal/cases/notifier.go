@@ -1,10 +1,14 @@
 package cases
 
-import "github.com/parta4ok/kvs/notificationhub/internal/entities"
+import (
+	"context"
+
+	"github.com/parta4ok/kvs/notificationhub/internal/entities"
+)
 
 //go:generate mockgen -source=notifier.go -destination=testdata/notifier.go -package=testdata
 type Notifier interface {
-	Notify(sessionResult *entities.SessionResult, linkedUsers *entities.LinkedUsers) error
+	Notify(ctx context.Context, message entities.Event) error
 	Next() Notifier
 	SetNextNotifier(notifier Notifier)
 }

@@ -264,6 +264,71 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	return groupsResp, nil
 }
 
+//nolint:funlen //ok
+func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
+) (*authv1.UserInfoResponse, error) {
+	slog.Info("GetUserByID started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDGRPCHandlerSpan")
+	defer cancel()
+
+	if req.GetUserID() == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "user id is invalid")
+		slog.Error(err.Error())
+		span.SetError(err, "user id is invalid")
+		return &authv1.UserInfoResponse{
+			User:  nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	cmd, err := a.factory.NewGetUserByIDCommand(ctx, req.GetUserID())
+	if err != nil {
+		slog.Error(err.Error())
+		err := errors.Wrap(err, "cteating GetUserByIDCommand failed")
+		span.SetError(err, "cteating GetUserByIDCommand failed")
+		return &authv1.UserInfoResponse{
+			User:  nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	res, err := cmd.Exec()
+	if err != nil {
+		err := errors.Wrap(err, "GetUserByIDCommand execution failed")
+		slog.Error(err.Error())
+		span.SetError(err, "GetUserByIDCommand execution failed")
+		return &authv1.UserInfoResponse{
+			User:  nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	user, ok := res.Payload.(*entities.User)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
+		slog.Error(err.Error())
+		span.SetError(err, "cast command result failure")
+		return &authv1.UserInfoResponse{
+			User:  nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	userResponse := &authv1.UserInfoResponse{
+		User: &authv1.UserInfo{
+			Id:       user.ID,
+			Username: user.Username,
+			Fullname: user.FullName,
+			Rights:   user.Rights,
+			Contacts: user.Contacts,
+			GroupId:  user.GroupID,
+		},
+		Error: nil,
+	}
+
+	return userResponse, nil
+}
+
 type Server struct {
 	authService *AuthService
 	server      *grpc.Server

@@ -7,7 +7,7 @@ INSERT INTO auth.users (uid, name, password_hash, rights, contacts) VALUES
      ARRAY['admin', 'add_user', 'delete_user', 'view_topic_list', 'start_session', 'complete_session', 'view_completed_sessions', 'inifinity_session_start'],
      '{"email": "admin@kvs.ru", "phone": "+7-900-123-45-67", "telegram": "@admin_kvs"}'),
     ('2', 'mentor1@kvs.ru', '$2a$10$ft9DCzVOqK1EzQ.tLgAAVOBG.89o0zjQqzWpqRrtKdcv1iEu/G84u',
-     ARRAY['mentor', 'view_topic_list', 'start_session', 'complete_session', 'view_completed_sessions', 'inifinity_session_start'],
+     ARRAY['mentor', 'view_topic_list', 'start_session', 'complete_session', 'view_completed_sessions','get_report', 'inifinity_session_start'],
      '{"email": "mentor1@kvs.ru", "phone": "+7-900-234-56-78", "telegram": "@maria_mentor"}'),
     ('3', 'john-doe@kvs.ru', '$2a$10$ft9DCzVOqK1EzQ.tLgAAVOBG.89o0zjQqzWpqRrtKdcv1iEu/G84u',
      ARRAY['student', 'view_topic_list', 'start_session', 'complete_session'],

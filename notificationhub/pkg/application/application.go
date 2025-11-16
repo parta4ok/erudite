@@ -10,15 +10,12 @@ import (
 	"syscall"
 	"time"
 
-	authservice "github.com/parta4ok/kvs/notificationhub/internal/adapter/auth_service"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/config"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/mail/base"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/telegram"
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
-	"github.com/parta4ok/kvs/notificationhub/internal/entities"
 	"github.com/parta4ok/kvs/notificationhub/internal/port"
 	natsPort "github.com/parta4ok/kvs/notificationhub/internal/port/nats"
-	"github.com/pkg/errors"
 )
 
 type App struct {
@@ -46,9 +43,8 @@ func (app *App) Start() {
 
 	mailNotifier := app.initMailNotifier(cfg, nil)
 	telegramNotifier := app.initTelegramNotifier(cfg, mailNotifier)
-	authClient := app.initAuthServiceClient(cfg)
 
-	service := app.initService(cfg, telegramNotifier, authClient)
+	service := app.initService(cfg, telegramNotifier)
 
 	natsConsumer := app.initNatsConsumer(cfg, service)
 	app.natsConsumer = natsConsumer
@@ -135,35 +131,12 @@ func (app *App) initMailNotifier(cfg *config.Config, nextNotifier cases.Notifier
 	return mailNotifier
 }
 
-func (app *App) initAuthServiceClient(cfg *config.Config) cases.AuthClient {
-	slog.Info("init auth service client started")
-
-	var authClient cases.AuthClient
-
-	addr := cfg.GetAuthConn()
-	if addr == "" {
-		err := errors.Wrap(entities.ErrInvalidParam, "get auth address failure")
-		app.panic(err)
-	}
-
-	client, err := authservice.NewAuthService(addr)
-	if err != nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "new auth service client failure")
-		app.panic(err)
-	}
-
-	authClient = client
-
-	return authClient
-}
-
-func (app *App) initService(_ *config.Config, notifier cases.Notifier,
-	authClient cases.AuthClient) port.MessageService {
+func (app *App) initService(_ *config.Config, notifier cases.Notifier) port.MessageService {
 	slog.Info("init notification service started")
 
 	var service port.MessageService
 
-	srv, err := cases.NewMessageService(notifier, authClient)
+	srv, err := cases.NewMessageService(notifier)
 	if err != nil {
 		app.panic(err)
 	}

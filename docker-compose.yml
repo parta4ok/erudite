@@ -132,6 +132,23 @@ services:
             - services
             - l2
 
+    reporting_app:
+        image: reporting-service
+        env_file: .env
+        restart: always
+        depends_on:
+            nats:
+                condition: service_healthy
+            nats-migrations:
+                condition: service_completed_successfully
+        ports:
+            - "8070:8070"
+        networks:
+            - service_network
+        profiles:
+            - services
+            - l2
+
 networks:
     service_network:
         driver: bridge

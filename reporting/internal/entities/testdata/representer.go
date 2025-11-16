@@ -5,10 +5,10 @@
 package testdata
 
 import (
-	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	entities "github.com/parta4ok/kvs/reporting/internal/entities"
 )
 
 // MockRepresenter is a mock of Representer interface.
@@ -35,30 +35,16 @@ func (m *MockRepresenter) EXPECT() *MockRepresenterMockRecorder {
 }
 
 // CovertToFormat mocks base method.
-func (m *MockRepresenter) CovertToFormat(ctx context.Context, payload []byte) ([]byte, error) {
+func (m *MockRepresenter) CovertToFormat(format entities.Format, report entities.Report) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CovertToFormat", ctx, payload)
+	ret := m.ctrl.Call(m, "CovertToFormat", format, report)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CovertToFormat indicates an expected call of CovertToFormat.
-func (mr *MockRepresenterMockRecorder) CovertToFormat(ctx, payload interface{}) *gomock.Call {
+func (mr *MockRepresenterMockRecorder) CovertToFormat(format, report interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CovertToFormat", reflect.TypeOf((*MockRepresenter)(nil).CovertToFormat), ctx, payload)
-}
-
-// GetReportFormat mocks base method.
-func (m *MockRepresenter) GetReportFormat() string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetReportFormat")
-	ret0, _ := ret[0].(string)
-	return ret0
-}
-
-// GetReportFormat indicates an expected call of GetReportFormat.
-func (mr *MockRepresenterMockRecorder) GetReportFormat() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetReportFormat", reflect.TypeOf((*MockRepresenter)(nil).GetReportFormat))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CovertToFormat", reflect.TypeOf((*MockRepresenter)(nil).CovertToFormat), format, report)
 }

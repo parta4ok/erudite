@@ -35,6 +35,21 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 	return m.recorder
 }
 
+// GetLinkedUsers mocks base method.
+func (m *MockAuthClient) GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedMentorAndStudent, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLinkedUsers", ctx, id)
+	ret0, _ := ret[0].(*entities.LinkedMentorAndStudent)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLinkedUsers indicates an expected call of GetLinkedUsers.
+func (mr *MockAuthClientMockRecorder) GetLinkedUsers(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLinkedUsers", reflect.TypeOf((*MockAuthClient)(nil).GetLinkedUsers), ctx, id)
+}
+
 // GetMentorGroups mocks base method.
 func (m *MockAuthClient) GetMentorGroups(ctx context.Context, mentorID string) ([]entities.Student, error) {
 	m.ctrl.T.Helper()
@@ -48,4 +63,34 @@ func (m *MockAuthClient) GetMentorGroups(ctx context.Context, mentorID string) (
 func (mr *MockAuthClientMockRecorder) GetMentorGroups(ctx, mentorID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMentorGroups", reflect.TypeOf((*MockAuthClient)(nil).GetMentorGroups), ctx, mentorID)
+}
+
+// GetUserByID mocks base method.
+func (m *MockAuthClient) GetUserByID(ctx context.Context, id string) (*entities.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByID", ctx, id)
+	ret0, _ := ret[0].(*entities.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByID indicates an expected call of GetUserByID.
+func (mr *MockAuthClientMockRecorder) GetUserByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockAuthClient)(nil).GetUserByID), ctx, id)
+}
+
+// Introspect mocks base method.
+func (m *MockAuthClient) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Introspect", ctx, jwt)
+	ret0, _ := ret[0].(*entities.Claims)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Introspect indicates an expected call of Introspect.
+func (mr *MockAuthClientMockRecorder) Introspect(ctx, jwt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Introspect", reflect.TypeOf((*MockAuthClient)(nil).Introspect), ctx, jwt)
 }

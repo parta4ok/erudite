@@ -9,22 +9,29 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
-	"github.com/parta4ok/kvs/notificationhub/internal/port"
-	"github.com/parta4ok/kvs/notificationhub/pkg/dto"
+	port "github.com/parta4ok/kvs/notificationhub/internal/port"
+	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/pkg/errors"
 )
 
+const (
+	SessionResultEvent = "SessionResultEvent"
+)
+
 type NatsConsumer struct {
-	js             nats.JetStreamContext
-	messageService port.MessageService
-	subscription   *nats.Subscription
-	subject        string
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             *sync.WaitGroup
+	js           nats.JetStreamContext
+	nc           *nats.Conn
+	service      port.MessageService
+	subscription *nats.Subscription
+	subject      string
+	ctx          context.Context
+	cancel       context.CancelFunc
+	wg           *sync.WaitGroup
 }
 
-func NewNatsConsumer(conn string, subject string, messageService port.MessageService,
+func NewNatsConsumer(conn string,
+	subject string,
+	service port.MessageService,
 ) (*NatsConsumer, error) {
 	if conn == "" {
 		return nil, errors.Wrap(entities.ErrInternal, "nats connection is nil")
@@ -34,8 +41,8 @@ func NewNatsConsumer(conn string, subject string, messageService port.MessageSer
 		return nil, errors.Wrap(entities.ErrInternal, "subject cannot be empty")
 	}
 
-	if messageService == nil {
-		return nil, errors.Wrap(entities.ErrInternal, "message service is nil")
+	if service == nil {
+		return nil, errors.Wrap(entities.ErrInternal, "service not set")
 	}
 
 	nc, err := nats.Connect(conn)
@@ -51,28 +58,34 @@ func NewNatsConsumer(conn string, subject string, messageService port.MessageSer
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &NatsConsumer{
-		js:             js,
-		messageService: messageService,
-		subject:        subject,
-		ctx:            ctx,
-		cancel:         cancel,
-		wg:             &sync.WaitGroup{},
+		js:      js,
+		nc:      nc,
+		service: service,
+		subject: subject,
+		ctx:     ctx,
+		cancel:  cancel,
+		wg:      &sync.WaitGroup{},
 	}, nil
 }
 
 func (c *NatsConsumer) Start() error {
-	slog.Info("Starting NATS consumer for session events")
+	slog.Info("Starting NATS consumer for report events")
 
-	sub, err := c.js.Subscribe(c.subject, c.handleMessage, nats.Durable("session-consumer"))
+	sub, err := c.js.PullSubscribe(c.subject, "report-consumer",
+		nats.Bind("report_stream", "report-consumer"))
 	if err != nil {
-		err := errors.Wrap(err, "failed to subscribe to sessions stream")
+		err := errors.Wrapf(err, "failed to subscribe to %s stream", c.subject)
 		slog.Error(err.Error())
 		return err
 	}
 
 	c.subscription = sub
 	slog.Info("NATS consumer started successfully", slog.String("subject", c.subject),
-		slog.String("consumer", "session-consumer"))
+		slog.String("consumer", "report-consumer"))
+
+	c.wg.Add(1)
+	go c.processMessages()
+
 	return nil
 }
 
@@ -88,6 +101,7 @@ func (c *NatsConsumer) Stop() error {
 			return err
 		}
 	}
+	c.nc.Close()
 
 	c.wg.Wait()
 
@@ -95,11 +109,29 @@ func (c *NatsConsumer) Stop() error {
 	return nil
 }
 
+func (c *NatsConsumer) processMessages() {
+	defer c.wg.Done()
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		default:
+			msgs, err := c.subscription.Fetch(10, nats.MaxWait(1*time.Second))
+			if err != nil && !errors.Is(err, nats.ErrTimeout) {
+				slog.Error("Failed to fetch messages", "error", err)
+				continue
+			}
+
+			for _, msg := range msgs {
+				c.handleMessage(msg)
+			}
+		}
+	}
+}
+
 func (c *NatsConsumer) handleMessage(msg *nats.Msg) {
 	slog.Info("Received message", slog.String("subject", msg.Subject))
-
-	c.wg.Add(1)
-	defer c.wg.Done()
 
 	select {
 	case <-c.ctx.Done():
@@ -108,124 +140,48 @@ func (c *NatsConsumer) handleMessage(msg *nats.Msg) {
 	default:
 	}
 
-	event, err := c.parseMessage(msg)
-	if err != nil {
-		c.handleParseError(msg, err)
-		return
+	if err := c.processEvent(msg); err != nil {
+		slog.Error("Failed to process event", "error", err)
 	}
 
-	sessionResult, err := c.createSessionResult(event)
-	if err != nil {
-		c.handleValidationError(msg, event, err)
-		return
-	}
-
-	c.processSessionResult(msg, sessionResult)
 }
 
-func (c *NatsConsumer) parseMessage(msg *nats.Msg) (*dto.SessionFinishedEvent, error) {
-	var eventDTO dto.EventDTO
-	if err := json.Unmarshal(msg.Data, &eventDTO); err != nil {
-		return nil, errors.Wrapf(entities.ErrInternal, "failed to unmarshal session event: %v", err)
+func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
+	slog.Info("processEvent", slog.String("subject", msg.Subject))
+
+	var reportEventDTO natsDTO.ReportEventDTO
+	if err := json.Unmarshal(msg.Data, &reportEventDTO); err != nil {
+		if ackErr := msg.Ack(); ackErr != nil {
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+		}
+		return errors.Wrapf(entities.ErrInternal, "failed to unmarshal session event: %v", err)
 	}
-
-	if eventDTO.EventType == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "empty event type")
-	}
-
-	event := &dto.SessionFinishedEvent{
-		UserID:     eventDTO.Payload.UserID,
-		Topics:     eventDTO.Payload.Topics,
-		Questions:  eventDTO.Payload.Questions,
-		UserAnswer: eventDTO.Payload.UserAnswers,
-		IsExpire:   eventDTO.Payload.IsExpire,
-		IsSuccess:  eventDTO.Payload.IsSuccess,
-		Resume:     eventDTO.Payload.Grade,
-	}
-
-	return event, nil
-}
-
-func (c *NatsConsumer) createSessionResult(event *dto.SessionFinishedEvent,
-) (*entities.SessionResult, error) {
-	return entities.NewSessionResult(
-		event.UserID,
-		event.Topics,
-		event.Questions,
-		event.UserAnswer,
-		event.IsExpire,
-		event.IsSuccess,
-		event.Resume,
-	)
-}
-
-func (c *NatsConsumer) handleParseError(msg *nats.Msg, err error) {
-	slog.Error(err.Error(), slog.String("subject", msg.Subject))
-
-	slog.Warn("Acknowledging malformed message to prevent retry",
-		slog.String("subject", msg.Subject))
 
 	if ackErr := msg.Ack(); ackErr != nil {
 		slog.Error("Failed to acknowledge malformed message", "error", ackErr)
 	}
-}
 
-func (c *NatsConsumer) handleValidationError(msg *nats.Msg, event *dto.SessionFinishedEvent,
-	err error) {
-	wrappedErr := errors.Wrap(err, "failed to create session result entity")
-	slog.Error(wrappedErr.Error(), slog.String("user_id", event.UserID))
-
-	strategy := c.getErrorHandlingStrategy(err)
-	strategy.handle(msg, event.UserID)
-}
-
-type errorHandlingStrategy interface {
-	handle(msg *nats.Msg, userID string)
-}
-
-type validationErrorStrategy struct{}
-
-func (s validationErrorStrategy) handle(msg *nats.Msg, userID string) {
-	slog.Warn("Acknowledging message with validation error to prevent retry",
-		slog.String("user_id", userID))
-
-	if ackErr := msg.Ack(); ackErr != nil {
-		slog.Error("Failed to acknowledge message with validation error",
-			"error", ackErr, slog.String("user_id", userID))
-	}
-}
-
-type temporaryErrorStrategy struct{}
-
-func (s temporaryErrorStrategy) handle(msg *nats.Msg, userID string) {
-	if nakErr := msg.Nak(); nakErr != nil {
-		err := errors.Wrapf(entities.ErrInternal, "failed to nak message: %v", nakErr)
-		slog.Error(err.Error(), slog.String("user_id", userID))
-	}
-}
-
-func (c *NatsConsumer) getErrorHandlingStrategy(err error) errorHandlingStrategy {
-	if errors.Is(err, entities.ErrInvalidParam) {
-		return validationErrorStrategy{}
-	}
-	return temporaryErrorStrategy{}
-}
-
-func (c *NatsConsumer) processSessionResult(msg *nats.Msg, sessionResult *entities.SessionResult) {
-	if err := msg.Ack(); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "failed to ack message: %v", err)
-		slog.Error(err.Error(), slog.String("user_id", sessionResult.GetUserID()))
+	recipient, err := entities.NewUser(
+		reportEventDTO.Recipient.ID,
+		reportEventDTO.Recipient.Contacts,
+	)
+	if err != nil {
+		slog.Error("new user", "error", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := c.messageService.SendMessage(ctx, sessionResult); err != nil {
-		err := errors.Wrap(err, "failed to send notification")
-		slog.Error(err.Error(), slog.String("user_id", sessionResult.GetUserID()))
-		return
+	event, err := entities.NewNormalEvent(
+		reportEventDTO.Kind,
+		reportEventDTO.Format,
+		reportEventDTO.Payload,
+		recipient,
+	)
+	if err != nil {
+		slog.Error("new normal event", "error", err)
 	}
 
-	slog.Info("Successfully processed session event",
-		"user_id", sessionResult.GetUserID(), "subject", msg.Subject)
+	if err := c.service.SendMessage(c.ctx, event); err != nil {
+		slog.Error("send message", "error", err)
+	}
+
+	return nil
 }

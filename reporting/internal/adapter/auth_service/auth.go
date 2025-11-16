@@ -76,3 +76,113 @@ func (srv *AuthService) GetMentorGroups(ctx context.Context, mentorID string) (
 
 	return result, nil
 }
+
+func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
+) (*entities.LinkedMentorAndStudent, error) {
+	slog.Info("GetLinkedUsers started", slog.String("id", id))
+
+	req := &authv1.LinkedID{
+		LinkedID: id,
+	}
+
+	linkedUsers, err := srv.client.GetLinkedUsers(ctx, req)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "GetLinkedUsers failure: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if linkedUsers.Error.Message != "" {
+		err := errors.Wrapf(entities.ErrInternal, "error message: %s", linkedUsers.Error.Message)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if linkedUsers.Recipient == nil || linkedUsers.Student == nil {
+		err := errors.Wrap(entities.ErrInternal, "nil users info")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	student := &entities.User{
+		ID:       linkedUsers.Student.Id,
+		Name:     linkedUsers.Student.Username,
+		Fullname: linkedUsers.Student.Fullname,
+		Contacts: linkedUsers.Student.Contacts,
+		GroupID:  linkedUsers.Student.GroupId,
+	}
+
+	mentor := &entities.User{
+		ID:       linkedUsers.Recipient.Id,
+		Name:     linkedUsers.Recipient.Username,
+		Fullname: linkedUsers.Recipient.Fullname,
+		Contacts: linkedUsers.Recipient.Contacts,
+		GroupID:  linkedUsers.Recipient.GroupId,
+	}
+
+	slog.Info("GetLinkedUsers completed")
+	return &entities.LinkedMentorAndStudent{
+		Mentor:  mentor,
+		Student: student,
+	}, nil
+}
+
+func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
+	slog.Info("GetGetUserByID started", slog.String("id", userID))
+
+	req := &authv1.UserID{
+		UserID: userID,
+	}
+
+	user, err := srv.client.GetUserByID(ctx, req)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "GetUserByID failure: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	return &entities.User{
+		ID:       user.User.Id,
+		Name:     user.User.Username,
+		Fullname: user.User.Fullname,
+		Contacts: user.User.Contacts,
+		GroupID:  user.User.GroupId,
+	}, nil
+}
+
+func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
+	slog.Info("Introspect started")
+
+	req := &authv1.IntrospectRequest{
+		Token: jwt,
+	}
+
+	resp, err := srv.client.Introspect(ctx, req)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if resp.Error.Message != "" {
+		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	if resp.Claims == nil {
+		err := errors.Wrap(entities.ErrForbidden, "nil claims")
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("Introspect completed")
+
+	return &entities.Claims{
+		Username: resp.Claims.Username,
+		Subject:  resp.Claims.Subject,
+		Rights:   resp.Claims.Rights,
+		Audience: resp.Claims.Audience,
+		Issuer:   resp.Claims.Issuer,
+	}, nil
+}

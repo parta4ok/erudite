@@ -5,6 +5,7 @@
 package testdata
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -50,17 +51,17 @@ func (mr *MockNotifierMockRecorder) Next() *gomock.Call {
 }
 
 // Notify mocks base method.
-func (m *MockNotifier) Notify(sessionResult *entities.SessionResult, linkedUsers *entities.LinkedUsers) error {
+func (m *MockNotifier) Notify(ctx context.Context, message entities.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Notify", sessionResult, linkedUsers)
+	ret := m.ctrl.Call(m, "Notify", ctx, message)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Notify indicates an expected call of Notify.
-func (mr *MockNotifierMockRecorder) Notify(sessionResult, linkedUsers interface{}) *gomock.Call {
+func (mr *MockNotifierMockRecorder) Notify(ctx, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), sessionResult, linkedUsers)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockNotifier)(nil).Notify), ctx, message)
 }
 
 // SetNextNotifier mocks base method.

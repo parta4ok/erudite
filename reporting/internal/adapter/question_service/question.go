@@ -19,6 +19,21 @@ type QuestionClient struct {
 	client *client.Client
 }
 
+func New(port string) (*QuestionClient, error) {
+	if port == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "question service port not set")
+	}
+
+	client, err := client.New(port)
+	if err != nil {
+		return nil, errors.Wrap(err, "new client for question service failure")
+	}
+
+	return &QuestionClient{
+		client: client,
+	}, nil
+}
+
 func (q *QuestionClient) GetPassedStudentsTopics(ctx context.Context, students []string) (
 	map[string][]entities.Topic, error) {
 	slog.Info("GetPassedStudentsTopics started")

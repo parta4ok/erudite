@@ -1,6 +1,6 @@
 package dto
 
-type PayloadDTO struct {
+type SessionResultPayloadDTO struct {
 	UserID      string              `json:"user_id"`
 	Topics      []string            `json:"topics"`
 	Questions   map[string][]string `json:"questions"`
@@ -11,6 +11,6 @@ type PayloadDTO struct {
 }
 
 type EventDTO struct {
-	EventType string     `json:"event_type"`
-	Payload   PayloadDTO `json:"payload"`
+	EventType string      `json:"event_type"`
+	Payload   interface{} `json:"payload"`
 }

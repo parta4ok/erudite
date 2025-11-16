@@ -127,3 +127,10 @@ func (cf *CommandFactory) NewGetMentorGroupsCommand(
 ) (entities.Command, error) {
 	return command.NewGetMentorGroupsCommand(ctx, cf.storage, mentorID)
 }
+
+func (cf *CommandFactory) NewGetUserByIDCommand(
+	ctx context.Context,
+	userID string,
+) (entities.Command, error) {
+	return command.NewGetUserByIDCommand(ctx, cf.storage, userID)
+}

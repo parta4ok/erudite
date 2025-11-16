@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	cases "github.com/parta4ok/kvs/reporting/internal/cases"
 	entities "github.com/parta4ok/kvs/reporting/internal/entities"
 )
 
@@ -37,15 +36,15 @@ func (m *MockMessageBroker) EXPECT() *MockMessageBrokerMockRecorder {
 }
 
 // ReportEvent mocks base method.
-func (m *MockMessageBroker) ReportEvent(ctx context.Context, sessionResult *entities.PassedTopicsReport, representer cases.Representer) error {
+func (m *MockMessageBroker) ReportEvent(ctx context.Context, event entities.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReportEvent", ctx, sessionResult, representer)
+	ret := m.ctrl.Call(m, "ReportEvent", ctx, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ReportEvent indicates an expected call of ReportEvent.
-func (mr *MockMessageBrokerMockRecorder) ReportEvent(ctx, sessionResult, representer interface{}) *gomock.Call {
+func (mr *MockMessageBrokerMockRecorder) ReportEvent(ctx, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReportEvent", reflect.TypeOf((*MockMessageBroker)(nil).ReportEvent), ctx, sessionResult, representer)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReportEvent", reflect.TypeOf((*MockMessageBroker)(nil).ReportEvent), ctx, event)
 }

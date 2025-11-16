@@ -110,6 +110,21 @@ func (mr *MockCommandFactoryMockRecorder) NewGetMentorGroupsCommand(ctx, mentorI
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetMentorGroupsCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetMentorGroupsCommand), ctx, mentorID)
 }
 
+// NewGetUserByIDCommand mocks base method.
+func (m *MockCommandFactory) NewGetUserByIDCommand(ctx context.Context, userID string) (entities.Command, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewGetUserByIDCommand", ctx, userID)
+	ret0, _ := ret[0].(entities.Command)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NewGetUserByIDCommand indicates an expected call of NewGetUserByIDCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetUserByIDCommand(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetUserByIDCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetUserByIDCommand), ctx, userID)
+}
+
 // NewIntrospectedCommand mocks base method.
 func (m *MockCommandFactory) NewIntrospectedCommand(ctx context.Context, jwt string) (entities.Command, error) {
 	m.ctrl.T.Helper()

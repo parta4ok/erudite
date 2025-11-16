@@ -1,10 +1,11 @@
 package telegram
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"log/slog"
 	"strconv"
-	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
@@ -13,6 +14,16 @@ import (
 
 var (
 	_ cases.Notifier = (*TelegramNotifier)(nil)
+)
+
+var (
+	tgTitles = [...]entities.DeliveryService{
+		entities.DeliveryService("tg"),
+		entities.DeliveryService("telegram"),
+		entities.DeliveryService("тг"),
+		entities.DeliveryService("телеграм"),
+		entities.DeliveryService("телега"),
+	}
 )
 
 type TelegramNotifier struct {
@@ -31,40 +42,44 @@ func NewTelegramNotifier(next cases.Notifier, token string) (*TelegramNotifier, 
 	}, nil
 }
 
-func (tg *TelegramNotifier) Notify(sessionResult *entities.SessionResult,
-	linkedUsers *entities.LinkedUsers) error {
+func (tg *TelegramNotifier) Notify(ctx context.Context, message entities.Event) error {
 	slog.Info("Notify for telegram notifier started")
 
-	recipientID := tg.checkTelegramInContacts(linkedUsers)
-	if recipientID == "" {
+	recipientID := tg.checkTelegramInContacts(message.GetRecipient().Contacts)
+	if recipientID == entities.Contact("") {
 		slog.Warn("Recipient telegram address not found")
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, linkedUsers)
+			return nextNotifier.Notify(ctx, message)
 		}
 		slog.Warn("Telegram notifier is last. Message not be sent")
 		return nil
 	}
 
-	id, err := strconv.ParseInt(recipientID, 10, 64)
+	id, err := strconv.ParseInt(recipientID.String(), 10, 64)
 	if err != nil {
 		slog.Warn("Recipient telegram address incorrect")
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, linkedUsers)
+			return nextNotifier.Notify(ctx, message)
 		}
 		slog.Warn("Telegram notifier is last. Message not be sent")
 		return nil
 	}
 
-	message := tg.generateMessage(sessionResult, linkedUsers)
+	fileName := fmt.Sprintf("%s.%s", message.Kind(), message.Format())
+	fileReader := bytes.NewReader(message.Payload())
 
-	msg := tgbotapi.NewMessage(id, message)
-	_, err = tg.bot.Send(msg)
+	document := tgbotapi.NewDocument(id, tgbotapi.FileReader{
+		Name:   fileName,
+		Reader: fileReader,
+	})
+
+	_, err = tg.bot.Send(document)
 	if err != nil {
-		slog.Warn("Recipient telegram send message failure:" + err.Error())
+		slog.Warn("Recipient telegram send document failure:" + err.Error())
 		if nextNotifier := tg.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, linkedUsers)
+			return nextNotifier.Notify(ctx, message)
 		}
-		slog.Warn("Telegram notifier is last. Message not be sent")
+		slog.Warn("Telegram notifier is last. Document not be sent")
 		return nil
 	}
 
@@ -84,35 +99,15 @@ func (tg *TelegramNotifier) Next() cases.Notifier {
 	return tg.next
 }
 
-func (tg *TelegramNotifier) generateMessage(sessionResult *entities.SessionResult,
-	users *entities.LinkedUsers) string {
-	message := fmt.Sprintf("студент: %s\n\nтемы: %s\n\nоценка: %s\n\nсдал: %t\n\n",
-		users.Student.Fullname, strings.Join(sessionResult.Topics, "; "), sessionResult.Resume,
-		sessionResult.IsSuccess)
+func (tg *TelegramNotifier) checkTelegramInContacts(
+	contacts map[entities.DeliveryService]entities.Contact) entities.Contact {
+	slog.Info("Checking telegram in contacts started")
 
-	var resultStr string
-	for question, answers := range sessionResult.UserAnswer {
-		answersJoined := strings.Join(answers, ";")
-		resultStr += fmt.Sprintf("Вопрос: %s.\nОтвет пользователя: %s.\nВарианты ответов: %s.\n",
-			question, answersJoined, strings.Join(sessionResult.Questions[question], "; "))
-		resultStr += "\n----"
-	}
-
-	message += resultStr
-
-	return message
-}
-
-func (tg *TelegramNotifier) checkTelegramInContacts(linkedUsers *entities.LinkedUsers) string {
-	slog.Info("Checking mail in contacts started")
-
-	contacts := []string{"tg", "telegram", "тг", "телеграм"}
-
-	for _, probableContact := range contacts {
-		recipientTelegramAddress, ok := linkedUsers.Recipient.Contacts[probableContact]
+	for _, probableContact := range tgTitles {
+		address, ok := contacts[probableContact]
 		if ok {
-			slog.Info("Checking telegram in contacts finished, telegram found")
-			return recipientTelegramAddress
+			slog.Info("Checking telegram in contacts finished, telegram address found")
+			return address
 		}
 	}
 

@@ -13,7 +13,7 @@ import (
 	natsDriver "github.com/nats-io/nats.go"
 	"github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
 	"github.com/parta4ok/kvs/question/internal/entities"
-	"github.com/parta4ok/kvs/question/pkg/dto"
+	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/stretchr/testify/require"
 )
@@ -37,13 +37,13 @@ func TestPublisher_SessionFinishedEvent(t *testing.T) {
 	natsStream, err := nats.NewPublisher(pub, subject)
 	require.NoError(t, err)
 
-	msgCh := make(chan dto.EventDTO, 1)
+	msgCh := make(chan natsDTO.EventDTO, 1)
 	nc, err := natsDriver.Connect(natsUrl)
 	require.NoError(t, err)
 	defer nc.Drain()
 
 	sub, err := nc.Subscribe(subject, func(msg *natsDriver.Msg) {
-		var messageDto dto.EventDTO
+		var messageDto natsDTO.EventDTO
 		err := json.Unmarshal(msg.Data, &messageDto)
 		require.NoError(t, err)
 		msgCh <- messageDto
@@ -66,9 +66,20 @@ func TestPublisher_SessionFinishedEvent(t *testing.T) {
 
 	select {
 	case recv := <-msgCh:
-		require.Equal(t, finishedSession.UserID, recv.Payload.UserID)
-		// Можно проверить другие поля по необходимости
+		require.Equal(t, nats.SessionFinishedEventType, recv.EventType)
+
+		var sessionResultDTO natsDTO.SessionResultDTO
+		err := json.Unmarshal(recv.Payload, &sessionResultDTO)
+		require.NoError(t, err)
+
+		require.Equal(t, finishedSession.UserID, sessionResultDTO.UserID)
+		require.Equal(t, finishedSession.Topics, sessionResultDTO.Topics)
+		require.Equal(t, finishedSession.Questions, sessionResultDTO.Questions)
+		require.Equal(t, finishedSession.UserAnswers, sessionResultDTO.UserAnswers)
+		require.Equal(t, finishedSession.IsExpire, sessionResultDTO.IsExpire)
+		require.Equal(t, finishedSession.IsSuccess, sessionResultDTO.IsSuccess)
+		require.Equal(t, finishedSession.Grade, sessionResultDTO.Grade)
 	case <-ctx.Done():
-		t.Errorf("message not recieved")
+		t.Errorf("message not received")
 	}
 }

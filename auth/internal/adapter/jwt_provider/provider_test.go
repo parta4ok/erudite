@@ -141,11 +141,9 @@ func TestProvider_Introspect_Success(t *testing.T) {
 		Rights:   []string{"read", "write"},
 	}
 
-	// Генерируем токен
 	token, err := provider.Generate(originalUser)
 	require.NoError(t, err)
 
-	// Извлекаем claims
 	claims, err := provider.Introspect(token)
 
 	require.NoError(t, err)
@@ -206,7 +204,6 @@ func TestProvider_Introspect_InvalidToken(t *testing.T) {
 func TestProvider_Introspect_WrongSecret(t *testing.T) {
 	t.Parallel()
 
-	// Создаем провайдер с одним секретом
 	provider1, err := jwtprovider.NewProvider(
 		[]byte("secret-1"),
 		[]string{"test-audience"},
@@ -215,7 +212,6 @@ func TestProvider_Introspect_WrongSecret(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// Создаем провайдер с другим секретом
 	provider2, err := jwtprovider.NewProvider(
 		[]byte("secret-2"),
 		[]string{"test-audience"},
@@ -230,11 +226,9 @@ func TestProvider_Introspect_WrongSecret(t *testing.T) {
 		Rights:   []string{"read"},
 	}
 
-	// Генерируем токен первым провайдером
 	token, err := provider1.Generate(user)
 	require.NoError(t, err)
 
-	// Пытаемся проверить вторым провайдером
 	claims, err := provider2.Introspect(token)
 
 	require.Error(t, err)
@@ -245,12 +239,11 @@ func TestProvider_Introspect_WrongSecret(t *testing.T) {
 func TestProvider_Introspect_ExpiredToken(t *testing.T) {
 	t.Parallel()
 
-	// Создаем провайдер с очень коротким TTL
 	provider, err := jwtprovider.NewProvider(
 		[]byte("test-secret"),
 		[]string{"test-audience"},
 		"test-issuer",
-		time.Millisecond*10, // 10ms TTL
+		time.Millisecond*10, 
 	)
 	require.NoError(t, err)
 
@@ -260,14 +253,11 @@ func TestProvider_Introspect_ExpiredToken(t *testing.T) {
 		Rights:   []string{"read"},
 	}
 
-	// Генерируем токен
 	token, err := provider.Generate(user)
 	require.NoError(t, err)
 
-	// Ждем истечения токена
 	time.Sleep(time.Millisecond * 20)
 
-	// Пытаемся проверить истекший токен
 	claims, err := provider.Introspect(token)
 
 	require.Error(t, err)
@@ -329,17 +319,14 @@ func TestProvider_GenerateAndIntrospect_RoundTrip(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Generate token
 			token, err := provider.Generate(tt.user)
 			require.NoError(t, err)
 			require.NotEmpty(t, token)
 
-			// Introspect token
 			claims, err := provider.Introspect(token)
 			require.NoError(t, err)
 			require.NotNil(t, claims)
 
-			// Verify claims
 			require.Equal(t, tt.user.ID, claims.Subject)
 			require.Equal(t, tt.user.Username, claims.Username)
 			require.Equal(t, tt.user.Rights, claims.Rights)

@@ -1,17 +1,7 @@
 package dto
 
-type SessionFinishedEvent struct {
-	UserID     string              `json:"user_id"`
-	Topics     []string            `json:"topics"`
-	Questions  map[string][]string `json:"questions"`
-	UserAnswer map[string][]string `json:"user_answer"`
-	IsExpire   bool                `json:"is_expire"`
-	IsSuccess  bool                `json:"is_success"`
-	Resume     string              `json:"resume"`
-}
-
 // PayloadDTO represents the payload structure from question service
-type PayloadDTO struct {
+type SessionResultDTO struct {
 	UserID      string              `json:"user_id"`
 	Topics      []string            `json:"topics"`
 	Questions   map[string][]string `json:"questions"`
@@ -23,6 +13,6 @@ type PayloadDTO struct {
 
 // EventDTO represents the event structure from question service
 type EventDTO struct {
-	EventType string     `json:"event_type"`
-	Payload   PayloadDTO `json:"payload"`
+	EventType string      `json:"event_type"`
+	Payload   interface{} `json:"payload"`
 }

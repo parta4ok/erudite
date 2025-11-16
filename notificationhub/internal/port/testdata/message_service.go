@@ -36,15 +36,15 @@ func (m *MockMessageService) EXPECT() *MockMessageServiceMockRecorder {
 }
 
 // SendMessage mocks base method.
-func (m *MockMessageService) SendMessage(ctx context.Context, sessionResult *entities.SessionResult) error {
+func (m *MockMessageService) SendMessage(ctx context.Context, message entities.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendMessage", ctx, sessionResult)
+	ret := m.ctrl.Call(m, "SendMessage", ctx, message)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendMessage indicates an expected call of SendMessage.
-func (mr *MockMessageServiceMockRecorder) SendMessage(ctx, sessionResult interface{}) *gomock.Call {
+func (mr *MockMessageServiceMockRecorder) SendMessage(ctx, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockMessageService)(nil).SendMessage), ctx, sessionResult)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMessage", reflect.TypeOf((*MockMessageService)(nil).SendMessage), ctx, message)
 }

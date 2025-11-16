@@ -49,3 +49,8 @@ func (c *AuthClient) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	opts ...grpc.CallOption) (*authv1.GroupsResponse, error) {
 	return c.client.GetMentorGroups(ctx, req, opts...)
 }
+
+func (c *AuthClient) GetUserByID(ctx context.Context, req *authv1.UserID,
+	opts ...grpc.CallOption) (*authv1.UserInfoResponse, error) {
+	return c.client.GetUserByID(ctx, req, opts...)
+}

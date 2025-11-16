@@ -1,25 +1,52 @@
 package entities
 
 import (
-	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
+const (
+	PassedTopicsType = "passed_topics"
+)
+
+var (
+	_ Report = (*PassedTopicsReport)(nil)
+)
+
+type Topic struct {
+	ID    string
+	Title string
+}
+
+type Group struct {
+	ID    string
+	Title string
+}
+
+type Student struct {
+	ID           string
+	Name         string
+	FullName     string
+	Group        Group
+	PassedTopics []Topic
+}
+
 type PassedTopicsReport struct {
+	kind     MessageType
 	students []Student
 }
 
 type GroupReport struct {
-	GroupTitle string            `json:"group_title"`
-	Students   []StudentProgress `json:"students"`
+	GroupTitle string
+	Students   []StudentProgress
 }
 
 type StudentProgress struct {
-	Name         string   `json:"name"`
-	PassedTopics []string `json:"passed_topics"`
+	Name         string
+	PassedTopics []string
 }
 
 func NewPassedTopicsReport(students []Student) (*PassedTopicsReport, error) {
@@ -31,50 +58,10 @@ func NewPassedTopicsReport(students []Student) (*PassedTopicsReport, error) {
 	}, nil
 }
 
-func (report *PassedTopicsReport) GetReport() ([]byte, error) {
+func (report *PassedTopicsReport) GetReport() interface{} {
 	report.sort()
 
-	groupsMap := make(map[string][]Student)
-	var groupOrder []string
-
-	for _, student := range report.students {
-		groupTitle := student.Group.Title
-		if _, exists := groupsMap[groupTitle]; !exists {
-			groupOrder = append(groupOrder, groupTitle)
-			groupsMap[groupTitle] = make([]Student, 0)
-		}
-		groupsMap[groupTitle] = append(groupsMap[groupTitle], student)
-	}
-
-	var reportData []GroupReport
-	for _, groupTitle := range groupOrder {
-		students := groupsMap[groupTitle]
-
-		var studentProgress []StudentProgress
-		for _, student := range students {
-			var topicTitles []string
-			for _, topic := range student.PassedTopics {
-				topicTitles = append(topicTitles, topic.Title)
-			}
-
-			studentProgress = append(studentProgress, StudentProgress{
-				Name:         student.FullName,
-				PassedTopics: topicTitles,
-			})
-		}
-
-		reportData = append(reportData, GroupReport{
-			GroupTitle: groupTitle,
-			Students:   studentProgress,
-		})
-	}
-
-	data, err := json.Marshal(reportData)
-	if err != nil {
-		return nil, errors.Wrapf(ErrInternal, "marshalling failed: %v", err)
-	}
-
-	return data, nil
+	return report.students
 }
 
 func (report *PassedTopicsReport) sort() {
@@ -90,4 +77,16 @@ func (report *PassedTopicsReport) sort() {
 			return strings.Compare(a.ID, b.ID)
 		})
 	}
+}
+
+func (report *PassedTopicsReport) Kind() MessageType {
+	if report.kind == MessageType("") {
+		return ReportAboutPassedTopicsByMentorGroups
+	}
+
+	return report.kind
+}
+
+func (report *PassedTopicsReport) SetMessageType() {
+	report.kind = MessageType(fmt.Sprintf("%s.%s", ReportType, PassedTopicsType))
 }

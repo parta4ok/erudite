@@ -1,10 +1,14 @@
 package base
 
 import (
+	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 	"net/smtp"
-	"strings"
+	"net/textproto"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
@@ -12,11 +16,22 @@ import (
 )
 
 const (
-	TitlePrefix = "Результаты тестирования для студента: %s"
+	TitlePrefix = "Session result for student: %s"
 )
 
 var (
 	_ cases.Notifier = (*MailNotifier)(nil)
+)
+
+var (
+	emailTitles = [...]entities.DeliveryService{
+		"mail",
+		"email",
+		"e-mail",
+		"почта",
+		"электронная почта",
+		"почтовый ящик",
+	}
 )
 
 type MailNotifier struct {
@@ -70,45 +85,43 @@ func (m *MailNotifier) Next() cases.Notifier {
 	return m.next
 }
 
-func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
-	linkedUsers *entities.LinkedUsers) error {
+func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error {
 	slog.Info("Notify for mail notifier started")
 
-	to := m.checkMailInContacts(linkedUsers)
-	if to == "" {
+	email := m.checkMailInContacts(message.GetRecipient().Contacts)
+	if email == "" {
 		slog.Warn("Recipient mail address not found")
 		if nextNotifier := m.Next(); nextNotifier != nil {
-			return nextNotifier.Notify(sessionResult, linkedUsers)
+			return nextNotifier.Notify(ctx, message)
 		}
 		slog.Warn("Mail notifier is last. Message not be sent")
 		return nil
 	}
 
-	var resultStr string
-	for question, answers := range sessionResult.UserAnswer {
-		answersJoined := strings.Join(answers, ";")
-		resultStr += fmt.Sprintf("Вопрос: %s. Ответ пользователя: %s\n", question, answersJoined)
-	}
-
-	subject := fmt.Sprintf(TitlePrefix, linkedUsers.Student.Fullname)
-	body := fmt.Sprintf("Темы: \n%s\n\n", strings.Join(sessionResult.Topics, ";\n"))
-	body += fmt.Sprintf("Оценка: %s\n", sessionResult.Resume)
-	body += fmt.Sprintf("Сдал: %t\n\n", sessionResult.IsSuccess)
-	body += fmt.Sprintf("Ответы:\n%s\n\n", strings.TrimSpace(resultStr))
-	body += fmt.Sprintf("IsExpired: %t\n\n", sessionResult.IsExpire)
-
-	message := fmt.Sprintf("Subject: %s\r\nTo: %s\r\n\r\n%s\r\n", subject, to, body)
-
-	messageBytes := []byte(message)
-
 	auth := smtp.PlainAuth("", m.baseMail, m.pwd, m.host)
 
-	err := smtp.SendMail(m.host+":"+m.basePort, auth, m.baseMail, []string{to}, messageBytes)
+	body, err := m.createEmailWithAttachment(message, email.String())
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "failed to create email body: %v", err)
+		slog.Error(err.Error())
+		if next := m.Next(); next != nil {
+			return next.Notify(ctx, message)
+		}
+		return err
+	}
+
+	err = smtp.SendMail(
+		fmt.Sprintf("%s:%s", m.host, m.basePort),
+		auth,
+		m.baseMail,
+		[]string{email.String()},
+		body,
+	)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "failed to send email: %v", err)
 		slog.Error(err.Error())
 		if next := m.Next(); next != nil {
-			return next.Notify(sessionResult, linkedUsers)
+			return next.Notify(ctx, message)
 		}
 		return err
 	}
@@ -117,22 +130,68 @@ func (m *MailNotifier) Notify(sessionResult *entities.SessionResult,
 	return nil
 }
 
+//nolint:gosec //ok
+func (m *MailNotifier) createEmailWithAttachment(message entities.Event, recipientEmail string,
+) ([]byte, error) {
+	var buffer bytes.Buffer
+	writer := multipart.NewWriter(&buffer)
+
+	header := make(textproto.MIMEHeader)
+	header.Set("From", m.baseMail)
+	header.Set("To", recipientEmail)
+	header.Set("Subject", message.Kind().String())
+	header.Set("MIME-Version", "1.0")
+	header.Set("Content-Type", fmt.Sprintf("multipart/mixed; boundary=%s", writer.Boundary()))
+
+	for key, values := range header {
+		for _, value := range values {
+			buffer.WriteString(fmt.Sprintf("%s: %s\r\n", key, value))
+		}
+	}
+	buffer.WriteString("\r\n")
+
+	textPart, err := writer.CreatePart(textproto.MIMEHeader{
+		"Content-Type": {"text/plain; charset=UTF-8"},
+	})
+	if err != nil {
+		return nil, err
+	}
+	textPart.Write([]byte("Please find the report attached.")) //nolint:errcheck //ok
+
+	fileName := fmt.Sprintf("%s.%s", message.Kind(), message.Format())
+	attachmentHeader := make(textproto.MIMEHeader)
+	attachmentHeader.Set("Content-Type", "application/octet-stream")
+	attachmentHeader.Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	attachmentHeader.Set("Content-Transfer-Encoding", "base64")
+
+	attachmentPart, err := writer.CreatePart(attachmentHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	encoder := base64.NewEncoder(base64.StdEncoding, attachmentPart)
+	encoder.Write(message.Payload()) //nolint:errcheck //ok
+	encoder.Close()                  //nolint:errcheck //ok
+
+	writer.Close() //nolint:errcheck //ok
+	return buffer.Bytes(), nil
+}
+
 func (m *MailNotifier) processErr(failureArg string) (*MailNotifier, error) {
 	err := errors.Wrapf(entities.ErrInvalidParam, "%s is invalid", failureArg)
 	slog.Error(err.Error())
 	return nil, err
 }
 
-func (m *MailNotifier) checkMailInContacts(linkedUsers *entities.LinkedUsers) string {
+func (m *MailNotifier) checkMailInContacts(
+	contacts map[entities.DeliveryService]entities.Contact) entities.Contact {
 	slog.Info("Checking mail in contacts started")
 
-	contacts := []string{"mail", "email", "e-mail", "почта", "электронная почта", "почтовый ящик"}
-
-	for _, probableContact := range contacts {
-		recipientMailAddress, ok := linkedUsers.Recipient.Contacts[probableContact]
+	for _, probableContact := range emailTitles {
+		address, ok := contacts[probableContact]
 		if ok {
 			slog.Info("Checking mail in contacts finished, mail found")
-			return recipientMailAddress
+			return address
 		}
 	}
 

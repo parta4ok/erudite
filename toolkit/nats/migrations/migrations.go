@@ -114,9 +114,6 @@ type ConsumerMigration struct {
 	BaseMigration
 	StreamName     string
 	ConsumerConfig nats.ConsumerConfig
-	DeliverPolicy  nats.DeliverPolicy
-	AckPolicy      nats.AckPolicy
-	FilterSubject  string
 }
 
 func NewConsumerMigration(id, name, streamName, consumerName string) *ConsumerMigration {
@@ -130,16 +127,11 @@ func NewConsumerMigration(id, name, streamName, consumerName string) *ConsumerMi
 		ConsumerConfig: nats.ConsumerConfig{
 			Name: consumerName,
 		},
-		DeliverPolicy: nats.DeliverAllPolicy,
-		AckPolicy:     nats.AckExplicitPolicy,
 	}
 }
 
 func (m *ConsumerMigration) Apply(ctx context.Context, js nats.JetStreamContext) error {
 	config := m.ConsumerConfig
-	config.DeliverPolicy = m.DeliverPolicy
-	config.AckPolicy = m.AckPolicy
-	config.FilterSubject = m.FilterSubject
 
 	_, err := js.ConsumerInfo(m.StreamName, config.Name)
 	if err != nil {

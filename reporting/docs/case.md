@@ -25,3 +25,31 @@ sequenceDiagram
   R ->> N: send message with report and mentorID
   N -> M: notify(report)
 ```
+
+```mermaid
+classDiagram
+
+
+Formatter -- Report
+namespace Entities {
+    class Report{
+        <<Interface>>
+        +Kind() string
+        +GetReport() []byte
+    }
+
+    class Formatter {
+        <<Interface>>
+        +Format(report Report) []byte
+    }
+
+    class Event {
+        <<Interface>>
+        +Kind() string
+        +Format() string
+        +GetReport() []byte
+        +GetRecipient() *User
+    }
+}
+
+```

@@ -8,5 +8,5 @@ import (
 
 //go:generate mockgen -source=./message_service.go -destination=testdata/message_service.go -package=testdata
 type MessageService interface {
-	SendMessage(ctx context.Context, sessionResult *entities.SessionResult) error
+	SendMessage(ctx context.Context, message entities.Event) error
 }

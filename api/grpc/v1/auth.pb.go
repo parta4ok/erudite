@@ -325,6 +325,50 @@ func (x *MentorID) GetMentorID() string {
 	return ""
 }
 
+type UserID struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserID        string                 `protobuf:"bytes,1,opt,name=UserID,proto3" json:"UserID,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserID) Reset() {
+	*x = UserID{}
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserID) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserID) ProtoMessage() {}
+
+func (x *UserID) ProtoReflect() protoreflect.Message {
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserID.ProtoReflect.Descriptor instead.
+func (*UserID) Descriptor() ([]byte, []int) {
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *UserID) GetUserID() string {
+	if x != nil {
+		return x.UserID
+	}
+	return ""
+}
+
 type LinkedUsersResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Recipient     *UserInfo              `protobuf:"bytes,1,opt,name=Recipient,proto3" json:"Recipient,omitempty"`
@@ -336,7 +380,7 @@ type LinkedUsersResponse struct {
 
 func (x *LinkedUsersResponse) Reset() {
 	*x = LinkedUsersResponse{}
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[6]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -348,7 +392,7 @@ func (x *LinkedUsersResponse) String() string {
 func (*LinkedUsersResponse) ProtoMessage() {}
 
 func (x *LinkedUsersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[6]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -361,7 +405,7 @@ func (x *LinkedUsersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LinkedUsersResponse.ProtoReflect.Descriptor instead.
 func (*LinkedUsersResponse) Descriptor() ([]byte, []int) {
-	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{6}
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LinkedUsersResponse) GetRecipient() *UserInfo {
@@ -399,7 +443,7 @@ type UserInfo struct {
 
 func (x *UserInfo) Reset() {
 	*x = UserInfo{}
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[7]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -411,7 +455,7 @@ func (x *UserInfo) String() string {
 func (*UserInfo) ProtoMessage() {}
 
 func (x *UserInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[7]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +468,7 @@ func (x *UserInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserInfo.ProtoReflect.Descriptor instead.
 func (*UserInfo) Descriptor() ([]byte, []int) {
-	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{7}
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UserInfo) GetId() string {
@@ -480,7 +524,7 @@ type Student struct {
 
 func (x *Student) Reset() {
 	*x = Student{}
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[8]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -492,7 +536,7 @@ func (x *Student) String() string {
 func (*Student) ProtoMessage() {}
 
 func (x *Student) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[8]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -505,7 +549,7 @@ func (x *Student) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Student.ProtoReflect.Descriptor instead.
 func (*Student) Descriptor() ([]byte, []int) {
-	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{8}
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *Student) GetId() string {
@@ -540,7 +584,7 @@ type Group struct {
 
 func (x *Group) Reset() {
 	*x = Group{}
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[9]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -552,7 +596,7 @@ func (x *Group) String() string {
 func (*Group) ProtoMessage() {}
 
 func (x *Group) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[9]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -565,7 +609,7 @@ func (x *Group) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Group.ProtoReflect.Descriptor instead.
 func (*Group) Descriptor() ([]byte, []int) {
-	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{9}
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *Group) GetId() string {
@@ -599,7 +643,7 @@ type GroupsResponse struct {
 
 func (x *GroupsResponse) Reset() {
 	*x = GroupsResponse{}
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[10]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -611,7 +655,7 @@ func (x *GroupsResponse) String() string {
 func (*GroupsResponse) ProtoMessage() {}
 
 func (x *GroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_v1_auth_proto_msgTypes[10]
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +668,7 @@ func (x *GroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GroupsResponse.ProtoReflect.Descriptor instead.
 func (*GroupsResponse) Descriptor() ([]byte, []int) {
-	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{10}
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GroupsResponse) GetGroups() []*Group {
@@ -635,6 +679,58 @@ func (x *GroupsResponse) GetGroups() []*Group {
 }
 
 func (x *GroupsResponse) GetError() *Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
+type UserInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *UserInfo              `protobuf:"bytes,1,opt,name=User,proto3" json:"User,omitempty"`
+	Error         *Error                 `protobuf:"bytes,2,opt,name=Error,proto3" json:"Error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserInfoResponse) Reset() {
+	*x = UserInfoResponse{}
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserInfoResponse) ProtoMessage() {}
+
+func (x *UserInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_grpc_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserInfoResponse.ProtoReflect.Descriptor instead.
+func (*UserInfoResponse) Descriptor() ([]byte, []int) {
+	return file_api_grpc_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UserInfoResponse) GetUser() *UserInfo {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+func (x *UserInfoResponse) GetError() *Error {
 	if x != nil {
 		return x.Error
 	}
@@ -663,7 +759,9 @@ const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\bLinkedID\x12\x1a\n" +
 	"\bLinkedID\x18\x01 \x01(\tR\bLinkedID\"&\n" +
 	"\bMentorID\x12\x1a\n" +
-	"\bMentorID\x18\x01 \x01(\tR\bMentorID\"\x90\x01\n" +
+	"\bMentorID\x18\x01 \x01(\tR\bMentorID\" \n" +
+	"\x06UserID\x12\x16\n" +
+	"\x06UserID\x18\x01 \x01(\tR\x06UserID\"\x90\x01\n" +
 	"\x13LinkedUsersResponse\x12,\n" +
 	"\tRecipient\x18\x01 \x01(\v2\x0e.auth.UserInfoR\tRecipient\x12(\n" +
 	"\aStudent\x18\x02 \x01(\v2\x0e.auth.UserInfoR\aStudent\x12!\n" +
@@ -688,12 +786,16 @@ const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\bstudents\x18\x03 \x03(\v2\r.auth.StudentR\bstudents\"X\n" +
 	"\x0eGroupsResponse\x12#\n" +
 	"\x06groups\x18\x01 \x03(\v2\v.auth.GroupR\x06groups\x12!\n" +
-	"\x05error\x18\x02 \x01(\v2\v.auth.ErrorR\x05error2\xc4\x01\n" +
+	"\x05error\x18\x02 \x01(\v2\v.auth.ErrorR\x05error\"Y\n" +
+	"\x10UserInfoResponse\x12\"\n" +
+	"\x04User\x18\x01 \x01(\v2\x0e.auth.UserInfoR\x04User\x12!\n" +
+	"\x05Error\x18\x02 \x01(\v2\v.auth.ErrorR\x05Error2\xf9\x01\n" +
 	"\vAuthService\x12?\n" +
 	"\n" +
 	"Introspect\x12\x17.auth.IntrospectRequest\x1a\x18.auth.IntrospectResponse\x12;\n" +
 	"\x0eGetLinkedUsers\x12\x0e.auth.LinkedID\x1a\x19.auth.LinkedUsersResponse\x127\n" +
-	"\x0fGetMentorGroups\x12\x0e.auth.MentorID\x1a\x14.auth.GroupsResponseB\x14Z\x12api/grpc/v1;authv1b\x06proto3"
+	"\x0fGetMentorGroups\x12\x0e.auth.MentorID\x1a\x14.auth.GroupsResponse\x123\n" +
+	"\vGetUserByID\x12\f.auth.UserID\x1a\x16.auth.UserInfoResponseB\x14Z\x12api/grpc/v1;authv1b\x06proto3"
 
 var (
 	file_api_grpc_v1_auth_proto_rawDescOnce sync.Once
@@ -707,7 +809,7 @@ func file_api_grpc_v1_auth_proto_rawDescGZIP() []byte {
 	return file_api_grpc_v1_auth_proto_rawDescData
 }
 
-var file_api_grpc_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_api_grpc_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_api_grpc_v1_auth_proto_goTypes = []any{
 	(*IntrospectRequest)(nil),   // 0: auth.IntrospectRequest
 	(*IntrospectResponse)(nil),  // 1: auth.IntrospectResponse
@@ -715,34 +817,40 @@ var file_api_grpc_v1_auth_proto_goTypes = []any{
 	(*Error)(nil),               // 3: auth.Error
 	(*LinkedID)(nil),            // 4: auth.LinkedID
 	(*MentorID)(nil),            // 5: auth.MentorID
-	(*LinkedUsersResponse)(nil), // 6: auth.LinkedUsersResponse
-	(*UserInfo)(nil),            // 7: auth.UserInfo
-	(*Student)(nil),             // 8: auth.Student
-	(*Group)(nil),               // 9: auth.Group
-	(*GroupsResponse)(nil),      // 10: auth.GroupsResponse
-	nil,                         // 11: auth.UserInfo.ContactsEntry
+	(*UserID)(nil),              // 6: auth.UserID
+	(*LinkedUsersResponse)(nil), // 7: auth.LinkedUsersResponse
+	(*UserInfo)(nil),            // 8: auth.UserInfo
+	(*Student)(nil),             // 9: auth.Student
+	(*Group)(nil),               // 10: auth.Group
+	(*GroupsResponse)(nil),      // 11: auth.GroupsResponse
+	(*UserInfoResponse)(nil),    // 12: auth.UserInfoResponse
+	nil,                         // 13: auth.UserInfo.ContactsEntry
 }
 var file_api_grpc_v1_auth_proto_depIdxs = []int32{
 	2,  // 0: auth.IntrospectResponse.claims:type_name -> auth.UserClaims
 	3,  // 1: auth.IntrospectResponse.error:type_name -> auth.Error
-	7,  // 2: auth.LinkedUsersResponse.Recipient:type_name -> auth.UserInfo
-	7,  // 3: auth.LinkedUsersResponse.Student:type_name -> auth.UserInfo
+	8,  // 2: auth.LinkedUsersResponse.Recipient:type_name -> auth.UserInfo
+	8,  // 3: auth.LinkedUsersResponse.Student:type_name -> auth.UserInfo
 	3,  // 4: auth.LinkedUsersResponse.error:type_name -> auth.Error
-	11, // 5: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
-	8,  // 6: auth.Group.students:type_name -> auth.Student
-	9,  // 7: auth.GroupsResponse.groups:type_name -> auth.Group
+	13, // 5: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
+	9,  // 6: auth.Group.students:type_name -> auth.Student
+	10, // 7: auth.GroupsResponse.groups:type_name -> auth.Group
 	3,  // 8: auth.GroupsResponse.error:type_name -> auth.Error
-	0,  // 9: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
-	4,  // 10: auth.AuthService.GetLinkedUsers:input_type -> auth.LinkedID
-	5,  // 11: auth.AuthService.GetMentorGroups:input_type -> auth.MentorID
-	1,  // 12: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
-	6,  // 13: auth.AuthService.GetLinkedUsers:output_type -> auth.LinkedUsersResponse
-	10, // 14: auth.AuthService.GetMentorGroups:output_type -> auth.GroupsResponse
-	12, // [12:15] is the sub-list for method output_type
-	9,  // [9:12] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	8,  // 9: auth.UserInfoResponse.User:type_name -> auth.UserInfo
+	3,  // 10: auth.UserInfoResponse.Error:type_name -> auth.Error
+	0,  // 11: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
+	4,  // 12: auth.AuthService.GetLinkedUsers:input_type -> auth.LinkedID
+	5,  // 13: auth.AuthService.GetMentorGroups:input_type -> auth.MentorID
+	6,  // 14: auth.AuthService.GetUserByID:input_type -> auth.UserID
+	1,  // 15: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
+	7,  // 16: auth.AuthService.GetLinkedUsers:output_type -> auth.LinkedUsersResponse
+	11, // 17: auth.AuthService.GetMentorGroups:output_type -> auth.GroupsResponse
+	12, // 18: auth.AuthService.GetUserByID:output_type -> auth.UserInfoResponse
+	15, // [15:19] is the sub-list for method output_type
+	11, // [11:15] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_api_grpc_v1_auth_proto_init() }
@@ -756,7 +864,7 @@ func file_api_grpc_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_grpc_v1_auth_proto_rawDesc), len(file_api_grpc_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

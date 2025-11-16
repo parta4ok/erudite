@@ -16,4 +16,5 @@ type CommandFactory interface {
 	NewGetLinkedUsersCommand(ctx context.Context, userID string) (entities.Command, error)
 	NewAddGroupCommand(ctx context.Context, title string, linkedID string) (entities.Command, error)
 	NewGetMentorGroupsCommand(ctx context.Context, mentorID string) (entities.Command, error)
+	NewGetUserByIDCommand(ctx context.Context, userID string) (entities.Command, error)
 }

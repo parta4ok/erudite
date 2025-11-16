@@ -318,7 +318,6 @@ func TestErrorCases(t *testing.T) {
 	client := &http.Client{Timeout: timeout}
 
 	jwt := getJwt(t)
-	// start session with not existings topics
 	t.Run("NonExistentTopics", func(t *testing.T) {
 		requestBody := map[string]interface{}{
 			"topics": []string{"not existning topic"},
@@ -345,7 +344,6 @@ func TestErrorCases(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, resp.StatusCode)
 	})
 
-	// invalid type of topic field in json
 	t.Run("InvalidRequestFormat", func(t *testing.T) {
 		invalidJSON := `{"topics": "not an array"}`
 
@@ -367,7 +365,6 @@ func TestErrorCases(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
-	// completed of not existings session
 	t.Run("NonExistentSession", func(t *testing.T) {
 		requestBody := map[string]interface{}{
 			"user_answer": []map[string]interface{}{
@@ -1194,7 +1191,6 @@ func TestMentorCanCreateMultipleSessionsPerDay(t *testing.T) {
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 
-	// Общие темы для тестов
 	topics := []string{"Базы данных", "Базовые типы в Go"}
 	client := &http.Client{Timeout: timeout}
 
@@ -1624,4 +1620,166 @@ func Test_GetMentorGroups_Success(t *testing.T) {
 	deleteUser(t, adminJWT, student2ID)
 	deleteUser(t, adminJWT, student3ID)
 	deleteUser(t, adminJWT, mentorID)
+}
+
+func TestMentorGetPassedTopicsReport(t *testing.T) {
+	t.Parallel()
+
+	adminJWT := getJwt(t)
+	require.NotEmpty(t, adminJWT)
+
+	mentorID, mentorJWT := createMentorWithReportRights(t, adminJWT, "Ментор Отчетов")
+	require.NotEmpty(t, mentorID)
+	require.NotEmpty(t, mentorJWT)
+
+	groupID := createGroup(t, adminJWT, "Test Report Group "+uuid.NewString(), mentorID)
+	require.NotEmpty(t, groupID)
+
+	studentID, studentJWT := createStudentWithGroup(t, adminJWT, groupID)
+	require.NotEmpty(t, studentID)
+	require.NotEmpty(t, studentJWT)
+
+	sessionRequestBody := map[string]interface{}{
+		"topics": []string{"Базы данных", "Базовые типы в Go"},
+	}
+
+	sessionJSON, err := json.Marshal(sessionRequestBody)
+	require.NoError(t, err)
+
+	client := &http.Client{Timeout: timeout}
+	sessionURL := fmt.Sprintf("%s/%s/start_session", baseURL, studentID)
+	sessionReq, err := http.NewRequest(http.MethodPost, sessionURL, bytes.NewReader(sessionJSON))
+	require.NoError(t, err)
+
+	sessionReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	sessionReq.Header.Add("Content-Type", "application/json")
+
+	sessionResp, err := client.Do(sessionReq)
+	require.NoError(t, err)
+	defer sessionResp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, sessionResp.StatusCode)
+
+	var sessionResponse struct {
+		SessionID string `json:"session_id"`
+		Questions []struct {
+			ID           string   `json:"question_id"`
+			QuestionType string   `json:"question_type"`
+			Topic        string   `json:"topic"`
+			Subject      string   `json:"subject"`
+			Variants     []string `json:"variants"`
+		} `json:"questions"`
+		Topics []string `json:"topics"`
+	}
+
+	sessionBody, err := io.ReadAll(sessionResp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(sessionBody, &sessionResponse)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, sessionResponse.SessionID)
+
+	var answers []UserAnswerDTO
+	for _, question := range sessionResponse.Questions {
+		answers = append(answers, UserAnswerDTO{
+			QuestionID: question.ID,
+			Answers:    question.Variants[:1],
+		})
+	}
+
+	completeBody := UserAnswersListDTO{
+		AnswersList: answers,
+	}
+
+	completeJSON, err := json.Marshal(completeBody)
+	require.NoError(t, err)
+
+	completeURL := fmt.Sprintf("%s/%s/%s/complete_session", baseURL, studentID, sessionResponse.SessionID)
+	completeReq, err := http.NewRequest(http.MethodPost, completeURL, bytes.NewReader(completeJSON))
+	require.NoError(t, err)
+
+	completeReq.Header.Add("Authorization", fmt.Sprintf("Bearer %s", studentJWT))
+	completeReq.Header.Add("Content-Type", "application/json")
+
+	completeResp, err := client.Do(completeReq)
+	require.NoError(t, err)
+	defer completeResp.Body.Close()
+
+	require.Equal(t, http.StatusOK, completeResp.StatusCode)
+
+	time.Sleep(2 * time.Second)
+
+	req, err := http.NewRequest(http.MethodGet, "http://localhost:8070/reporting/v1/"+mentorID+"/passed-topics", nil)
+	require.NoError(t, err)
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", mentorJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	deleteUser(t, adminJWT, studentID)
+	deleteUser(t, adminJWT, mentorID)
+}
+
+func createMentorWithReportRights(t *testing.T, adminJWT string, fullName string) (string, string) {
+	t.Helper()
+
+	rights := []string{
+		"mentor",
+		"view_topic_list",
+		"start_session",
+		"complete_session",
+		"view_completed_sessions",
+		"inifinity_session_start",
+		"get_report",
+	}
+
+	mentorUsername := "mentor_" + uuid.NewString()[:8]
+	mentorPassword := "password123"
+
+	bodyDTO := &UserDTO{
+		Username: mentorUsername,
+		Password: mentorPassword,
+		FullName: fullName,
+		Rights:   rights,
+		Contacts: map[string]string{
+			"email":    "nvmaslenko@gmail.com",
+			"phone":    "+7900" + uuid.NewString()[:7],
+			"telegram": "164718531",
+		},
+	}
+
+	client := &http.Client{Timeout: timeout}
+	data, err := json.Marshal(&bodyDTO)
+	require.NoError(t, err)
+
+	req, err := http.NewRequest(http.MethodPut, "http://localhost:8090/auth/v1/add-user", bytes.NewReader(data))
+	require.NoError(t, err)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", adminJWT))
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+
+	type AddUserResponseDTO struct {
+		UserID string `json:"user_id"`
+	}
+
+	var addUserRespDTO AddUserResponseDTO
+	err = json.NewDecoder(resp.Body).Decode(&addUserRespDTO)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, addUserRespDTO.UserID)
+
+	mentorJWT := getNewUserJwt(t, mentorUsername, mentorPassword)
+
+	return addUserRespDTO.UserID, mentorJWT
 }

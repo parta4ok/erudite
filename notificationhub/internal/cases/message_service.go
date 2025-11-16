@@ -2,6 +2,7 @@ package cases
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
@@ -9,40 +10,29 @@ import (
 )
 
 type MessageService struct {
-	notifier   Notifier
-	authClient AuthClient
+	notifier Notifier
 }
 
-func NewMessageService(notifier Notifier, authClient AuthClient) (*MessageService, error) {
+func NewMessageService(notifier Notifier) (*MessageService, error) {
 	if notifier == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "notifier is nil")
 	}
-	if authClient == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "authClient is nil")
-	}
 
 	return &MessageService{
-		notifier:   notifier,
-		authClient: authClient,
+		notifier: notifier,
 	}, nil
 }
 
-func (ms *MessageService) SendMessage(ctx context.Context,
-	sessionResult *entities.SessionResult) error {
-	if sessionResult == nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "sessionResult is nil")
+func (ms *MessageService) SendMessage(ctx context.Context, message entities.Event) error {
+	if message == nil {
+		err := errors.Wrap(entities.ErrInvalidParam, "message is nil")
 		slog.Error(err.Error())
 		return err
 	}
 
-	linkedUsers, err := ms.authClient.GetLinkedUsers(ctx, sessionResult.GetUserID())
-	if err != nil {
-		err = errors.Wrap(err, "failed to get recipient")
-		slog.Error(err.Error())
-		return err
-	}
+	fmt.Println(message.GetRecipient())
 
-	if err := ms.notifier.Notify(sessionResult, linkedUsers); err != nil {
+	if err := ms.notifier.Notify(ctx, message); err != nil {
 		err = errors.Wrap(err, "failed to notify recipient")
 		slog.Error(err.Error())
 		return err

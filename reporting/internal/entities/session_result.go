@@ -1,13 +1,21 @@
 package entities
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
 )
 
+const (
+	SessionResultType = "session_result"
+)
+
 type SessionResult struct {
-	userID     string
+	kind       MessageType
+	UserID     string
+	UserName   string
+	GroupTitle string
 	Topics     []string
 	Questions  map[string][]string
 	UserAnswer map[string][]string
@@ -18,6 +26,8 @@ type SessionResult struct {
 
 func NewSessionResult(
 	userID string,
+	userName string,
+	groupTitle string,
 	topics []string,
 	questions map[string][]string,
 	answers map[string][]string,
@@ -26,6 +36,14 @@ func NewSessionResult(
 ) (*SessionResult, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, errors.Wrap(ErrInvalidParam, "user id is empty")
+	}
+
+	if strings.TrimSpace(userName) == "" {
+		return nil, errors.Wrap(ErrInvalidParam, "user name id is empty")
+	}
+
+	if strings.TrimSpace(groupTitle) == "" {
+		return nil, errors.Wrap(ErrInvalidParam, "group title id is empty")
 	}
 
 	if len(topics) == 0 {
@@ -45,7 +63,9 @@ func NewSessionResult(
 	}
 
 	return &SessionResult{
-		userID:     strings.TrimSpace(userID),
+		UserID:     strings.TrimSpace(userID),
+		UserName:   userName,
+		GroupTitle: groupTitle,
 		Topics:     topics,
 		Questions:  questions,
 		UserAnswer: answers,
@@ -55,6 +75,27 @@ func NewSessionResult(
 	}, nil
 }
 
-func (sr *SessionResult) GetUserID() string {
-	return sr.userID
+func (sr *SessionResult) GetReport() interface{} {
+	return sr
+}
+
+func (sr *SessionResult) Kind() MessageType {
+	if sr.kind == MessageType("") {
+		return NotificationAboutFinishedSession
+	}
+
+	return sr.kind
+}
+
+func (sr *SessionResult) SetMessageType() {
+	sr.kind = MessageType(fmt.Sprintf("%s.%s_%s",
+		ReportType,
+		SessionResultType,
+		sr.tuneFullname(sr.UserName),
+	))
+}
+
+func (sr *SessionResult) tuneFullname(fullname string) string {
+	splitted := strings.Split(fullname, " ")
+	return strings.Join(splitted, "_")
 }

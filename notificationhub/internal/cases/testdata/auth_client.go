@@ -36,10 +36,10 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 }
 
 // GetLinkedUsers mocks base method.
-func (m *MockAuthClient) GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedUsers, error) {
+func (m *MockAuthClient) GetLinkedUsers(ctx context.Context, id string) (*entities.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetLinkedUsers", ctx, id)
-	ret0, _ := ret[0].(*entities.LinkedUsers)
+	ret0, _ := ret[0].(*entities.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

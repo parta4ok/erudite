@@ -38,14 +38,30 @@ func NewPublisher(natsUrl string) (*Publisher, error) {
 }
 
 func (publisher *Publisher) Publish(ctx context.Context, subject string, message []byte) error {
-	slog.Info("Publisher get event for publish in stream", slog.String("subject", subject))
+	slog.Info("Publisher get event for publish in stream",
+		slog.String("subject", subject),
+		slog.Int("message_size", len(message)))
 
-	if _, err := publisher.conn.PublishMsg(&nats.Msg{
+	select {
+	case <-ctx.Done():
+		slog.Error("Context already cancelled before publish")
+		return errors.Wrapf(ErrInternal, "context cancelled: %v", ctx.Err())
+	default:
+	}
+
+	slog.Info("About to publish message via JetStream")
+	ack, err := publisher.conn.PublishMsg(&nats.Msg{
 		Subject: subject,
 		Data:    message,
-	}, nats.Context(ctx)); err != nil {
+	}, nats.Context(ctx))
+
+	if err != nil {
+		slog.Error("JetStream publish failed", slog.String("error", err.Error()))
 		return errors.Wrapf(ErrInternal, "failed to publish message: %v", err)
 	}
 
+	slog.Info("Message published successfully",
+		slog.String("stream", ack.Stream),
+		slog.Uint64("sequence", ack.Sequence))
 	return nil
 }

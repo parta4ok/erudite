@@ -1,0 +1,90 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a server for testing students before 1to1",
+        "title": "Erudite Service API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "email": "parta4ok@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8070",
+    "basePath": "/reporting/v1",
+    "paths": {
+        "/{mentor_id}/passed-topics": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieves a report about passed topics of mentor groups",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get report about passed topics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Mentor ID",
+                        "name": "mentor_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully report generated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "No topics found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.ErrorDTO": {
+            "type": "object",
+            "properties": {
+                "error_message": {
+                    "description": "error message\nrequired: false\nexample: topic not set: not found",
+                    "type": "string"
+                },
+                "status_code": {
+                    "description": "HTTP status code\nrequired: true\nexample: 404",
+                    "type": "integer"
+                }
+            }
+        }
+    }
+}

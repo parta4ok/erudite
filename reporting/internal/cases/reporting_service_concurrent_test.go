@@ -233,7 +233,6 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 
 			ctx := context.Background()
 
-			// Start tasks
 			for i := 0; i < tc.numTasks; i++ {
 				mentorID := generateMentorID(i)
 				go func(id string) {
@@ -241,14 +240,12 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 				}(mentorID)
 			}
 
-			// Wait for tasks to start
 			startTime := time.Now()
 			for tasksInProgress.Load() < int32(tc.workersLimit) {
 				require.Less(t, time.Since(startTime), 10*time.Second, "Tasks did not start within timeout")
 				time.Sleep(50 * time.Millisecond)
 			}
 
-			// Stop service and measure duration
 			stopStart := time.Now()
 			err = service.Stop()
 			stopDuration := time.Since(stopStart)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -11,6 +12,7 @@ import (
 )
 
 const (
+	apiVersion       = "/kvs/v1"
 	passedTopicsPath = "/passed_topics"
 )
 
@@ -46,8 +48,11 @@ type StudentsIDs struct {
 
 func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []string) (
 	*StudentsTopics, error) {
-	urlRaw, err := url.Parse(client.basePath + passedTopicsPath)
+	slog.Info("GetPassedStudentsTopics on toolkit client started", slog.Any("students", students))
+
+	urlRaw, err := url.Parse(client.basePath + apiVersion + passedTopicsPath)
 	if err != nil {
+		slog.Error("url parse", "error", err)
 		return nil, errors.Wrapf(ErrInternal, "url parse failure: %v", err)
 	}
 
@@ -57,6 +62,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 
 	data, err := json.Marshal(studentsIDs)
 	if err != nil {
+		slog.Error("json marshal", "error", err)
 		return nil, errors.Wrapf(ErrInternal, "marshal failure: %v", err)
 	}
 
@@ -67,19 +73,22 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 		bytes.NewReader(data),
 	)
 	if err != nil {
+		slog.Error("NewRequestWithContext", "error", err, slog.String("url", urlRaw.String()))
 		return nil, errors.Wrapf(ErrInternal, "new request failure: %v", err)
 	}
-
+	slog.Info("request data", slog.String("method", req.Method), slog.String("url", req.URL.String()))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.c.Do(req)
 	if err != nil {
+		slog.Error("client.do failure", "error", err)
 		return nil, errors.Wrapf(ErrInternal, "client.do failure: %v", err)
 	}
 
 	defer resp.Body.Close() //nolint:errcheck // ok
 
 	if resp.StatusCode != http.StatusOK {
+		slog.Error("response status not equal status OK", "current status", resp.StatusCode)
 		return nil, errors.Wrap(client.processErr(resp.StatusCode), "request failure")
 	}
 
@@ -88,6 +97,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&studentsTopics); err != nil {
+		slog.Info("json.NewDecoder", "error", err)
 		return nil, errors.Wrapf(ErrInternal, "decode body failure: %v", err)
 	}
 

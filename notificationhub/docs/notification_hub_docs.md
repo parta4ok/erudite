@@ -96,3 +96,64 @@ sequenceDiagram
         N->>P: Publish NotificationSent (optional for auditing)
     end
 ```
+
+```mermaid
+classDiagram
+MentorStudentTopicReport ..|> Event
+FinishedSessionReport ..|> Event
+MentorStudentTopicReport --> User
+FinishedSessionReport --> User
+MessageService --* Notifier
+MessageService -- Event
+namespace Entities{
+    class Event{
+        <<Interface>>
+        +Kind() MessageType
+        +Format() Format
+        +Message() []byte
+        +GetRecipient() *User
+    }
+
+    class MentorStudentTopicReport{
+        -recipient *User
+        -data []byte
+        
+        +Kind() MessageType
+        +Format() Format
+        +Message() []byte
+        +GetRecipient() *User
+
+    }
+
+    class FinishedSessionReport {
+        -recipient *User
+        -data []byte
+
+        +Kind() EventType
+        +Format() Format
+        +Data() Interface
+        +GetRecipient() *User
+    }
+
+    class User {
+        ID string
+        Contacts map[deliveryService]contact
+    }
+}
+
+namespace Cases {
+    class MessageService {
+        -notifier Notifier
+        +SendMessage(context, event) error 
+    }
+
+    class Notifier {
+        <<Interface>>
+        +Notify(ctx context.Context, message entities.Event) error
+        +Next() Notifier
+        +SetNextNotifier(notifier Notifier)
+    }
+}
+
+
+```

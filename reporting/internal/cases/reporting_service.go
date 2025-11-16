@@ -2,9 +2,11 @@ package cases
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	"github.com/pkg/errors"
@@ -17,7 +19,8 @@ var (
 
 type ReportingService struct {
 	broker         MessageBroker
-	representers   []Representer
+	representer    entities.Representer
+	format         entities.Format
 	authClient     AuthClient
 	questionClient QuestionClient
 	tasks          []func() error
@@ -30,7 +33,8 @@ type ReportingService struct {
 
 func NewReportingService(
 	broker MessageBroker,
-	representers []Representer,
+	representer entities.Representer,
+	format string,
 	authClient AuthClient,
 	questionClient QuestionClient,
 	workersLimit int,
@@ -39,10 +43,12 @@ func NewReportingService(
 		return nil, errors.Wrap(entities.ErrInvalidParam, "broker not set")
 	}
 
-	for _, representer := range representers {
-		if representer == nil {
-			return nil, errors.Wrap(entities.ErrInvalidParam, "one or more representer not set")
-		}
+	if representer == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "representer not set")
+	}
+
+	if format == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "format not set")
 	}
 
 	if authClient == nil {
@@ -62,7 +68,8 @@ func NewReportingService(
 
 	service := &ReportingService{
 		broker:         broker,
-		representers:   representers,
+		representer:    representer,
+		format:         entities.Format(format),
 		authClient:     authClient,
 		questionClient: questionClient,
 		workersLimit:   workersLimit,
@@ -85,7 +92,7 @@ func NewReportingService(
 
 func (service *ReportingService) errorHandlerStart() {
 	for err := range service.errChan {
-		slog.Error(err.Error())
+		slog.Error("error message", "error", err)
 	}
 }
 
@@ -121,25 +128,20 @@ func (service *ReportingService) Worker() {
 }
 
 func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, mentorID string,
-	reportFormat string) error {
+) error {
 	if service.stopSignal.Load() {
-		return errors.Wrap(ErrReportingServiceStopped, "GetPassedTopicsByGroups")
-	}
-
-	var selectedRepresenter Representer
-	for _, representer := range service.representers {
-		if representer.GetReportFormat() == reportFormat {
-			selectedRepresenter = representer
-		}
-	}
-
-	if selectedRepresenter == nil {
-		return errors.Wrap(entities.ErrInvalidParam, "unknown report format or representer not seted")
+		err := ErrReportingServiceStopped
+		slog.Error("GetPassedTopicsByGroups", "error", err)
+		return errors.Wrap(err, "GetPassedTopicsByGroups")
 	}
 
 	fn := func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
 		students, err := service.authClient.GetMentorGroups(ctx, mentorID)
 		if err != nil {
+			slog.Error("GetMentorGroups", "error", err)
 			return errors.Wrap(err, "get mentor group with auth client failure")
 		}
 
@@ -150,6 +152,7 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 
 		passedTopics, err := service.questionClient.GetPassedStudentsTopics(ctx, studentsIDs)
 		if err != nil {
+			slog.Error("get passed topics by students ids with question client failure", "error", err)
 			return errors.Wrap(err, "get passed topics by students ids with question client failure")
 		}
 
@@ -157,16 +160,79 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 			student.PassedTopics = passedTopics[student.ID]
 		}
 
-		report, err := entities.NewPassedTopicsReport(students)
+		recipient, err := service.authClient.GetUserByID(ctx, mentorID)
 		if err != nil {
+			slog.Error("get user by id with auth client failure", "error", err)
+			return errors.Wrap(err, "get user by id with auth client failure")
+		}
+
+		var report entities.Report
+		passedTopicsReport, err := entities.NewPassedTopicsReport(students)
+		if err != nil {
+			slog.Error("creating new report about passed topics by groups", "error", err)
 			return errors.Wrap(err, "creating new report about passed topics by groups")
 		}
 
-		if err = service.broker.ReportEvent(ctx, report, selectedRepresenter); err != nil {
-			return errors.Wrap(err, "sending report event was failed")
+		report = passedTopicsReport
+
+		return service.eventProcessing(ctx, report, recipient)
+	}
+
+	service.cond.L.Lock()
+	defer service.cond.L.Unlock()
+
+	service.tasks = append(service.tasks, fn)
+	service.cond.Signal()
+
+	return nil
+}
+
+func (service *ReportingService) DeliverySessionResult(
+	ctx context.Context, session *entities.SessionResult) error {
+	if service.stopSignal.Load() {
+		err := ErrReportingServiceStopped
+		slog.Error("DeliverySessionResult", "error", err)
+		return errors.Wrap(err, "DeliverySessionResult")
+	}
+
+	fn := func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		linkedUsers, err := service.authClient.GetLinkedUsers(ctx, session.UserID)
+		if err != nil {
+			slog.Error("get linked users with auth client failure", "error", err)
+			return errors.Wrap(err, "get linked users with auth client failure")
 		}
 
-		return nil
+		recipient := linkedUsers.Mentor
+
+		var report entities.Report
+
+		sessionResultReport, err := entities.NewSessionResult(
+			linkedUsers.Student.ID,
+			linkedUsers.Student.Fullname,
+			linkedUsers.Student.GroupID,
+			session.Topics,
+			session.Questions,
+			session.UserAnswer,
+			session.IsExpire,
+			session.IsSuccess,
+			session.Resume,
+		)
+		if err != nil {
+			slog.Error("creature new session result failure", "error", err)
+			return errors.Wrap(err, "creature new session result failure")
+		}
+		if sessionResultReport == nil {
+			err := entities.ErrInternal
+			slog.Error("sessionResultReport creature was failed", "error", err)
+			return errors.Wrap(err, "sessionResultReport creature was failed")
+		}
+
+		report = sessionResultReport
+
+		return service.eventProcessing(ctx, report, recipient)
 	}
 
 	service.cond.L.Lock()
@@ -180,7 +246,9 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 
 func (service *ReportingService) Stop() error {
 	if service.stopSignal.Load() {
-		return errors.Wrap(ErrReportingServiceStopped, "service already stopped")
+		err := ErrReportingServiceStopped
+		slog.Error("service already stopped", "error", err)
+		return errors.Wrap(err, "service already stopped")
 	}
 
 	service.stopSignal.Store(true)
@@ -188,6 +256,31 @@ func (service *ReportingService) Stop() error {
 	service.wg.Wait()
 
 	close(service.errChan)
+
+	return nil
+}
+
+func (service *ReportingService) eventProcessing(ctx context.Context,
+	report entities.Report,
+	recipient *entities.User) error {
+	report.SetMessageType()
+
+	message, err := service.representer.CovertToFormat(service.format, report)
+	if err != nil {
+		slog.Error(fmt.Sprintf("convert to format %s was failed", service.format), "error", err)
+		return errors.Wrapf(err, "convert to format %s was failed", service.format)
+	}
+
+	concreteEvent, err := entities.NewBaseEvent(report.Kind(), service.format, message, recipient)
+	if err != nil {
+		slog.Error("new base event creature was failed", "error", err)
+		return errors.Wrap(err, "new base event creature was failed")
+	}
+
+	if err = service.broker.ReportEvent(ctx, concreteEvent); err != nil {
+		slog.Error("sending report event was failed", "error", err)
+		return errors.Wrap(err, "sending report event was failed")
+	}
 
 	return nil
 }

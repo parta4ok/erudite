@@ -1,0 +1,23 @@
+reporting:
+  http:
+    public:
+      port: :8070
+      timeout: 5s
+  logging:
+    service_name: reporting
+    service_version: 1.0.0
+    version: 1.0.0
+    level: info
+    format: json
+    add_source: true
+  representer:
+    format: html
+  workers_limit: 5
+auth_service:
+  address: "auth_app:8091"
+question_service:
+  address: "http://question_app:8081"
+nats:
+  url: nats://nats:4222
+  subject: sessions.*
+  event_timeout: 5s

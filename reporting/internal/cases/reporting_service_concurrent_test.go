@@ -16,6 +16,7 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/cases"
 	"github.com/parta4ok/kvs/reporting/internal/cases/testdata"
 	"github.com/parta4ok/kvs/reporting/internal/entities"
+	entitiesTestdata "github.com/parta4ok/kvs/reporting/internal/entities/testdata"
 )
 
 func TestReportingService_ConcurrentExecution(t *testing.T) {
@@ -64,7 +65,7 @@ func TestReportingService_ConcurrentExecution(t *testing.T) {
 			)
 
 			service, err := cases.NewReportingService(
-				broker, []cases.Representer{representer},
+				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
 			)
 			require.NoError(t, err)
@@ -79,7 +80,7 @@ func TestReportingService_ConcurrentExecution(t *testing.T) {
 
 				go func(id string) {
 					defer wg.Done()
-					err := service.GetPassedTopicsByGroups(ctx, id, "json")
+					err := service.GetPassedTopicsByGroups(ctx, id)
 					require.NoError(t, err)
 				}(mentorID)
 			}
@@ -142,7 +143,7 @@ func TestReportingService_RaceConditions(t *testing.T) {
 			)
 
 			service, err := cases.NewReportingService(
-				broker, []cases.Representer{representer},
+				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
 			)
 			require.NoError(t, err)
@@ -158,7 +159,7 @@ func TestReportingService_RaceConditions(t *testing.T) {
 
 				go func(id string) {
 					defer wg.Done()
-					err := service.GetPassedTopicsByGroups(ctx, id, "json")
+					err := service.GetPassedTopicsByGroups(ctx, id)
 					require.NoError(t, err)
 					successfulCalls.Add(1)
 				}(mentorID)
@@ -226,7 +227,7 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 			)
 
 			service, err := cases.NewReportingService(
-				broker, []cases.Representer{representer},
+				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
 			)
 			require.NoError(t, err)
@@ -236,7 +237,7 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 			for i := 0; i < tc.numTasks; i++ {
 				mentorID := generateMentorID(i)
 				go func(id string) {
-					service.GetPassedTopicsByGroups(ctx, id, "json")
+					service.GetPassedTopicsByGroups(ctx, id)
 				}(mentorID)
 			}
 
@@ -375,7 +376,7 @@ func TestReportingService_ErrorHandling(t *testing.T) {
 			)
 
 			service, err := cases.NewReportingService(
-				broker, []cases.Representer{representer},
+				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
 			)
 			require.NoError(t, err)
@@ -390,7 +391,7 @@ func TestReportingService_ErrorHandling(t *testing.T) {
 
 				go func(id string) {
 					defer wg.Done()
-					err := service.GetPassedTopicsByGroups(ctx, id, "json")
+					err := service.GetPassedTopicsByGroups(ctx, id)
 					require.NoError(t, err)
 				}(mentorID)
 			}
@@ -417,10 +418,10 @@ func createTestServiceBasic(t *testing.T, ctrl *gomock.Controller, workersLimit 
 	broker := testdata.NewMockMessageBroker(ctrl)
 	authClient := testdata.NewMockAuthClient(ctrl)
 	questionClient := testdata.NewMockQuestionClient(ctrl)
-	representer := testdata.NewMockRepresenter(ctrl)
+	representer := entitiesTestdata.NewMockRepresenter(ctrl)
 
 	service, err := cases.NewReportingService(
-		broker, []cases.Representer{representer},
+		broker, representer, "json",
 		authClient, questionClient, workersLimit,
 	)
 	require.NoError(t, err)
@@ -437,15 +438,15 @@ func setupConcurrencyMocks(
 	ctrl *gomock.Controller,
 	totalTasks int,
 	taskDuration time.Duration,
-) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *testdata.MockRepresenter) {
+) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *entitiesTestdata.MockRepresenter) {
 	t.Helper()
 
 	broker := testdata.NewMockMessageBroker(ctrl)
 	authClient := testdata.NewMockAuthClient(ctrl)
 	questionClient := testdata.NewMockQuestionClient(ctrl)
-	representer := testdata.NewMockRepresenter(ctrl)
+	representer := entitiesTestdata.NewMockRepresenter(ctrl)
 
-	representer.EXPECT().GetReportFormat().Return("json").AnyTimes()
+	representer.EXPECT().CovertToFormat(gomock.Any(), gomock.Any()).Return([]byte("test report"), nil).AnyTimes()
 
 	students := []entities.Student{
 		{
@@ -468,7 +469,11 @@ func setupConcurrencyMocks(
 	questionClient.EXPECT().GetPassedStudentsTopics(gomock.Any(), gomock.Any()).
 		Return(passedTopics, nil).Times(totalTasks)
 
-	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any(), gomock.Any()).
+	user := &entities.User{ID: "mentor1", Name: "Test Mentor", Contacts: map[string]string{"email": "test@test.com"}}
+	authClient.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).
+		Return(user, nil).Times(totalTasks)
+
+	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any()).
 		Return(nil).Times(totalTasks)
 
 	return broker, authClient, questionClient, representer
@@ -478,15 +483,15 @@ func setupRaceConditionMocks(
 	t *testing.T,
 	ctrl *gomock.Controller,
 	numGoroutines int,
-) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *testdata.MockRepresenter) {
+) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *entitiesTestdata.MockRepresenter) {
 	t.Helper()
 
 	broker := testdata.NewMockMessageBroker(ctrl)
 	authClient := testdata.NewMockAuthClient(ctrl)
 	questionClient := testdata.NewMockQuestionClient(ctrl)
-	representer := testdata.NewMockRepresenter(ctrl)
+	representer := entitiesTestdata.NewMockRepresenter(ctrl)
 
-	representer.EXPECT().GetReportFormat().Return("json").AnyTimes()
+	representer.EXPECT().CovertToFormat(gomock.Any(), gomock.Any()).Return([]byte("test report"), nil).AnyTimes()
 
 	students := []entities.Student{
 		{
@@ -512,7 +517,11 @@ func setupRaceConditionMocks(
 	questionClient.EXPECT().GetPassedStudentsTopics(gomock.Any(), gomock.Any()).
 		Return(passedTopics, nil).Times(numGoroutines)
 
-	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any(), gomock.Any()).
+	user := &entities.User{ID: "mentor1", Name: "Test Mentor", Contacts: map[string]string{"email": "test@test.com"}}
+	authClient.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).
+		Return(user, nil).Times(numGoroutines)
+
+	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any()).
 		Return(nil).Times(numGoroutines)
 
 	return broker, authClient, questionClient, representer
@@ -524,15 +533,15 @@ func setupGracefulShutdownMocks(
 	taskDuration time.Duration,
 	tasksInProgress *atomic.Int32,
 	tasksCompleted *atomic.Int32,
-) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *testdata.MockRepresenter) {
+) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *entitiesTestdata.MockRepresenter) {
 	t.Helper()
 
 	broker := testdata.NewMockMessageBroker(ctrl)
 	authClient := testdata.NewMockAuthClient(ctrl)
 	questionClient := testdata.NewMockQuestionClient(ctrl)
-	representer := testdata.NewMockRepresenter(ctrl)
+	representer := entitiesTestdata.NewMockRepresenter(ctrl)
 
-	representer.EXPECT().GetReportFormat().Return("json").AnyTimes()
+	representer.EXPECT().CovertToFormat(gomock.Any(), gomock.Any()).Return([]byte("test report"), nil).AnyTimes()
 
 	students := []entities.Student{
 		{
@@ -556,7 +565,11 @@ func setupGracefulShutdownMocks(
 	questionClient.EXPECT().GetPassedStudentsTopics(gomock.Any(), gomock.Any()).
 		Return(passedTopics, nil).AnyTimes()
 
-	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any(), gomock.Any()).
+	user := &entities.User{ID: "mentor1", Name: "Test Mentor", Contacts: map[string]string{"email": "test@test.com"}}
+	authClient.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).
+		Return(user, nil).AnyTimes()
+
+	broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any()).
 		Return(nil).AnyTimes()
 
 	return broker, authClient, questionClient, representer
@@ -567,15 +580,15 @@ func setupErrorHandlingMocks(
 	ctrl *gomock.Controller,
 	errorStage string,
 	numTasks int,
-) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *testdata.MockRepresenter) {
+) (*testdata.MockMessageBroker, *testdata.MockAuthClient, *testdata.MockQuestionClient, *entitiesTestdata.MockRepresenter) {
 	t.Helper()
 
 	broker := testdata.NewMockMessageBroker(ctrl)
 	authClient := testdata.NewMockAuthClient(ctrl)
 	questionClient := testdata.NewMockQuestionClient(ctrl)
-	representer := testdata.NewMockRepresenter(ctrl)
+	representer := entitiesTestdata.NewMockRepresenter(ctrl)
 
-	representer.EXPECT().GetReportFormat().Return("json").AnyTimes()
+	representer.EXPECT().CovertToFormat(gomock.Any(), gomock.Any()).Return([]byte("test report"), nil).AnyTimes()
 
 	switch errorStage {
 	case "auth":
@@ -605,12 +618,15 @@ func setupErrorHandlingMocks(
 		}
 		authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).
 			Return(students, nil).Times(numTasks)
+		user := &entities.User{ID: "mentor1", Name: "Test Mentor", Contacts: map[string]string{"email": "test@test.com"}}
+		authClient.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).
+			Return(user, nil).Times(numTasks)
 		passedTopics := map[string][]entities.Topic{
 			"student1": {{ID: "topic1", Title: "Topic 1"}},
 		}
 		questionClient.EXPECT().GetPassedStudentsTopics(gomock.Any(), gomock.Any()).
 			Return(passedTopics, nil).Times(numTasks)
-		broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any(), gomock.Any()).
+		broker.EXPECT().ReportEvent(gomock.Any(), gomock.Any()).
 			Return(errors.New("broker error")).Times(numTasks)
 	}
 

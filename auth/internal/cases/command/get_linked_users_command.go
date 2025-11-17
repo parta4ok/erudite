@@ -19,31 +19,24 @@ type GetLinkedUsersCommand struct {
 	storage common.Storage
 
 	userID string
-	ctx    context.Context
 }
 
-func NewGetLinkedUsersCommand(ctx context.Context, storage common.Storage, userID string,
-) (*GetLinkedUsersCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if userID == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "user id id empty")
-	}
-
+func NewGetLinkedUsersCommand(storage common.Storage, userID string) *GetLinkedUsersCommand {
 	return &GetLinkedUsersCommand{
 		storage: storage,
 
-		ctx:    ctx,
 		userID: userID,
-	}, nil
+	}
 }
 
-func (command *GetLinkedUsersCommand) Exec() (*entities.CommandResult, error) {
+func (command *GetLinkedUsersCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("GetLinkedUserCommand exec started", slog.String("student_id", command.userID))
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "GetLinkedUsersCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetLinkedUsersCommandExecSpan")
 	defer cancel()
+
+	if command.userID == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user id id empty")
+	}
 
 	linkedUsers, err := command.storage.GetLinkedUsers(ctx, command.userID)
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/parta4ok/kvs/auth/internal/cases/command"
-	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
@@ -17,122 +16,6 @@ import (
 var (
 	ErrTest = errors.New("test error")
 )
-
-func TestNewUpdateUserCommand(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		storage func(t *testing.T, ctrl *gomock.Controller) common.Storage
-		hasher  func(t *testing.T, ctrl *gomock.Controller) common.Hasher
-		user    func(t *testing.T) *entities.User
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-		resErr  error
-	}{
-		{
-			name: "nil storage - failure",
-			args: args{
-				storage: getNilStorage,
-				hasher:  getHasher,
-				user:    getUser,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "nil hasher - failure",
-			args: args{
-				storage: getStorage,
-				hasher:  getNilHasher,
-				user:    getUser,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "nil user - failure",
-			args: args{
-				storage: getStorage,
-				hasher:  getHasher,
-				user:    getNilUser,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(it *testing.T) {
-			it.Parallel()
-
-			ctx := context.Background()
-
-			ctrl := gomock.NewController(it)
-			it.Cleanup(func() {
-				ctrl.Finish()
-			})
-
-			res, err := command.NewUpdateUserCommand(
-				ctx,
-				tc.args.storage(it, ctrl),
-				tc.args.hasher(it, ctrl),
-				tc.args.user(it),
-			)
-			if tc.wantErr {
-				require.Nil(it, res)
-				require.ErrorIs(it, err, tc.resErr)
-				return
-			}
-
-			require.NoError(it, err)
-			require.Equal(it, nil, res)
-		})
-	}
-}
-
-func getStorage(t *testing.T, ctrl *gomock.Controller) common.Storage {
-	t.Helper()
-
-	return testdata.NewMockStorage(ctrl)
-}
-
-func getNilStorage(t *testing.T, _ *gomock.Controller) common.Storage {
-	t.Helper()
-
-	var storage common.Storage
-	return storage
-}
-
-func getHasher(t *testing.T, ctrl *gomock.Controller) common.Hasher {
-	t.Helper()
-
-	return testdata.NewMockHasher(ctrl)
-}
-
-func getNilHasher(t *testing.T, ctrl *gomock.Controller) common.Hasher {
-	t.Helper()
-
-	var hasher common.Hasher
-	return hasher
-}
-
-func getUser(t *testing.T) *entities.User {
-	t.Helper()
-
-	return &entities.User{
-		ID: uuid.NewString(),
-	}
-}
-
-func getNilUser(t *testing.T) *entities.User {
-	t.Helper()
-
-	var user *entities.User
-	return user
-}
 
 func TestUpdateUserCommand_Exec(t *testing.T) {
 	t.Parallel()
@@ -219,10 +102,10 @@ func TestUpdateUserCommand_Exec(t *testing.T) {
 				tc.fields.updateSerrings(ctx, it, storage, updatedUser, tc.fields.updateErr)
 			}
 
-			command, err := command.NewUpdateUserCommand(ctx, storage, hasher, updatedUser)
-			require.NoError(it, err)
+			command := command.NewUpdateUserCommand(storage, hasher, updatedUser)
+			require.NotNil(it, command)
 
-			result, err := command.Exec()
+			result, err := command.Exec(ctx)
 			if tc.wantErr {
 				require.Nil(it, result)
 				require.ErrorIs(it, err, tc.resErr)

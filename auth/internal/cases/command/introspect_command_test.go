@@ -16,28 +16,6 @@ var (
 	errTest = errors.New("test error")
 )
 
-func TestNewIntrospectCommand(t *testing.T) {
-	t.Parallel()
-
-	ctrl := gomock.NewController(t)
-	t.Cleanup(func() {
-		ctrl.Finish()
-	})
-
-	ctx := context.TODO()
-	storage := testdata.NewMockStorage(ctrl)
-	provider := testdata.NewMockJWTProvider(ctrl)
-
-	cmd1, err := command.NewIntrospectCommand(ctx, "", storage, provider)
-	require.ErrorIs(t, err, entities.ErrInvalidJWT)
-	require.Contains(t, err.Error(), "jwt is required")
-	require.Nil(t, cmd1)
-
-	cmd, err := command.NewIntrospectCommand(ctx, "jwt", storage, provider)
-	require.NoError(t, err)
-	require.NotNil(t, cmd)
-}
-
 func TestIntrospectCommand_Exec(t *testing.T) {
 	t.Parallel()
 
@@ -126,9 +104,10 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 				tc.stage.IntrospectSettings(it, jwtProvider, jwt, claims, tc.stage.IntrospectErr)
 			}
 
-			cmd, err := command.NewIntrospectCommand(ctx, jwt, storage, jwtProvider)
-			require.NoError(t, err)
-			res, err := cmd.Exec()
+			cmd := command.NewIntrospectCommand(jwt, storage, jwtProvider)
+			require.NotNil(it, cmd)
+
+			res, err := cmd.Exec(ctx)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
 				require.Nil(it, res)

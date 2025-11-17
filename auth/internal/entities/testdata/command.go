@@ -5,6 +5,7 @@
 package testdata
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -35,16 +36,16 @@ func (m *MockCommand) EXPECT() *MockCommandMockRecorder {
 }
 
 // Exec mocks base method.
-func (m *MockCommand) Exec() (*entities.CommandResult, error) {
+func (m *MockCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Exec")
+	ret := m.ctrl.Call(m, "Exec", ctx)
 	ret0, _ := ret[0].(*entities.CommandResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Exec indicates an expected call of Exec.
-func (mr *MockCommandMockRecorder) Exec() *gomock.Call {
+func (mr *MockCommandMockRecorder) Exec(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockCommand)(nil).Exec))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Exec", reflect.TypeOf((*MockCommand)(nil).Exec), ctx)
 }

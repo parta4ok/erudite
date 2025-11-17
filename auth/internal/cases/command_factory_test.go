@@ -1,7 +1,6 @@
 package cases_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -105,8 +104,7 @@ func TestCommandFactory_NewIntrospectedCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewIntrospectedCommand(context.TODO(), "jwt-token")
-	require.NoError(t, err)
+	cmd := factory.NewIntrospectedCommand("jwt-token")
 	require.NotNil(t, cmd)
 }
 
@@ -124,8 +122,7 @@ func TestCommandFactory_NewSignInCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewSignInCommand(context.TODO(), "user", "pass")
-	require.NoError(t, err)
+	cmd := factory.NewSignInCommand("user", "pass")
 	require.NotNil(t, cmd)
 }
 
@@ -147,8 +144,7 @@ func TestCommandFactory_NewAddUserCommand(t *testing.T) {
 		[]string{"student"}, nil, "")
 	require.NoError(t, err)
 
-	cmd, err := factory.NewAddUserCommand(context.TODO(), user)
-	require.NoError(t, err)
+	cmd := factory.NewAddUserCommand(user)
 	require.NotNil(t, cmd)
 }
 
@@ -167,8 +163,7 @@ func TestCommandFactory_NewDeleteUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewDeleteUserCommand(context.TODO(), "test_user_id")
-	require.NoError(t, err)
+	cmd := factory.NewDeleteUserCommand("test_user_id")
 	require.NotNil(t, cmd)
 }
 
@@ -187,8 +182,7 @@ func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewUpdateUserCommand(context.TODO(), &entities.User{ID: uuid.NewString()})
-	require.NoError(t, err)
+	cmd := factory.NewUpdateUserCommand(&entities.User{ID: uuid.NewString()})
 	require.NotNil(t, cmd)
 }
 
@@ -207,7 +201,7 @@ func TestCommandFactory_NewGetLinkedUsersCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd, err := factory.NewGetLinkedUsersCommand(context.TODO(), uuid.NewString())
+	cmd := factory.NewGetLinkedUsersCommand(uuid.NewString())
 	require.NoError(t, err)
 	require.NotNil(t, cmd)
 }

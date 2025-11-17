@@ -16,32 +16,27 @@ var (
 
 type GetMentorGroupsCommand struct {
 	storage  common.Storage
-	ctx      context.Context
+
 	mentorID string
 }
 
-func NewGetMentorGroupsCommand(ctx context.Context, storage common.Storage, mentorID string) (
-	*GetMentorGroupsCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if mentorID == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "mentorID not set")
-	}
-
+func NewGetMentorGroupsCommand(storage common.Storage, mentorID string) *GetMentorGroupsCommand{
 	return &GetMentorGroupsCommand{
 		storage:  storage,
-		ctx:      ctx,
+
 		mentorID: mentorID,
-	}, nil
+	}
 }
 
-func (command *GetMentorGroupsCommand) Exec() (*entities.CommandResult, error) {
+func (command *GetMentorGroupsCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("AddUserCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "GetMentorGroupsCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetMentorGroupsCommandExecSpan")
 	defer cancel()
 
+	if command.mentorID == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "mentorID not set")
+	}
+	
 	groups, err := command.storage.GetMentorGroups(ctx, command.mentorID)
 	if err != nil {
 		err = errors.Wrap(err, "get mentor groups")

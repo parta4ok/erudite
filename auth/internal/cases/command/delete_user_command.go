@@ -17,31 +17,26 @@ var (
 type DeleteUserCommand struct {
 	storage common.Storage
 
-	ctx    context.Context
 	userID string
 }
 
-func NewDeleteUserCommand(ctx context.Context, storage common.Storage, userID string) (
-	*DeleteUserCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
+func NewDeleteUserCommand(storage common.Storage, userID string) *DeleteUserCommand {
+	return &DeleteUserCommand{
+		storage: storage,
 
-	if userID == "" {
+		userID:  userID,
+	}
+}
+
+func (command *DeleteUserCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
+	slog.Info("DeleteUserCommand started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "DeleteUserCommandExecSpan")
+	defer cancel()
+
+	if command.userID == "" {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "userID is incorrect")
 	}
 
-	return &DeleteUserCommand{
-		storage: storage,
-		ctx:     ctx,
-		userID:  userID,
-	}, nil
-}
-
-func (command *DeleteUserCommand) Exec() (*entities.CommandResult, error) {
-	slog.Info("DeleteUserCommand started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "DeleteUserCommandExecSpan")
-	defer cancel()
 
 	if err := command.storage.RemoveUser(ctx, command.userID); err != nil {
 		err = errors.Wrap(err, "RemoveUser failure")

@@ -17,25 +17,25 @@ var (
 type GetUserByIDCommand struct {
 	storage common.Storage
 
-	ctx    context.Context
 	userID string
 }
 
-func NewGetUserByIDCommand(ctx context.Context, storage common.Storage,
-	userID string) (*GetUserByIDCommand, error) {
-
+func NewGetUserByIDCommand(storage common.Storage, userID string) *GetUserByIDCommand {
 	return &GetUserByIDCommand{
 		storage: storage,
 
-		ctx:    ctx,
 		userID: userID,
-	}, nil
+	}
 }
 
-func (command *GetUserByIDCommand) Exec() (*entities.CommandResult, error) {
+func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("IntrospectCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "GetUserByIDCommandSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDCommandSpan")
 	defer cancel()
+
+	if command.userID == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user id not set")
+	}
 
 	user, err := command.storage.GetUserByID(ctx, command.userID)
 	if err != nil {

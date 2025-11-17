@@ -7,128 +7,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/parta4ok/kvs/auth/internal/cases/command"
 
-	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
 )
-
-func TestAddUserCommand(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		notNilStorage   bool
-		notNilGenerator bool
-		notNilHasher    bool
-		notNilUser      bool
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-		resErr  error
-	}{
-		{
-			name: "1",
-			args: args{
-				notNilGenerator: true,
-				notNilHasher:    true,
-				notNilUser:      true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "2",
-			args: args{
-				notNilStorage: true,
-				notNilHasher:  true,
-				notNilUser:    true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "3",
-			args: args{
-				notNilStorage:   true,
-				notNilGenerator: true,
-				notNilUser:      true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "4",
-			args: args{
-				notNilStorage:   true,
-				notNilGenerator: true,
-				notNilHasher:    true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "5",
-			args: args{
-				notNilStorage:   true,
-				notNilGenerator: true,
-				notNilHasher:    true,
-				notNilUser:      true,
-			},
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(it *testing.T) {
-			it.Parallel()
-
-			ctrl := gomock.NewController(it)
-			it.Cleanup(func() {
-				ctrl.Finish()
-			})
-
-			var storage common.Storage
-			var generator common.IDGenerator
-			var hasher common.Hasher
-
-			ctx := context.TODO()
-			var user *entities.User
-
-			if tc.args.notNilStorage {
-				storage = testdata.NewMockStorage(ctrl)
-			}
-
-			if tc.args.notNilGenerator {
-				generator = testdata.NewMockIDGenerator(ctrl)
-			}
-
-			if tc.args.notNilHasher {
-				hasher = testdata.NewMockHasher(ctrl)
-			}
-
-			if tc.args.notNilUser {
-				user = &entities.User{
-					Username:     "testuser",
-					PasswordHash: "testtest",
-					Rights:       []string{"admin"},
-					Contacts:     map[string]string{"email": "test@test.com"},
-				}
-			}
-
-			command, err := command.NewAddUserCommand(ctx, storage, hasher, generator, user)
-			if tc.wantErr {
-				require.ErrorIs(t, err, tc.resErr)
-				require.Nil(t, command)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, command)
-
-		})
-	}
-}
 
 func TestAddUserCommand_Exec(t *testing.T) {
 	t.Parallel()
@@ -264,11 +146,10 @@ func TestAddUserCommand_Exec(t *testing.T) {
 				tc.stage.StoreUserSettings(ctx, it, storage, expectedUser, tc.stage.StoreUserErr)
 			}
 
-			command, err := command.NewAddUserCommand(ctx, storage, hasher, generator, inputUser)
-			require.NoError(it, err)
+			command := command.NewAddUserCommand(storage, hasher, generator, inputUser)
 			require.NotNil(it, command)
 
-			res, err := command.Exec()
+			res, err := command.Exec(ctx)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
 				require.Nil(it, res)

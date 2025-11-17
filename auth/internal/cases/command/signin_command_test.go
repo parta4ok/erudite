@@ -6,77 +6,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/parta4ok/kvs/auth/internal/cases/command"
-	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
 )
-
-func TestNewSignInCommand(t *testing.T) {
-	t.Parallel()
-
-	type cases struct {
-		BadUserName bool
-		BadPassword bool
-		NilStorage  bool
-		NilProvider bool
-		NilHasher   bool
-	}
-	tests := []struct {
-		name    string
-		cases   cases
-		wantErr bool
-		resErr  error
-	}{
-		{"bad username", cases{BadUserName: true}, true, entities.ErrInvalidParam},
-		{"bad password", cases{BadPassword: true}, true, entities.ErrInvalidParam},
-		{"nil storage", cases{NilStorage: true}, true, entities.ErrInvalidParam},
-		{"nil provider", cases{NilProvider: true}, true, entities.ErrInvalidParam},
-		{"nil hasher", cases{NilHasher: true}, true, entities.ErrInvalidParam},
-		{"ok", cases{}, false, nil},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(it *testing.T) {
-			it.Parallel()
-			ctrl := gomock.NewController(it)
-			it.Cleanup(ctrl.Finish)
-
-			var provider common.JWTProvider
-			var storage common.Storage
-			var hasher common.Hasher
-
-			ctx := context.TODO()
-			password := "testPassword"
-			userName := "testUserName"
-
-			if tc.cases.BadUserName {
-				userName = ""
-			}
-			if tc.cases.BadPassword {
-				password = ""
-			}
-			if !tc.cases.NilProvider {
-				provider = testdata.NewMockJWTProvider(ctrl)
-			}
-			if !tc.cases.NilStorage {
-				storage = testdata.NewMockStorage(ctrl)
-			}
-			if !tc.cases.NilHasher {
-				hasher = testdata.NewMockHasher(ctrl)
-			}
-
-			command, err := command.NewSignInCommand(ctx, storage, provider, hasher, userName, password)
-			if tc.wantErr {
-				require.ErrorIs(it, err, tc.resErr)
-				require.Nil(it, command)
-				return
-			}
-			require.NoError(it, err)
-			require.NotNil(it, command)
-		})
-	}
-}
 
 func TestSignInCommand_Exec(t *testing.T) {
 	t.Parallel()
@@ -188,11 +121,10 @@ func TestSignInCommand_Exec(t *testing.T) {
 				tc.stage.GenerateSettings(ctx, it, provider, user, jwt, tc.stage.GenerateErr)
 			}
 
-			command, err := command.NewSignInCommand(ctx, storage, provider, hasher, name, password)
-			require.NoError(t, err)
+			command := command.NewSignInCommand(storage, provider, hasher, name, password)
 			require.NotNil(t, command)
 
-			res, err := command.Exec()
+			res, err := command.Exec(ctx)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
 				require.Nil(it, res)

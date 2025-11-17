@@ -6,83 +6,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/parta4ok/kvs/auth/internal/cases/command"
-	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/stretchr/testify/require"
 )
-
-func TestNewGetMentorGroupsCommand(t *testing.T) {
-	t.Parallel()
-
-	type args struct {
-		notNilStorage bool
-		notEmptyID    bool
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-		resErr  error
-	}{
-		{
-			name: "1",
-			args: args{
-				notEmptyID: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "2",
-			args: args{
-				notNilStorage: true,
-			},
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name: "3",
-			args: args{
-				notNilStorage: true,
-				notEmptyID:    true,
-			},
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(it *testing.T) {
-			it.Parallel()
-
-			ctrl := gomock.NewController(it)
-			it.Cleanup(func() {
-				ctrl.Finish()
-			})
-
-			var storage common.Storage
-			ctx := context.TODO()
-			var mentorID string
-
-			if tc.args.notNilStorage {
-				storage = testdata.NewMockStorage(ctrl)
-			}
-
-			if tc.args.notEmptyID {
-				mentorID = "mentor-id"
-			}
-
-			command, err := command.NewGetMentorGroupsCommand(ctx, storage, mentorID)
-			if tc.wantErr {
-				require.ErrorIs(t, err, tc.resErr)
-				require.Nil(t, command)
-				return
-			}
-
-			require.NoError(t, err)
-			require.NotNil(t, command)
-		})
-	}
-}
 
 func TestGetMentorGroupsCommand_Exec(t *testing.T) {
 	t.Parallel()
@@ -135,11 +62,10 @@ func TestGetMentorGroupsCommand_Exec(t *testing.T) {
 				tc.stage.GetMentorGroupsSettings(ctx, it, storage, mentorID, expectedGroups, tc.stage.GetMentorGroupsErr)
 			}
 
-			command, err := command.NewGetMentorGroupsCommand(ctx, storage, mentorID)
-			require.NoError(it, err)
+			command := command.NewGetMentorGroupsCommand(storage, mentorID)
 			require.NotNil(it, command)
 
-			res, err := command.Exec()
+			res, err := command.Exec(ctx)
 			if tc.wantErr {
 				require.ErrorIs(it, err, tc.resErr)
 				require.Nil(it, res)

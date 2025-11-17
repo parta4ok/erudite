@@ -191,16 +191,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	command, err := s.factory.NewSignInCommand(ctx, requestDTO.Login, requestDTO.Password)
-	if err != nil {
-		err := errors.Wrap(err, "signin command creating failure")
-		slog.Error(err.Error())
-		span.SetError(err, "new SignInCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	res, err := command.Exec()
+	res, err := s.factory.NewSignInCommand(requestDTO.Login, requestDTO.Password).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "signin command executing failure")
 		slog.Error(err.Error())
@@ -305,16 +296,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	addUserCommand, err := s.factory.NewAddUserCommand(ctx, user)
-	if err != nil {
-		err := errors.Wrap(err, "new add user failure")
-		slog.Error(err.Error())
-		span.SetError(err, "new AddUserCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	addUserResult, err := addUserCommand.Exec()
+	addUserResult, err := s.factory.NewAddUserCommand(user).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "add user command failure")
 		slog.Error(err.Error())
@@ -398,16 +380,7 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	deleteUserCommand, err := s.factory.NewDeleteUserCommand(ctx, userID)
-	if err != nil {
-		err := errors.Wrap(err, "new delete user failure")
-		slog.Error(err.Error())
-		span.SetError(err, "new DeleteUserCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	deleteUserResult, err := deleteUserCommand.Exec()
+	deleteUserResult, err := s.factory.NewDeleteUserCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "delete user command failure")
 		slog.Error(err.Error())
@@ -490,16 +463,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 		GroupID:      updateUserDTO.GroupID,
 	}
 
-	updateUserCommand, err := s.factory.NewUpdateUserCommand(ctx, updateUser)
-	if err != nil {
-		err := errors.Wrap(err, "new update user command failure")
-		slog.Error(err.Error())
-		span.SetError(err, "new UpdateUserCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	updateUserResult, err := updateUserCommand.Exec()
+	updateUserResult, err := s.factory.NewUpdateUserCommand(updateUser).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "update user command exec failure")
 		slog.Error(err.Error())
@@ -583,17 +547,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	addGroupCommand, err := s.factory.NewAddGroupCommand(ctx, requestDTO.Title,
-		requestDTO.LinkedID)
-	if err != nil {
-		err := errors.Wrap(err, "new add group command failure")
-		slog.Error(err.Error())
-		span.SetError(err, "new AddGroupCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	addGroupResult, err := addGroupCommand.Exec()
+	res, err := s.factory.NewAddGroupCommand(requestDTO.Title, requestDTO.LinkedID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "add group command exec failure")
 		slog.Error(err.Error())
@@ -602,7 +556,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !addGroupResult.Success {
+	if !res.Success {
 		err := errors.Wrap(entities.ErrInternal, "add group failure")
 		slog.Error(err.Error())
 		span.SetError(err, "bad AddGroupCommand result status")
@@ -611,7 +565,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	}
 
 	responseDTO := &dto.AddGroupResponseDTO{
-		GroupID: addGroupResult.Message,
+		GroupID: res.Message,
 	}
 
 	data, err := json.Marshal(responseDTO)
@@ -678,16 +632,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	command, err := s.factory.NewGetMentorGroupsCommand(ctx, userID)
-	if err != nil {
-		err := errors.Wrap(err, "get mentor groups command create failure")
-		slog.Error(err.Error())
-		span.SetError(err, "create GetMentorGroupsCommand")
-		s.errProcessing(resp, err)
-		return
-	}
-
-	res, err := command.Exec()
+	res, err := s.factory.NewGetMentorGroupsCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get mentor groups command exec failure")
 		slog.Error(err.Error())
@@ -817,14 +762,7 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	}
 
 	jwt := authorizationData[1]
-	introspectCommand, err := s.factory.NewIntrospectedCommand(req.Context(), jwt)
-	if err != nil {
-		err := errors.Wrap(err, "new inrospect failure")
-		slog.Error(err.Error())
-		return err
-	}
-
-	introspectResult, err := introspectCommand.Exec()
+	introspectResult, err := s.factory.NewIntrospectedCommand(jwt).Exec(req.Context())
 	if err != nil {
 		err := errors.Wrap(err, "inrospection failure")
 		slog.Error(err.Error())

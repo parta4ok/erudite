@@ -19,48 +19,34 @@ type SignInCommand struct {
 	jwtProvider common.JWTProvider
 	hasher      common.Hasher
 
-	ctx      context.Context
 	userName string
 	password string
 }
 
-func NewSignInCommand(ctx context.Context, storage common.Storage, provider common.JWTProvider,
-	hasher common.Hasher, userName string, password string) (*SignInCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if provider == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "jwt provider not set")
-	}
-
-	if hasher == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "hasher not set")
-	}
-
-	if userName == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "username is required")
-	}
-
-	if password == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "password is required")
-	}
-
+func NewSignInCommand(storage common.Storage, provider common.JWTProvider,
+	hasher common.Hasher, userName string, password string) *SignInCommand {
 	return &SignInCommand{
 		storage:     storage,
 		jwtProvider: provider,
 		hasher:      hasher,
 
-		ctx:      ctx,
 		userName: userName,
 		password: password,
-	}, nil
+	}
 }
 
-func (command *SignInCommand) Exec() (*entities.CommandResult, error) {
+func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("SignIn command started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "SignInCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "SignInCommandExecSpan")
 	defer cancel()
+
+	if command.userName == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "username is required")
+	}
+
+	if command.password == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "password is required")
+	}
 
 	user, err := command.storage.GetUserByUsername(ctx, command.userName)
 	if err != nil {

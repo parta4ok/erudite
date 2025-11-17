@@ -20,36 +20,26 @@ type UpdateUserCommand struct {
 	hasher  common.Hasher
 
 	user *entities.User
-	ctx  context.Context
 }
 
-func NewUpdateUserCommand(ctx context.Context, storage common.Storage, hasher common.Hasher,
-	user *entities.User) (*UpdateUserCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if hasher == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "hasher not set")
-	}
-
-	if user == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "user data is empty")
-	}
-
+func NewUpdateUserCommand(storage common.Storage, hasher common.Hasher, user *entities.User,
+) *UpdateUserCommand {
 	return &UpdateUserCommand{
 		storage: storage,
 		hasher:  hasher,
 
-		ctx:  ctx,
 		user: user,
-	}, nil
+	}
 }
 
-func (command *UpdateUserCommand) Exec() (*entities.CommandResult, error) {
+func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("UpdateUserCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "UpdateUserCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "UpdateUserCommandExecSpan")
 	defer cancel()
+	
+	if command.user == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user data is empty")
+	}
 
 	if command.user.PasswordHash != "" {
 		hash, err := command.hasher.Hash(ctx, command.user.PasswordHash)

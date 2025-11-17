@@ -38,18 +38,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 		}, nil
 	}
 
-	command, err := a.factory.NewIntrospectedCommand(ctx, token)
-	if err != nil {
-		err := errors.Wrap(err, "create introspect command failure")
-		slog.Error(err.Error())
-		span.SetError(err, "create introspect command failure")
-		return &authv1.IntrospectResponse{
-			Claims: nil,
-			Error:  &authv1.Error{Message: err.Error()},
-		}, nil
-	}
-
-	res, err := command.Exec()
+	res, err := a.factory.NewIntrospectedCommand(token).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "introspect command exec failure")
 		slog.Error(err.Error())
@@ -116,19 +105,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 		}, nil
 	}
 
-	command, err := a.factory.NewGetLinkedUsersCommand(ctx, userID)
-	if err != nil {
-		err := errors.Wrap(err, "create get user command failure")
-		slog.Error(err.Error())
-		span.SetError(err, "create get user command failure")
-		return &authv1.LinkedUsersResponse{
-			Recipient: nil,
-			Student:   nil,
-			Error:     &authv1.Error{Message: err.Error()},
-		}, nil
-	}
-
-	res, err := command.Exec()
+	res, err := a.factory.NewGetLinkedUsersCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get user command exec failure")
 		slog.Error(err.Error())
@@ -207,18 +184,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 		}, nil
 	}
 
-	cmd, err := a.factory.NewGetMentorGroupsCommand(ctx, req.GetMentorID())
-	if err != nil {
-		slog.Error(err.Error())
-		err := errors.Wrap(err, "cteating GetMentorGroupsCommand failed")
-		span.SetError(err, "cteating GetMentorGroupsCommand failed")
-		return &authv1.GroupsResponse{
-			Groups: nil,
-			Error:  &authv1.Error{Message: err.Error()},
-		}, nil
-	}
-
-	res, err := cmd.Exec()
+	res, err := a.factory.NewGetMentorGroupsCommand(req.GetMentorID()).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "GetMentorGroupsCommand execution failed")
 		slog.Error(err.Error())
@@ -281,18 +247,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 		}, nil
 	}
 
-	cmd, err := a.factory.NewGetUserByIDCommand(ctx, req.GetUserID())
-	if err != nil {
-		slog.Error(err.Error())
-		err := errors.Wrap(err, "cteating GetUserByIDCommand failed")
-		span.SetError(err, "cteating GetUserByIDCommand failed")
-		return &authv1.UserInfoResponse{
-			User:  nil,
-			Error: &authv1.Error{Message: err.Error()},
-		}, nil
-	}
-
-	res, err := cmd.Exec()
+	res, err := a.factory.NewGetUserByIDCommand(req.GetUserID()).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "GetUserByIDCommand execution failed")
 		slog.Error(err.Error())

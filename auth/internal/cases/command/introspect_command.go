@@ -19,30 +19,28 @@ type IntrospectCommand struct {
 	storage     common.Storage
 	jwtProvider common.JWTProvider
 
-	ctx context.Context
 	jwt string
 }
 
-func NewIntrospectCommand(ctx context.Context, jwt string, storage common.Storage,
-	provider common.JWTProvider) (*IntrospectCommand, error) {
-	if jwt == "" {
-		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
-	}
-
+func NewIntrospectCommand(jwt string, storage common.Storage, provider common.JWTProvider,
+) *IntrospectCommand {
 	return &IntrospectCommand{
 		storage:     storage,
 		jwtProvider: provider,
 
-		ctx: ctx,
 		jwt: jwt,
-	}, nil
+	}
 }
 
-func (command *IntrospectCommand) Exec() (*entities.CommandResult, error) {
+func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("IntrospectCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "IntrospectCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "IntrospectCommandExecSpan")
 	defer cancel()
 
+	if command.jwt == "" {
+		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
+	}
+	
 	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
 		err = errors.Wrap(err, "Introspect")

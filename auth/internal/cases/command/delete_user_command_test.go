@@ -8,57 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/parta4ok/kvs/auth/internal/cases/command"
-	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/cases/common/testdata"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 )
-
-func TestNewDeleteUserCommand(t *testing.T) {
-	t.Parallel()
-	ctx := context.TODO()
-	mockStorage := testdata.NewMockStorage(gomock.NewController(t))
-
-	tests := []struct {
-		name    string
-		storage common.Storage
-		userID  string
-		wantErr bool
-		resErr  error
-	}{
-		{
-			name:    "nil storage",
-			userID:  "uid",
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name:    "empty userID",
-			storage: mockStorage,
-			userID:  "",
-			wantErr: true,
-			resErr:  entities.ErrInvalidParam,
-		},
-		{
-			name:    "success",
-			storage: mockStorage,
-			userID:  "uid",
-		},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			cmd, err := command.NewDeleteUserCommand(ctx, tc.storage, tc.userID)
-			if tc.wantErr {
-				require.ErrorIs(t, err, tc.resErr)
-				require.Nil(t, cmd)
-				return
-			}
-			require.NoError(t, err)
-			require.NotNil(t, cmd)
-		})
-	}
-}
 
 func TestDeleteUserCommand_Exec(t *testing.T) {
 	t.Parallel()
@@ -104,10 +56,10 @@ func TestDeleteUserCommand_Exec(t *testing.T) {
 			if tc.stage.RemoveUserSettings != nil {
 				tc.stage.RemoveUserSettings(ctx, t, mockStorage, userID, tc.stage.RemoveUserErr)
 			}
-			cmd, err := command.NewDeleteUserCommand(ctx, mockStorage, userID)
-			require.NoError(t, err)
+			cmd := command.NewDeleteUserCommand(mockStorage, userID)
 			require.NotNil(t, cmd)
-			res, err := cmd.Exec()
+
+			res, err := cmd.Exec(ctx)
 			if tc.wantErr {
 				require.ErrorIs(t, err, tc.resErr)
 				require.Nil(t, res)

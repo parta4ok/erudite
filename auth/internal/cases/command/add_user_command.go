@@ -21,41 +21,28 @@ type AddUserCommand struct {
 	generator common.IDGenerator
 
 	user *entities.User
-	ctx  context.Context
 }
 
-func NewAddUserCommand(ctx context.Context, storage common.Storage, hasher common.Hasher,
-	generator common.IDGenerator, user *entities.User) (*AddUserCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if hasher == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "hasher not set")
-	}
-
-	if generator == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "generator not set")
-	}
-
-	if user == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "user not set")
-	}
-
+func NewAddUserCommand(storage common.Storage, hasher common.Hasher,
+	generator common.IDGenerator, user *entities.User) *AddUserCommand {
 	return &AddUserCommand{
 		storage:   storage,
 		hasher:    hasher,
 		generator: generator,
 
-		ctx:  ctx,
 		user: user,
-	}, nil
+	}
 }
 
-func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
+//nolint:funlen //ok
+func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("AddUserCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "AddUserCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AddUserCommandExecSpan")
 	defer cancel()
+
+	if command.user == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user not set")
+	}
 
 	_, err := command.storage.GetUserByUsername(ctx, command.user.Username)
 	if err != nil {
@@ -101,7 +88,7 @@ func (command *AddUserCommand) Exec() (*entities.CommandResult, error) {
 		GroupID:      command.user.GroupID,
 	}
 
-	if err := command.storage.StoreUser(command.ctx, user); err != nil {
+	if err := command.storage.StoreUser(ctx, user); err != nil {
 		err = errors.Wrap(err, "store user failure")
 		slog.Error(err.Error())
 		span.SetError(err, "store user failure")

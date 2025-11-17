@@ -20,37 +20,27 @@ type AddGroupCommand struct {
 
 	title    string
 	linkedID string
-	ctx      context.Context
 }
 
-func NewAddGroupCommand(ctx context.Context, storage common.Storage, generator common.IDGenerator,
-	title, linkedID string) (*AddGroupCommand, error) {
-	if storage == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "storage not set")
-	}
-
-	if generator == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "generator not set")
-	}
-
-	if title == "" || linkedID == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "linkedID or group title not set")
-	}
-
+func NewAddGroupCommand(storage common.Storage, generator common.IDGenerator,
+	title, linkedID string) *AddGroupCommand {
 	return &AddGroupCommand{
 		storage:   storage,
 		generator: generator,
 
-		ctx:      ctx,
 		linkedID: linkedID,
 		title:    title,
-	}, nil
+	}
 }
 
-func (command *AddGroupCommand) Exec() (*entities.CommandResult, error) {
+func (command *AddGroupCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("AddGroupCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(command.ctx, "AddGroupCommandExecSpan")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AddGroupCommandExecSpan")
 	defer cancel()
+
+	if command.title == "" || command.linkedID == "" {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "linkedID or group title not set")
+	}
 
 	gid, err := command.generator.Generate(ctx)
 	if err != nil {

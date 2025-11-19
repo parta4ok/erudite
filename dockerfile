@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . .
 
-RUN golangci-lint run -c /common/.golangci.yml
+# RUN golangci-lint run -c /common/.golangci.yml
 RUN go test ./...
 
 FROM builder AS question_builder

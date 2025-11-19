@@ -26,7 +26,7 @@ jwt:
 tracing:
     system: jaeger
     servicename: auth
-    enabled: false
+    enabled: true
 jaeger:
     address: jaeger:6831
     probability: 1.0

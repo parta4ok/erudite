@@ -243,7 +243,7 @@ func TestProvider_Introspect_ExpiredToken(t *testing.T) {
 		[]byte("test-secret"),
 		[]string{"test-audience"},
 		"test-issuer",
-		time.Millisecond*10, 
+		time.Millisecond*10,
 	)
 	require.NoError(t, err)
 

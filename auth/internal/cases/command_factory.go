@@ -74,7 +74,7 @@ func (cf *CommandFactory) NewIntrospectedCommand(jwt string) entities.Command {
 	return command.NewIntrospectCommand(jwt, cf.storage, cf.jwtProvider)
 }
 
-func (cf *CommandFactory) NewSignInCommand(userName string,	password string) entities.Command {
+func (cf *CommandFactory) NewSignInCommand(userName string, password string) entities.Command {
 	return command.NewSignInCommand(cf.storage, cf.jwtProvider, cf.hasher, userName, password)
 }
 
@@ -94,7 +94,7 @@ func (cf *CommandFactory) NewGetLinkedUsersCommand(userID string) entities.Comma
 	return command.NewGetLinkedUsersCommand(cf.storage, userID)
 }
 
-func (cf *CommandFactory) NewAddGroupCommand(title string, linkedID string) entities.Command{
+func (cf *CommandFactory) NewAddGroupCommand(title string, linkedID string) entities.Command {
 	return command.NewAddGroupCommand(cf.storage, cf.idGenerator, title, linkedID)
 }
 

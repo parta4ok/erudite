@@ -1,13 +1,9 @@
 package appication
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/parta4ok/kvs/question/internal/adapter/config"
@@ -20,70 +16,77 @@ import (
 	"github.com/parta4ok/kvs/question/internal/port/http/private"
 	"github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
+	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
 
 	"github.com/pkg/errors"
 )
 
 type App struct {
-	CfgPath      string
-	publicServer *public.Server
+	config        *config.Config
+	publicServer  *public.Server
 	privateServer *private.Server
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
-	tracing      bool
+	tracerPort    *tracing.TracerPort
+	tracing       bool
 }
 
 func NewApp(cfgPath string) *App {
-	return &App{
-		CfgPath: cfgPath,
-	}
-}
-
-func (app *App) Start() {
-	cfg, err := config.NewConfig(app.CfgPath)
+	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	app.initConfiguredLogger(cfg)
-	slog.Info("Logger configuration completed")
-
-	app.initTracer(cfg)
-
-	storage, sessionStorage := app.initStorage(cfg)
-	generator := app.initGenerator()
-	authClient := app.initAuthServiceClient(cfg)
-	accessor := app.initAccessor(cfg)
-
-	service := app.initSessionServiceBase(cfg, storage, sessionStorage, generator)
-	broker := app.initBroker(cfg)
-
-	wrappedService := app.initWrappedSessionService(cfg, service, broker)
-
-	pubicServer := app.initPublicPort(cfg, wrappedService, authClient, accessor)
-	app.publicServer = pubicServer
-
-	privateServer := app.initPrivatePort(cfg, wrappedService)
-	app.privateServer = privateServer
-
-	app.startWithGracefulShutdown()
+	return &App{
+		config: cfg,
+	}
 }
 
-func (app *App) initConfiguredLogger(cfg *config.Config) {
-	level := parseLogLevel(cfg.GetLogLevel())
+func (app *App) Start() {
+	app.initConfiguredLogger()
+	slog.Info("logger configuration completed")
+
+	tracerPort := app.initTracer()
+	app.tracerPort = tracerPort
+
+	storage, sessionStorage := app.initStorage()
+	generator := app.initGenerator()
+	authClient := app.initAuthServiceClient()
+	accessor := app.initAccessor()
+
+	service := app.initSessionServiceBase(storage, sessionStorage, generator)
+	broker := app.initBroker()
+
+	wrappedService := app.initWrappedSessionService(service, broker)
+
+	pubicServer := app.initPublicPort(wrappedService, authClient, accessor)
+	app.publicServer = pubicServer
+
+	privateServer := app.initPrivatePort(wrappedService)
+	app.privateServer = privateServer
+
+	ports := []baseApplication.Port{app.privateServer, app.publicServer, app.tracerPort}
+
+	baseApp := baseApplication.NewBaseApplication()
+	baseApp.SetTimeout(4 * time.Second)
+	baseApp.SetPorts(ports)
+	baseApp.StartPortsWithGracefulShutdown()
+}
+
+func (app *App) initConfiguredLogger() {
+	level := parseLogLevel(app.config.GetLogLevel())
 
 	opts := &slog.HandlerOptions{
 		Level:     level,
-		AddSource: cfg.GetLogAddSource(),
+		AddSource: app.config.GetLogAddSource(),
 	}
 
 	var handler slog.Handler
 
-	switch cfg.GetLogFormat() {
+	switch app.config.GetLogFormat() {
 	case "text":
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	default:
@@ -91,16 +94,16 @@ func (app *App) initConfiguredLogger(cfg *config.Config) {
 	}
 
 	logger := slog.New(handler).With(
-		"service", cfg.GetServiceName(),
-		"version", cfg.GetServiceVersion(),
+		"service", app.config.GetServiceName(),
+		"version", app.config.GetServiceVersion(),
 	)
 
 	slog.SetDefault(logger)
 
 	slog.Info("Logger reconfigured from config",
-		"level", cfg.GetLogLevel(),
-		"format", cfg.GetLogFormat(),
-		"add_source", cfg.GetLogAddSource())
+		"level", app.config.GetLogLevel(),
+		"format", app.config.GetLogFormat(),
+		"add_source", app.config.GetLogAddSource())
 }
 
 func parseLogLevel(levelStr string) slog.Level {
@@ -118,43 +121,60 @@ func parseLogLevel(levelStr string) slog.Level {
 	}
 }
 
-func (app *App) initTracer(cfg *config.Config) {
+func (app *App) initTracer() *tracing.TracerPort {
 	slog.Info("init tracer started")
 
-	if !cfg.IsTracingEnabled() {
-		slog.Info("Tracing disabled")
-		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
-		return
+	if !app.config.IsTracingEnabled() {
+		slog.Info("tracing disabled")
+		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
+		return tracerPort
 	}
 
 	app.tracing = true
-	systemName := cfg.GetTracingType()
-	serviceName := cfg.TracingSystemName()
-	serviceURL := cfg.GetTracingInfraURL(systemName)
+	systemName := app.config.GetTracingType()
+	serviceName := app.config.TracingSystemName()
 
-	tracer, err := projectTracer.NewJaegerTracer(serviceName, serviceURL)
-	if err != nil {
-		err := errors.Wrap(err, "jaeger tracer init failure")
-		slog.Error(err.Error())
-		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
-		app.panic(err)
+	var tracer tracing.Tracer
+	var err error
+
+	switch systemName {
+	case "otel", "opentelemetry":
+		endpoint := app.config.GetOtelEndpoint()
+		tracer, err = otelTracer.NewOtelTracer(serviceName, endpoint)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", "opentelemetry"),
+			slog.String("service", serviceName),
+			slog.String("endpoint", endpoint),
+		)
+	case "jaeger":
+		serviceURL := app.config.GetTracingInfraURL(systemName)
+		tracer, err = projectTracer.NewJaegerTracer(serviceName, serviceURL)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", systemName),
+			slog.String("service", serviceName),
+			slog.String("endpoint", serviceURL),
+		)
+	default:
+		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
 	}
 
-	tracing.InitGlobalTracer(tracer)
-	slog.Info("Tracer initialized successfully",
-		slog.String("type", systemName),
-		slog.String("service", serviceName),
-		slog.String("endpoint", serviceURL),
-	)
+	tracerPort := tracing.NewTracePort(tracer)
+	return tracerPort
 }
 
-func (app *App) initBroker(cfg *config.Config) cases.MessageBroker {
+func (app *App) initBroker() cases.MessageBroker {
 	slog.Info("init broker started")
 
 	var broker cases.MessageBroker
-	subject := cfg.GetNatsSubject()
+	subject := app.config.GetNatsSubject()
 
-	pub := app.initNatsPub(cfg)
+	pub := app.initNatsPub()
 	nats, err := nats.NewPublisher(pub, subject)
 	if err != nil {
 		app.panic(err)
@@ -165,14 +185,14 @@ func (app *App) initBroker(cfg *config.Config) cases.MessageBroker {
 	return broker
 }
 
-func (app *App) initStorage(cfg *config.Config) (cases.Storage, entities.SessionStorage) {
+func (app *App) initStorage() (cases.Storage, entities.SessionStorage) {
 	slog.Info("init storage started")
 
 	var storage cases.Storage
 	var sessionStorage entities.SessionStorage
 
-	storageType := cfg.GetServiceStorageType()
-	connStr := cfg.GetStorageConnStr(storageType)
+	storageType := app.config.GetServiceStorageType()
+	connStr := app.config.GetStorageConnStr(storageType)
 	switch storageType {
 	case "postgres":
 		s, err := postgres.NewStorage(connStr)
@@ -189,7 +209,7 @@ func (app *App) initStorage(cfg *config.Config) (cases.Storage, entities.Session
 	return storage, sessionStorage
 }
 
-func (app *App) initAccessor(_ *config.Config) public.Accessor {
+func (app *App) initAccessor() public.Accessor {
 	slog.Info("initAccessor started")
 	var acessor public.Accessor
 
@@ -213,10 +233,10 @@ func (app *App) initGenerator() entities.IDGenerator {
 	return gen
 }
 
-func (app *App) initNatsPub(cfg *config.Config) *publisher.Publisher {
+func (app *App) initNatsPub() *publisher.Publisher {
 	slog.Info("init nats publisher started")
 
-	natsUrl := cfg.GetNatsURL()
+	natsUrl := app.config.GetNatsURL()
 	pub, err := publisher.NewPublisher(natsUrl)
 	if err != nil {
 		app.panic(err)
@@ -226,7 +246,6 @@ func (app *App) initNatsPub(cfg *config.Config) *publisher.Publisher {
 }
 
 func (app *App) initSessionServiceBase(
-	cfg *config.Config,
 	storage cases.Storage,
 	sessionStorage entities.SessionStorage,
 	generator entities.IDGenerator) cases.SessionService {
@@ -234,7 +253,7 @@ func (app *App) initSessionServiceBase(
 
 	var sessionService cases.SessionService
 
-	respondTime := cfg.GetTimeToRespond()
+	respondTime := app.config.GetTimeToRespond()
 
 	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator,
 		cases.WithCustomRespondTime(respondTime))
@@ -248,12 +267,14 @@ func (app *App) initSessionServiceBase(
 	return sessionService
 }
 
-func (app *App) initWrappedSessionService(cfg *config.Config, service cases.SessionService,
-	broker cases.MessageBroker) cases.SessionService {
+func (app *App) initWrappedSessionService(
+	service cases.SessionService,
+	broker cases.MessageBroker,
+) cases.SessionService {
 	slog.Info("init wrapped_session_service started")
 	var wrappedService cases.SessionService
 
-	brokerEventTimeOut := cfg.GetEventTimeout()
+	brokerEventTimeOut := app.config.GetEventTimeout()
 	srv, err := cases.NewSessionServiceBusDecorator(service, broker,
 		cases.WithCustomEventTimeout(brokerEventTimeOut))
 	if err != nil {
@@ -265,12 +286,12 @@ func (app *App) initWrappedSessionService(cfg *config.Config, service cases.Sess
 	return wrappedService
 }
 
-func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
+func (app *App) initAuthServiceClient() public.Introspector {
 	slog.Info("init auth service client started")
 
 	var authClient public.Introspector
 
-	addr := cfg.GetAuthConn()
+	addr := app.config.GetAuthConn()
 	if addr == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "get auth address failure")
 		app.panic(err)
@@ -287,13 +308,16 @@ func (app *App) initAuthServiceClient(cfg *config.Config) public.Introspector {
 	return authClient
 }
 
-func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase cases.SessionService,
-	authClient public.Introspector, accessor public.Accessor) *public.Server {
+func (app *App) initPublicPort(
+	sessionServiceBase cases.SessionService,
+	authClient public.Introspector,
+	accessor public.Accessor,
+) *public.Server {
 	slog.Info("init public port started")
 
-	port := cfg.GetPublicPort()
-	timeout := cfg.GetPublicTimeout()
-	dailyLimit := cfg.GetSessionLimit()
+	port := app.config.GetPublicPort()
+	timeout := app.config.GetPublicTimeout()
+	dailyLimit := app.config.GetSessionLimit()
 
 	server, err := public.New(
 		public.WithCustomDailySessionLimit(dailyLimit),
@@ -312,12 +336,11 @@ func (app *App) initPublicPort(cfg *config.Config, sessionServiceBase cases.Sess
 	return server
 }
 
-func (app *App) initPrivatePort(cfg *config.Config, sessionServiceBase cases.SessionService,
-	) *private.Server {
+func (app *App) initPrivatePort(sessionServiceBase cases.SessionService) *private.Server {
 	slog.Info("init private port started")
 
-	port := cfg.GetPrivatePort()
-	timeout := cfg.GetPrivateTimeout()
+	port := app.config.GetPrivatePort()
+	timeout := app.config.GetPrivateTimeout()
 
 	server, err := private.New(
 		private.WithService(sessionServiceBase),
@@ -332,85 +355,6 @@ func (app *App) initPrivatePort(cfg *config.Config, sessionServiceBase cases.Ses
 	}
 
 	return server
-}
-
-func (app *App) startWithGracefulShutdown() {
-	ctx, cancel := context.WithCancel(context.Background())
-	app.cancel = cancel
-
-	sigOSChan := make(chan os.Signal, 1)
-	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		slog.Info("Starting public server")
-		app.publicServer.Start()
-	}()
-
-	app.wg.Go(
-		func() {
-		slog.Info("Starting private server")
-		app.privateServer.Start()
-	})
-
-	select {
-	case sig := <-sigOSChan:
-		slog.Info("Received os shutdown signal", "signal", sig.String())
-		app.shutdown()
-	case <-ctx.Done():
-		slog.Info("Application context cancelled")
-		app.shutdown()
-	}
-}
-
-func (app *App) shutdown() {
-	slog.Info("Starting graceful shutdown...")
-
-	shutdownTimeout := 2 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if app.publicServer != nil {
-		slog.Info("Stopping public server...")
-		app.publicServer.Stop()
-	}
-
-	if app.privateServer != nil {
-		slog.Info("Stopping private server...")
-		app.privateServer.Stop()
-	}
-
-	if app.tracing {
-		if err := tracing.CloseGlobalTracer(); err != nil {
-			slog.Error(err.Error())
-		}
-	}
-
-	done := make(chan struct{})
-	go func() {
-		app.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		slog.Info("All services stopped gracefully")
-	case <-shutdownCtx.Done():
-		slog.Warn("Graceful shutdown timeout exceeded, forcing exit")
-	}
-
-	if app.cancel != nil {
-		app.cancel()
-	}
-
-	slog.Info("Application shutdown completed")
-}
-
-func (app *App) Stop() {
-	if app.cancel != nil {
-		app.cancel()
-	}
 }
 
 func (app *App) panic(err error, args ...any) {

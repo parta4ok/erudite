@@ -1,23 +1,33 @@
 reporting:
-  http:
-    public:
-      port: :8070
-      timeout: 5s
-  logging:
-    service_name: reporting
-    service_version: 1.0.0
-    version: 1.0.0
-    level: info
-    format: json
-    add_source: true
-  representer:
-    format: html
-  workers_limit: 5
+    http:
+        public:
+            port: :8070
+            timeout: 5s
+    workers_limit: 5
+    representer:
+        format: html
+    logging:
+        service_name: reporting
+        service_version: 1.0.0
+        version: 1.0.0
+        level: info
+        format: json
+        add_source: true
 auth_service:
-  address: "auth_app:8091"
+    address: "auth_app:8091"
 question_service:
-  address: "http://question_app:8081"
+    address: "http://question_app:8081"
 nats:
-  url: nats://nats:4222
-  subject: sessions.*
-  event_timeout: 5s
+    url: nats://nats:4222
+    subject: sessions.*
+    event_timeout: 5s
+tracing:
+    system: otel
+    servicename: reporting
+    enabled: true
+otel:
+    endpoint: jaeger:4317
+    insecure: true
+jaeger:
+    address: jaeger:6831
+    probability: 1.0

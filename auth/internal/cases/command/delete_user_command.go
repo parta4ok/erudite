@@ -24,7 +24,7 @@ func NewDeleteUserCommand(storage common.Storage, userID string) *DeleteUserComm
 	return &DeleteUserCommand{
 		storage: storage,
 
-		userID:  userID,
+		userID: userID,
 	}
 }
 
@@ -36,7 +36,6 @@ func (command *DeleteUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 	if command.userID == "" {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "userID is incorrect")
 	}
-
 
 	if err := command.storage.RemoveUser(ctx, command.userID); err != nil {
 		err = errors.Wrap(err, "RemoveUser failure")

@@ -67,6 +67,8 @@ services:
             - "14268:14268" # Jaeger collector HTTP port
             - "16686:16686" # Jaeger UI port
             - "14250:14250" # Jaeger gRPC port
+            - "4317:4317" # OTLP gRPC port
+            - "4318:4318" # OTLP HTTP port
         environment:
             - COLLECTOR_OTLP_ENABLED=true
             - COLLECTOR_ZIPKIN_HOST_PORT=:9411

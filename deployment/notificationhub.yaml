@@ -17,3 +17,10 @@ nats:
     url: nats://nats:4222
     subject: report.>
     event_timeout: 5s
+tracing:
+    system: jaeger
+    servicename: notoficationhub
+    enabled: false
+jaeger:
+    address: jaeger:6831
+    probability: 1.0

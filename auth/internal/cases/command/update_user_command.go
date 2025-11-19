@@ -36,7 +36,7 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 	slog.Info("UpdateUserCommand exec started")
 	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "UpdateUserCommandExecSpan")
 	defer cancel()
-	
+
 	if command.user == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "user data is empty")
 	}

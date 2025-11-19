@@ -72,8 +72,6 @@ func (cfg *Config) GetServiceVersion() string {
 	return cfg.viper.GetString("reporting.logging.service_version")
 }
 
-
-
 func (cfg *Config) GetRepresenterFormat() string {
 	return cfg.viper.GetString("reporting.representer.format")
 }

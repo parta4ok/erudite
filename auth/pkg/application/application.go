@@ -1,13 +1,9 @@
 package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/parta4ok/kvs/auth/internal/adapter/config"
@@ -22,61 +18,122 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/port/grpc/private"
 	"github.com/parta4ok/kvs/auth/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
+	"github.com/parta4ok/kvs/toolkit/pkg/logger"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
+	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
 
 	"github.com/pkg/errors"
 )
 
 type App struct {
-	CfgPath       string
+	cfg           *config.Config
 	privateServer *private.Server
 	publicServer  *public.Server
-	cancel        context.CancelFunc
-	wg            sync.WaitGroup
+	tracerPort    *tracing.TracerPort
 	tracing       bool
 }
 
 func NewApp(cfgPath string) *App {
-	return &App{
-		CfgPath: cfgPath,
-	}
-}
-
-func (app *App) Start() {
-	cfg, err := config.NewConfig(app.CfgPath)
+	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	app.initConfiguredLogger(cfg)
-	slog.Info("Logger configuration completed")
+	return &App{
+		cfg: cfg,
+	}
+}
 
-	app.initTracer(cfg)
-	storage := app.initStorage(cfg)
+func (app *App) Start() {
+	baseLogger := logger.NewBaseLogger(
+		app.cfg.GetLogLevel(),
+		app.cfg.GetLogAddSource(),
+		app.cfg.GetLogFormat(),
+		app.cfg.GetServiceName(),
+		app.cfg.GetServiceVersion(),
+	)
+	baseLogger.InitConfiguredLogger()
 
-	provider := app.initJWTProvider(cfg)
+	tracerPort := app.initTracer()
+	app.tracerPort = tracerPort
 
-	hasher := app.initHasher(cfg)
-
-	generator := app.initGenerator(cfg)
-
-	accessor := app.initAccessor(cfg)
+	storage := app.initStorage()
+	provider := app.initJWTProvider()
+	hasher := app.initHasher()
+	generator := app.initGenerator()
+	accessor := app.initAccessor()
 
 	commandFactory := app.initCommandFactory(storage, provider, hasher, generator)
 
-	server := app.initPrivateGRPCPort(cfg, commandFactory)
-	app.privateServer = server
+	privateServer := app.initPrivateGRPCPort(commandFactory)
+	app.privateServer = privateServer
 
-	publicServer := app.initPublicHTTPPort(cfg, commandFactory, accessor)
+	publicServer := app.initPublicHTTPPort(commandFactory, accessor)
 	app.publicServer = publicServer
-	app.startWithGracefulShutdown()
+
+	baseApp := baseApplication.NewBaseApplication()
+	baseApp.SetTimeout(5 * time.Second)
+	baseApp.SetPorts([]baseApplication.Port{
+		app.privateServer,
+		app.publicServer,
+		app.tracerPort,
+	})
+
+	baseApp.StartPortsWithGracefulShutdown()
 }
 
-func (app *App) initAccessor(_ *config.Config) public.Accessor {
+func (app *App) initTracer() *tracing.TracerPort {
+	slog.Info("init tracer started")
+
+	if !app.cfg.IsTracingEnabled() {
+		slog.Info("tracing disabled")
+		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
+		return tracerPort
+	}
+
+	app.tracing = true
+	systemName := app.cfg.GetTracingType()
+	serviceName := app.cfg.TracingSystemName()
+
+	var tracer tracing.Tracer
+	var err error
+
+	switch systemName {
+	case "otel", "opentelemetry":
+		endpoint := app.cfg.GetOtelEndpoint()
+		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", "opentelemetry"),
+			slog.String("service", serviceName),
+			slog.String("endpoint", endpoint),
+		)
+	case "jaeger":
+		serviceURL := app.cfg.GetTracingInfraURL(systemName)
+		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", systemName),
+			slog.String("service", serviceName),
+			slog.String("endpoint", serviceURL),
+		)
+	default:
+		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
+	}
+
+	tracerPort := tracing.NewTracePort(tracer)
+	return tracerPort
+}
+
+func (app *App) initAccessor() public.Accessor {
 	slog.Info("initAccessor started")
-	var acessor public.Accessor
 
 	a, err := accessor.NewRightAccessor()
 	if err != nil {
@@ -84,93 +141,16 @@ func (app *App) initAccessor(_ *config.Config) public.Accessor {
 		app.panic(err)
 	}
 
-	acessor = a
-
-	return acessor
+	return a
 }
 
-func (app *App) initConfiguredLogger(cfg *config.Config) {
-	level := parseLogLevel(cfg.GetLogLevel())
-
-	opts := &slog.HandlerOptions{
-		Level:     level,
-		AddSource: cfg.GetLogAddSource(),
-	}
-
-	var handler slog.Handler
-
-	switch cfg.GetLogFormat() {
-	case "text":
-		handler = slog.NewTextHandler(os.Stdout, opts)
-	default:
-		handler = slog.NewJSONHandler(os.Stdout, opts)
-	}
-
-	logger := slog.New(handler).With(
-		"service", cfg.GetServiceName(),
-		"version", cfg.GetServiceVersion(),
-	)
-
-	slog.SetDefault(logger)
-
-	slog.Info("Logger reconfigured from config",
-		"level", cfg.GetLogLevel(),
-		"format", cfg.GetLogFormat(),
-		"add_source", cfg.GetLogAddSource())
-}
-
-func parseLogLevel(levelStr string) slog.Level {
-	switch levelStr {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
-func (app *App) initTracer(cfg *config.Config) {
-	slog.Info("init tracer started")
-
-	if !cfg.IsTracingEnabled() {
-		slog.Info("Tracing disabled")
-		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
-		return
-	}
-
-	app.tracing = true
-	systemName := cfg.GetTracingType()
-	serviceName := cfg.TracingSystemName()
-	serviceURL := cfg.GetTracingInfraURL(systemName)
-
-	tracer, err := projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
-	if err != nil {
-		err := errors.Wrap(err, "jaeger tracer init failure")
-		slog.Error(err.Error())
-		tracing.InitGlobalTracer(&tracing.NoOpTracer{})
-		app.panic(err)
-	}
-
-	tracing.InitGlobalTracer(tracer)
-	slog.Info("Tracer initialized successfully",
-		slog.String("type", systemName),
-		slog.String("service", serviceName),
-		slog.String("endpoint", serviceURL),
-	)
-}
-
-func (app *App) initStorage(cfg *config.Config) common.Storage {
+func (app *App) initStorage() common.Storage {
 	slog.Info("init storage started")
 
 	var storage common.Storage
 
-	storageType := cfg.GetServiceStorageType()
-	connStr := cfg.GetStorageConnStr(storageType)
+	storageType := app.cfg.GetServiceStorageType()
+	connStr := app.cfg.GetStorageConnStr(storageType)
 	switch storageType {
 	case "postgres":
 		s, err := postgres.NewStorage(connStr)
@@ -186,9 +166,8 @@ func (app *App) initStorage(cfg *config.Config) common.Storage {
 	return storage
 }
 
-func (app *App) initHasher(_ *config.Config) common.Hasher {
+func (app *App) initHasher() common.Hasher {
 	slog.Info("init hasher started")
-	var hasher common.Hasher
 
 	h, err := bcryption.NewHasher()
 	if err != nil {
@@ -196,13 +175,11 @@ func (app *App) initHasher(_ *config.Config) common.Hasher {
 		app.panic(err)
 	}
 
-	hasher = h
-	return hasher
+	return h
 }
 
-func (app *App) initGenerator(_ *config.Config) common.IDGenerator {
+func (app *App) initGenerator() common.IDGenerator {
 	slog.Info("init generator started")
-	var generator common.IDGenerator
 
 	g, err := google.NewGenerator()
 	if err != nil {
@@ -210,8 +187,7 @@ func (app *App) initGenerator(_ *config.Config) common.IDGenerator {
 		app.panic(err)
 	}
 
-	generator = g
-	return generator
+	return g
 }
 
 func (app *App) initCommandFactory(storage common.Storage,
@@ -233,28 +209,28 @@ func (app *App) initCommandFactory(storage common.Storage,
 	return factory
 }
 
-func (app *App) initJWTProvider(cfg *config.Config) common.JWTProvider {
+func (app *App) initJWTProvider() common.JWTProvider {
 	slog.Info("init JWT provider")
-	secret := cfg.GetJWTSecret()
-	aud := cfg.GetJWTAudience()
-	iss := cfg.GetJWTIssuer()
-	ttl := cfg.GetJWTTTL()
+	secret := app.cfg.GetJWTSecret()
+	aud := app.cfg.GetJWTAudience()
+	iss := app.cfg.GetJWTIssuer()
+	ttl := app.cfg.GetJWTTTL()
 
 	provider, err := jwtprovider.NewProvider(secret, aud, iss, ttl)
 	if err != nil {
-		err := errors.Wrap(err, "new command factory init failure")
+		err := errors.Wrap(err, "new JWT provider init failure")
 		app.panic(err)
 	}
 
 	return provider
 }
 
-func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFactory,
+func (app *App) initPublicHTTPPort(factory port.CommandFactory,
 	accessor public.Accessor) *public.Server {
 	slog.Info("init public http port started")
 
-	port := cfg.GetPublicPort()
-	interval := cfg.GetPublicTimeout()
+	port := app.cfg.GetPublicPort()
+	interval := app.cfg.GetPublicTimeout()
 
 	server, err := public.New(
 		public.WithFactory(factory),
@@ -269,11 +245,10 @@ func (app *App) initPublicHTTPPort(cfg *config.Config, factory port.CommandFacto
 	return server
 }
 
-func (app *App) initPrivateGRPCPort(cfg *config.Config,
-	factory port.CommandFactory) *private.Server {
+func (app *App) initPrivateGRPCPort(factory port.CommandFactory) *private.Server {
 	slog.Info("init private grpc port started")
 
-	port := cfg.GetPrivatePort()
+	port := app.cfg.GetPrivatePort()
 
 	server, err := private.NewServer(
 		private.WithFactory(factory),
@@ -285,82 +260,6 @@ func (app *App) initPrivateGRPCPort(cfg *config.Config,
 	}
 
 	return server
-}
-
-func (app *App) startWithGracefulShutdown() {
-	ctx, cancel := context.WithCancel(context.Background())
-	app.cancel = cancel
-
-	sigOSChan := make(chan os.Signal, 1)
-	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		slog.Info("Starting private server")
-		app.privateServer.StartServer()
-	}()
-
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		slog.Info("Starting public server")
-		app.publicServer.Start()
-	}()
-
-	select {
-	case sig := <-sigOSChan:
-		slog.Info("Received os shutdown signal", "signal", sig.String())
-		app.shutdown()
-	case <-ctx.Done():
-		slog.Info("Application context cancelled")
-		app.shutdown()
-	}
-}
-
-func (app *App) shutdown() {
-	slog.Info("Starting graceful shutdown...")
-
-	shutdownTimeout := 2 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if app.privateServer != nil {
-		slog.Info("Stopping private server...")
-		app.privateServer.Stop()
-		app.publicServer.Stop()
-	}
-
-	if app.tracing {
-		if err := tracing.CloseGlobalTracer(); err != nil {
-			slog.Error(err.Error())
-		}
-	}
-
-	done := make(chan struct{})
-	go func() {
-		app.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		slog.Info("All services stopped gracefully")
-	case <-shutdownCtx.Done():
-		slog.Warn("Graceful shutdown timeout exceeded, forcing exit")
-	}
-
-	if app.cancel != nil {
-		app.cancel()
-	}
-
-	slog.Info("Application shutdown completed")
-}
-
-func (app *App) Stop() {
-	if app.cancel != nil {
-		app.cancel()
-	}
 }
 
 func (app *App) panic(err error, args ...any) {

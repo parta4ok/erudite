@@ -31,6 +31,8 @@ const (
 
 	right_admin  = "admin"
 	right_mentor = "mentor"
+
+	httpPublicPortType = "http_public"
 )
 
 type Server struct {
@@ -108,7 +110,52 @@ func New(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-func (s *Server) Start() {
+// Port interface implementation
+func (s *Server) Start(ctx context.Context) error {
+	slog.Info("HTTP public server starting", "port", s.cfg.Port)
+	s.registerRoutes()
+
+	s.server = &http.Server{
+		Addr:              s.cfg.Port,
+		Handler:           s.router,
+		ReadHeaderTimeout: s.cfg.Timeout,
+		WriteTimeout:      s.cfg.Timeout,
+		IdleTimeout:       s.cfg.Timeout,
+	}
+
+	go func() {
+		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("HTTP server serve error", "error", err)
+		}
+	}()
+
+	slog.Info("HTTP public server started", "port", s.cfg.Port)
+	return nil
+}
+
+func (s *Server) Stop(ctx context.Context) error {
+	slog.Info("Stopping HTTP public server", "port", s.cfg.Port)
+
+	shutdownCtx, cancelFn := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancelFn()
+
+	if s.server != nil {
+		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			slog.Error("HTTP server shutdown error", "error", err)
+			return errors.Wrapf(entities.ErrInternal, "shutdown err: %v", err)
+		}
+	}
+
+	slog.Info("HTTP public server stopped", "port", s.cfg.Port)
+	return nil
+}
+
+func (s *Server) Type() string {
+	return httpPublicPortType
+}
+
+// Legacy methods for backward compatibility
+func (s *Server) LegacyStart() {
 	slog.Info("public port started")
 	s.registerRoutes()
 
@@ -131,10 +178,10 @@ func (s *Server) Start() {
 
 	<-done
 
-	s.Stop()
+	s.LegacyStop()
 }
 
-func (s *Server) Stop() {
+func (s *Server) LegacyStop() {
 	slog.Info("server will be stopping")
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*2)

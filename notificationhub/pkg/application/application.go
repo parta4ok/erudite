@@ -1,155 +1,162 @@
-package appication
+package application
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/config"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/mail/base"
 	"github.com/parta4ok/kvs/notificationhub/internal/adapter/notifier/telegram"
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
+	"github.com/parta4ok/kvs/notificationhub/internal/entities"
 	"github.com/parta4ok/kvs/notificationhub/internal/port"
 	natsPort "github.com/parta4ok/kvs/notificationhub/internal/port/nats"
+	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
+	"github.com/parta4ok/kvs/toolkit/pkg/logger"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
+	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
+
+	"github.com/pkg/errors"
 )
 
 type App struct {
-	CfgPath      string
+	cfg          *config.Config
 	natsConsumer *natsPort.NatsConsumer
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
+	tracerPort   *tracing.TracerPort
+	tracing      bool
 }
 
 func NewApp(cfgPath string) *App {
-	return &App{
-		CfgPath: cfgPath,
-	}
-}
-
-func (app *App) Start() {
-	cfg, err := config.NewConfig(app.CfgPath)
+	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	app.initConfiguredLogger(cfg)
-	slog.Info("Logger configuration completed")
+	return &App{
+		cfg: cfg,
+	}
+}
 
-	mailNotifier := app.initMailNotifier(cfg, nil)
-	telegramNotifier := app.initTelegramNotifier(cfg, mailNotifier)
+func (app *App) Start() {
+	baseLogger := logger.NewBaseLogger(
+		app.cfg.GetLogLevel(),
+		app.cfg.GetLogAddSource(),
+		app.cfg.GetLogFormat(),
+		app.cfg.GetServiceName(),
+		app.cfg.GetServiceVersion(),
+	)
+	baseLogger.InitConfiguredLogger()
 
-	service := app.initService(cfg, telegramNotifier)
+	tracerPort := app.initTracer()
+	app.tracerPort = tracerPort
 
-	natsConsumer := app.initNatsConsumer(cfg, service)
+	mailNotifier := app.initMailNotifier(nil)
+	telegramNotifier := app.initTelegramNotifier(mailNotifier)
+
+	service := app.initService(telegramNotifier)
+
+	natsConsumer := app.initNatsConsumer(service)
 	app.natsConsumer = natsConsumer
 
-	if err := natsConsumer.Start(); err != nil {
-		slog.Error("Failed to start NATS consumer", "error", err)
-		os.Exit(1)
-	}
+	baseApp := baseApplication.NewBaseApplication()
+	baseApp.SetTimeout(5 * time.Second)
+	baseApp.SetPorts([]baseApplication.Port{
+		app.natsConsumer,
+		app.tracerPort,
+	})
 
-	app.startWithGracefulShutdown()
+	baseApp.StartPortsWithGracefulShutdown()
 }
 
-func (app *App) initConfiguredLogger(cfg *config.Config) {
-	level := parseLogLevel(cfg.GetLogLevel())
+func (app *App) initTracer() *tracing.TracerPort {
+	slog.Info("init tracer started")
 
-	opts := &slog.HandlerOptions{
-		Level:     level,
-		AddSource: cfg.GetLogAddSource(),
+	if !app.cfg.IsTracingEnabled() {
+		slog.Info("tracing disabled")
+		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
+		return tracerPort
 	}
 
-	var handler slog.Handler
+	app.tracing = true
+	systemName := app.cfg.GetTracingType()
+	serviceName := app.cfg.TracingSystemName()
 
-	switch cfg.GetLogFormat() {
-	case "text":
-		handler = slog.NewTextHandler(os.Stdout, opts)
+	var tracer tracing.Tracer
+	var err error
+
+	switch systemName {
+	case "otel", "opentelemetry":
+		endpoint := app.cfg.GetOtelEndpoint()
+		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", "opentelemetry"),
+			slog.String("service", serviceName),
+			slog.String("endpoint", endpoint),
+		)
+	case "jaeger":
+		serviceURL := app.cfg.GetTracingInfraURL(systemName)
+		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", systemName),
+			slog.String("service", serviceName),
+			slog.String("endpoint", serviceURL),
+		)
 	default:
-		handler = slog.NewJSONHandler(os.Stdout, opts)
+		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
 	}
 
-	logger := slog.New(handler).With(
-		"service", cfg.GetServiceName(),
-		"version", cfg.GetServiceVersion(),
-	)
-
-	slog.SetDefault(logger)
-
-	slog.Info("Logger reconfigured from config",
-		"level", cfg.GetLogLevel(),
-		"format", cfg.GetLogFormat(),
-		"add_source", cfg.GetLogAddSource())
+	tracerPort := tracing.NewTracePort(tracer)
+	return tracerPort
 }
 
-func parseLogLevel(levelStr string) slog.Level {
-	switch levelStr {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
-func (app *App) initTelegramNotifier(_ *config.Config, nextNotifier cases.Notifier) cases.Notifier {
-	var tgNotifier cases.Notifier
-
+func (app *App) initTelegramNotifier(nextNotifier cases.Notifier) cases.Notifier {
 	tg, err := telegram.NewTelegramNotifier(nextNotifier, os.Getenv("TG_BOT_TOKEN"))
 	if err != nil {
 		app.panic(err)
 	}
 
-	tgNotifier = tg
-	return tgNotifier
+	return tg
 }
 
-func (app *App) initMailNotifier(cfg *config.Config, nextNotifier cases.Notifier) cases.Notifier {
-	mail := cfg.GetMailSender()
-	smtp := cfg.GetMailSenderSMTP()
-	port := cfg.GetMailSenderPort()
-
-	var mailNotifier cases.Notifier
+func (app *App) initMailNotifier(nextNotifier cases.Notifier) cases.Notifier {
+	mail := app.cfg.GetMailSender()
+	smtp := app.cfg.GetMailSenderSMTP()
+	port := app.cfg.GetMailSenderPort()
 
 	m, err := base.NewMailNotifier(nextNotifier, smtp, mail, port, os.Getenv("EMAIL_PASSWORD"))
 	if err != nil {
 		app.panic(err)
 	}
 
-	mailNotifier = m
-
-	return mailNotifier
+	return m
 }
 
-func (app *App) initService(_ *config.Config, notifier cases.Notifier) port.MessageService {
+func (app *App) initService(notifier cases.Notifier) port.MessageService {
 	slog.Info("init notification service started")
-
-	var service port.MessageService
 
 	srv, err := cases.NewMessageService(notifier)
 	if err != nil {
 		app.panic(err)
 	}
 
-	service = srv
-
-	return service
+	return srv
 }
 
-func (app *App) initNatsConsumer(cfg *config.Config, service port.MessageService,
-) *natsPort.NatsConsumer {
-	conn := cfg.GetNatsURL()
-	subject := cfg.GetNatsSubject()
+func (app *App) initNatsConsumer(service port.MessageService) *natsPort.NatsConsumer {
+	slog.Info("init nats consumer started")
+
+	conn := app.cfg.GetNatsURL()
+	subject := app.cfg.GetNatsSubject()
 
 	consumer, err := natsPort.NewNatsConsumer(conn, subject, service)
 	if err != nil {
@@ -162,63 +169,4 @@ func (app *App) initNatsConsumer(cfg *config.Config, service port.MessageService
 func (app *App) panic(err error, args ...any) {
 	slog.Error(err.Error(), args...)
 	os.Exit(1)
-}
-
-func (app *App) startWithGracefulShutdown() {
-	ctx, cancel := context.WithCancel(context.Background())
-	app.cancel = cancel
-
-	sigOSChan := make(chan os.Signal, 1)
-	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	slog.Info("NotificationHub started successfully")
-
-	select {
-	case sig := <-sigOSChan:
-		slog.Info("Received os shutdown signal", "signal", sig.String())
-		app.shutdown()
-	case <-ctx.Done():
-		slog.Info("Application context cancelled")
-		app.shutdown()
-	}
-}
-
-func (app *App) shutdown() {
-	slog.Info("Starting graceful shutdown...")
-
-	shutdownTimeout := 5 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if app.natsConsumer != nil {
-		slog.Info("Stopping NATS consumer...")
-		if err := app.natsConsumer.Stop(); err != nil {
-			slog.Error("Error stopping NATS consumer", "error", err)
-		}
-	}
-
-	done := make(chan struct{})
-	go func() {
-		app.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		slog.Info("All services stopped gracefully")
-	case <-shutdownCtx.Done():
-		slog.Warn("Graceful shutdown timeout exceeded, forcing exit")
-	}
-
-	if app.cancel != nil {
-		app.cancel()
-	}
-
-	slog.Info("Application shutdown completed")
-}
-
-func (app *App) Stop() {
-	if app.cancel != nil {
-		app.cancel()
-	}
 }

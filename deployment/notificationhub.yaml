@@ -18,9 +18,12 @@ nats:
     subject: report.>
     event_timeout: 5s
 tracing:
-    system: jaeger
-    servicename: notoficationhub
+    system: otel
+    servicename: notificationhub
     enabled: false
+otel:
+    endpoint: jaeger:4317
+    insecure: true
 jaeger:
     address: jaeger:6831
     probability: 1.0

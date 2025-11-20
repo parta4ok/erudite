@@ -15,14 +15,14 @@ var (
 )
 
 type GetMentorGroupsCommand struct {
-	storage  common.Storage
+	storage common.Storage
 
 	mentorID string
 }
 
-func NewGetMentorGroupsCommand(storage common.Storage, mentorID string) *GetMentorGroupsCommand{
+func NewGetMentorGroupsCommand(storage common.Storage, mentorID string) *GetMentorGroupsCommand {
 	return &GetMentorGroupsCommand{
-		storage:  storage,
+		storage: storage,
 
 		mentorID: mentorID,
 	}
@@ -36,7 +36,7 @@ func (command *GetMentorGroupsCommand) Exec(ctx context.Context) (*entities.Comm
 	if command.mentorID == "" {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "mentorID not set")
 	}
-	
+
 	groups, err := command.storage.GetMentorGroups(ctx, command.mentorID)
 	if err != nil {
 		err = errors.Wrap(err, "get mentor groups")

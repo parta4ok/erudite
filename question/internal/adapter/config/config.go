@@ -142,3 +142,11 @@ func (cfg *Config) GetTracingInfraURL(tracingSystemName string) string {
 func (cfg *Config) GetTracingInfraProbability(tracingSystemName string) string {
 	return cfg.viper.GetString(fmt.Sprintf("%s.probability", tracingSystemName))
 }
+
+func (cfg *Config) GetOtelEndpoint() string {
+	return cfg.viper.GetString("otel.endpoint")
+}
+
+func (cfg *Config) GetOtelInsecure() bool {
+	return cfg.viper.GetBool("otel.insecure")
+}

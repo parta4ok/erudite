@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,8 +73,6 @@ func (cfg *Config) GetServiceVersion() string {
 	return cfg.viper.GetString("reporting.logging.service_version")
 }
 
-
-
 func (cfg *Config) GetRepresenterFormat() string {
 	return cfg.viper.GetString("reporting.representer.format")
 }
@@ -96,4 +95,36 @@ func (cfg *Config) GetNatsURL() string {
 
 func (cfg *Config) GetWorkersLimit() int {
 	return cfg.viper.GetInt("reporting.workers_limit")
+}
+
+func (cfg *Config) GetTracingType() string {
+	return cfg.viper.GetString("tracing.system")
+}
+
+func (cfg *Config) TracingSystemName() string {
+	return cfg.viper.GetString("tracing.servicename")
+}
+
+func (cfg *Config) IsTracingEnabled() bool {
+	return cfg.viper.GetBool("tracing.enabled")
+}
+
+func (cfg *Config) GetTracingInfraURL(tracingSystemName string) string {
+	return cfg.viper.GetString(fmt.Sprintf("%s.address", tracingSystemName))
+}
+
+func (cfg *Config) GetTracingInfraProbability(tracingSystemName string) string {
+	return cfg.viper.GetString(fmt.Sprintf("%s.probability", tracingSystemName))
+}
+
+func (cfg *Config) GetOtelEndpoint() string {
+	return cfg.viper.GetString("otel.endpoint")
+}
+
+func (cfg *Config) GetOtelInsecure() bool {
+	return cfg.viper.GetBool("otel.insecure")
+}
+
+func (cfg *Config) GetAsyncTimeout() time.Duration {
+	return cfg.viper.GetDuration("reporting.async_timeout")
 }

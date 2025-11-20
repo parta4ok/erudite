@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -19,6 +16,8 @@ import (
 )
 
 const (
+	serverType = "question private"
+
 	basePath                = "/kvs/v1"
 	getPassedStudentsTopics = "/passed_topics"
 )
@@ -85,7 +84,7 @@ func New(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(ctx context.Context) error {
 	s.registerRoutes()
 
 	s.server = &http.Server{
@@ -96,31 +95,35 @@ func (s *Server) Start() {
 		IdleTimeout:       s.cfg.Timeout,
 	}
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error(err.Error())
+			slog.Error("listen and serve", "error", err)
 		}
 	}()
 
-	<-done
+	<-ctx.Done()
 
-	s.Stop()
+	return nil
 }
 
-func (s *Server) Stop() {
+func (s *Server) Stop(ctx context.Context) error {
 	slog.Info("server will be stopping")
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancelFn()
+	slog.Info("starting server shutdown process")
+	start := time.Now()
 
 	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error(errors.Wrapf(entities.ErrInternal, "shutdown err: %v", err).Error())
+		slog.Error("server shutdown", "error", err, "duration", time.Since(start))
+		return err
 	}
 
-	slog.Info("server stop gracefully")
+	slog.Info("server stop gracefully", "duration", time.Since(start))
+
+	return nil
+}
+
+func (s *Server) Type() string {
+	return serverType
 }
 
 func (s *Server) registerRoutes() {

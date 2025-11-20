@@ -4,16 +4,6 @@ import (
 	"context"
 )
 
-type Tracer interface {
-	Start(ctx context.Context, operationName string) (context.Context, Span, func())
-	Close() error
-}
-
-type Span interface {
-	SetError(err error, message string)
-	SetTag(key string, value interface{})
-}
-
 type NoOpTracer struct{}
 
 func (n *NoOpTracer) Start(ctx context.Context, operationName string) (
@@ -27,5 +17,26 @@ func (n *NoOpTracer) Close() error {
 
 type NoOpSpan struct{}
 
-func (n *NoOpSpan) SetError(err error, message string)   {}
+func (n *NoOpSpan) SetError(err error, message string) {}
+
 func (n *NoOpSpan) SetTag(key string, value interface{}) {}
+
+func (n *NoOpSpan) GetSpanID() string {
+	return ""
+}
+
+func (n *NoOpSpan) GetTraceID() string {
+	return ""
+}
+
+func (t *NoOpSpan) Start(_ context.Context) error {
+	return nil
+}
+
+func (t *NoOpSpan) Stop(_ context.Context) error {
+	return nil
+}
+
+func (t *NoOpSpan) Type() string {
+	return noOpType
+}

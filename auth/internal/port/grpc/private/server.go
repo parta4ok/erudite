@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const grpcPortType = "grpc_private"
+
 type AuthService struct {
 	authv1.UnimplementedAuthServiceServer
 	factory port.CommandFactory
@@ -288,6 +290,7 @@ type Server struct {
 	authService *AuthService
 	server      *grpc.Server
 	port        string
+	listener    net.Listener
 }
 
 type ServerOption func(*Server)
@@ -329,6 +332,48 @@ func NewServer(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
+//nolint:gosec //ok
+func (srv *Server) Start(ctx context.Context) error {
+	slog.Info("gRPC server starting", "port", srv.port)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", srv.port))
+	if err != nil {
+		return errors.Wrapf(entities.ErrInternal, "net listen failure: %v", err)
+	}
+
+	srv.listener = listener
+	authv1.RegisterAuthServiceServer(srv.server, srv.authService)
+
+	go func() {
+		if err := srv.server.Serve(listener); err != nil {
+			slog.Error("gRPC server serve error", "error", err)
+		}
+	}()
+
+	slog.Info("gRPC server started", "port", srv.port)
+	return nil
+}
+
+func (srv *Server) Stop(ctx context.Context) error {
+	slog.Info("Stopping gRPC server", "port", srv.port)
+
+	if srv.server != nil {
+		srv.server.GracefulStop()
+	}
+
+	if srv.listener != nil {
+		srv.listener.Close() //nolint:errcheck,gosec //ok
+	}
+
+	slog.Info("gRPC server stopped", "port", srv.port)
+	return nil
+}
+
+func (srv *Server) Type() string {
+	return grpcPortType
+}
+
+// Legacy methods for backward compatibility
 func (srv *Server) StartServer() {
 	slog.Info("gRPC server started")
 
@@ -350,7 +395,7 @@ func (srv *Server) StartServer() {
 	slog.Info("gRPC server stopped")
 }
 
-func (srv *Server) Stop() {
+func (srv *Server) LegacyStop() {
 	slog.Info("stop gRPC server")
 	srv.server.Stop()
 }

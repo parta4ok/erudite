@@ -40,7 +40,7 @@ func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandRe
 	if command.jwt == "" {
 		return nil, errors.Wrap(entities.ErrInvalidJWT, "jwt is required")
 	}
-	
+
 	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
 		err = errors.Wrap(err, "Introspect")

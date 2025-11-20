@@ -21,9 +21,7 @@ func main() {
 		panic("config path is not set")
 	}
 
-	app := &appication.App{
-		CfgPath: configPath,
-	}
+	app := appication.NewApp(configPath)
 
 	app.Start()
 }

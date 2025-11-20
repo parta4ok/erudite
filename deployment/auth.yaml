@@ -24,9 +24,12 @@ jwt:
     iss: erudite_app
     ttl: 24h
 tracing:
-    system: jaeger
+    system: otel
     servicename: auth
     enabled: false
+otel:
+    endpoint: jaeger:4317
+    insecure: true
 jaeger:
     address: jaeger:6831
     probability: 1.0

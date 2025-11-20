@@ -23,7 +23,7 @@ func NewRepresenter() (*Representer, error) {
 }
 
 func (r *Representer) CovertToFormat(format entities.Format, report entities.Report,
-	) ([]byte, error) {
+) ([]byte, error) {
 	var strategy RepresentStrategy
 
 	for _, s := range r.strategies {

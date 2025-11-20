@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	SessionResultEvent = "SessionResultEvent"
+	SessionResultEvent   = "SessionResultEvent"
+	natsConsumerPortType = "nats_consumer"
 )
 
 type NatsConsumer struct {
@@ -68,7 +69,8 @@ func NewNatsConsumer(conn string,
 	}, nil
 }
 
-func (c *NatsConsumer) Start() error {
+// Port interface implementation
+func (c *NatsConsumer) Start(ctx context.Context) error {
 	slog.Info("Starting NATS consumer for report events")
 
 	sub, err := c.js.PullSubscribe(c.subject, "report-consumer",
@@ -89,7 +91,53 @@ func (c *NatsConsumer) Start() error {
 	return nil
 }
 
-func (c *NatsConsumer) Stop() error {
+func (c *NatsConsumer) Stop(ctx context.Context) error {
+	slog.Info("Stopping NATS consumer")
+
+	c.cancel()
+
+	if c.subscription != nil {
+		if err := c.subscription.Unsubscribe(); err != nil {
+			err := errors.Wrapf(entities.ErrInternal, "failed to unsubscribe from NATS: %v", err)
+			slog.Error(err.Error())
+			return err
+		}
+	}
+	c.nc.Close()
+
+	c.wg.Wait()
+
+	slog.Info("NATS consumer stopped successfully")
+	return nil
+}
+
+func (c *NatsConsumer) Type() string {
+	return natsConsumerPortType
+}
+
+// Legacy methods for backward compatibility
+func (c *NatsConsumer) LegacyStart() error {
+	slog.Info("Starting NATS consumer for report events")
+
+	sub, err := c.js.PullSubscribe(c.subject, "report-consumer",
+		nats.Bind("report_stream", "report-consumer"))
+	if err != nil {
+		err := errors.Wrapf(err, "failed to subscribe to %s stream", c.subject)
+		slog.Error(err.Error())
+		return err
+	}
+
+	c.subscription = sub
+	slog.Info("NATS consumer started successfully", slog.String("subject", c.subject),
+		slog.String("consumer", "report-consumer"))
+
+	c.wg.Add(1)
+	go c.processMessages()
+
+	return nil
+}
+
+func (c *NatsConsumer) LegacyStop() error {
 	slog.Info("Stopping NATS consumer")
 
 	c.cancel()

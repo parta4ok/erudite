@@ -15,6 +15,8 @@ import (
 )
 
 const (
+	consumerType = "reporting nats consumer"
+
 	SessionResultEvent = "SessionResultEvent"
 )
 
@@ -68,7 +70,7 @@ func NewNatsConsumer(conn string,
 	}, nil
 }
 
-func (c *NatsConsumer) Start() error {
+func (c *NatsConsumer) Start(_ context.Context) error {
 	slog.Info("Starting NATS consumer for session events")
 
 	sub, err := c.js.PullSubscribe(c.subject, "session-consumer",
@@ -89,24 +91,49 @@ func (c *NatsConsumer) Start() error {
 	return nil
 }
 
-func (c *NatsConsumer) Stop() error {
-	slog.Info("Stopping NATS consumer")
+func (c *NatsConsumer) Stop(ctx context.Context) error {
+	slog.Info("stopping nats consumer")
 
-	c.cancel()
+	errChan := make(chan error, 1)
+	successChan := make(chan struct{}, 1)
 
-	if c.subscription != nil {
-		if err := c.subscription.Unsubscribe(); err != nil {
-			err := errors.Wrapf(entities.ErrInternal, "failed to unsubscribe from NATS: %v", err)
-			slog.Error(err.Error())
-			return err
+	stopFn := func() {
+		c.cancel()
+
+		if c.subscription != nil {
+			if err := c.subscription.Unsubscribe(); err != nil {
+				err := errors.Wrapf(entities.ErrInternal, "failed to unsubscribe from NATS: %v", err)
+				slog.Error(err.Error())
+				errChan <- err
+				return
+			}
 		}
+		c.nc.Close()
+
+		c.wg.Wait()
+
+		slog.Info("nats consumer stopped successfully")
+		close(successChan)
+		close(errChan)
 	}
-	c.nc.Close()
 
-	c.wg.Wait()
+	go stopFn()
 
-	slog.Info("NATS consumer stopped successfully")
-	return nil
+	select {
+	case <-ctx.Done():
+		slog.Error("skipping message processing due to shutdown", "error", ctx.Err().Error())
+		return errors.Wrap(entities.ErrInternal, "context exceeded, consumer stopped with failure")
+	case err := <-errChan:
+		slog.Error("consumer stopped func return error", "error", err.Error())
+		return errors.Wrap(err, "consumer stopped func return error")
+	case <-successChan:
+		slog.Info("consumer successfull stop")
+		return nil
+	}
+}
+
+func (c *NatsConsumer) Type() string {
+	return consumerType
 }
 
 func (c *NatsConsumer) processMessages() {

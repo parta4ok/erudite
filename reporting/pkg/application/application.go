@@ -1,13 +1,9 @@
 package appication
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 	"time"
 
 	authservice "github.com/parta4ok/kvs/reporting/internal/adapter/auth_service"
@@ -21,42 +17,47 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/port/http/public"
 	consumer "github.com/parta4ok/kvs/reporting/internal/port/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
+	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
 
 	"github.com/pkg/errors"
 )
 
 type App struct {
-	CfgPath         string
 	cfg             *config.Config
+	tracingPort     *tracing.TracerPort
 	publicServer    *public.Server
 	consumer        *consumer.NatsConsumer
-	cancel          context.CancelFunc
-	wg              sync.WaitGroup
 	pub             cases.MessageBroker
 	authService     cases.AuthClient
 	questionService cases.QuestionClient
 	representer     entities.Representer
 	accessor        public.Accessor
+	tracing         bool
 }
 
 func NewApp(cfgPath string) *App {
-	return &App{
-		CfgPath: cfgPath,
-	}
-}
-
-func (app *App) Start() {
-	cfg, err := config.NewConfig(app.CfgPath)
+	cfg, err := config.NewConfig(cfgPath)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	app.cfg = cfg
+	return &App{
+		cfg: cfg,
+	}
+}
 
-	app.initConfiguredLogger(cfg)
-	slog.Info("Logger configuration completed")
+func (app *App) Start() {
+
+	app.initConfiguredLogger()
+	slog.Info("logger configuration completed")
+
+	tracingPort := app.initTracer()
+	app.tracingPort = tracingPort
 
 	app.initBroker()
 	app.initAuthClient()
@@ -71,20 +72,28 @@ func (app *App) Start() {
 	consumer := app.initConsumer(service)
 	app.consumer = consumer
 
-	app.startWithGracefulShutdown()
+	baseApp := baseApplication.NewBaseApplication()
+	baseApp.SetTimeout(5 * time.Second)
+	baseApp.SetPorts([]baseApplication.Port{
+		app.publicServer,
+		app.consumer,
+		app.tracingPort,
+	})
+
+	baseApp.StartPortsWithGracefulShutdown()
 }
 
-func (app *App) initConfiguredLogger(cfg *config.Config) {
-	level := parseLogLevel(cfg.GetLogLevel())
+func (app *App) initConfiguredLogger() {
+	level := parseLogLevel(app.cfg.GetLogLevel())
 
 	opts := &slog.HandlerOptions{
 		Level:     level,
-		AddSource: cfg.GetLogAddSource(),
+		AddSource: app.cfg.GetLogAddSource(),
 	}
 
 	var handler slog.Handler
 
-	switch cfg.GetLogFormat() {
+	switch app.cfg.GetLogFormat() {
 	case "text":
 		handler = slog.NewTextHandler(os.Stdout, opts)
 	default:
@@ -92,16 +101,16 @@ func (app *App) initConfiguredLogger(cfg *config.Config) {
 	}
 
 	logger := slog.New(handler).With(
-		"service", cfg.GetServiceName(),
-		"version", cfg.GetServiceVersion(),
+		"service", app.cfg.GetServiceName(),
+		"version", app.cfg.GetServiceVersion(),
 	)
 
 	slog.SetDefault(logger)
 
 	slog.Info("Logger reconfigured from config",
-		"level", cfg.GetLogLevel(),
-		"format", cfg.GetLogFormat(),
-		"add_source", cfg.GetLogAddSource())
+		"level", app.cfg.GetLogLevel(),
+		"format", app.cfg.GetLogFormat(),
+		"add_source", app.cfg.GetLogAddSource())
 }
 
 func parseLogLevel(levelStr string) slog.Level {
@@ -117,6 +126,53 @@ func parseLogLevel(levelStr string) slog.Level {
 	default:
 		return slog.LevelInfo
 	}
+}
+
+func (app *App) initTracer() *tracing.TracerPort {
+	slog.Info("init tracer started")
+
+	if !app.cfg.IsTracingEnabled() {
+		slog.Info("tracing disabled")
+		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
+		return tracerPort
+	}
+
+	app.tracing = true
+	systemName := app.cfg.GetTracingType()
+	serviceName := app.cfg.TracingSystemName()
+
+	var tracer tracing.Tracer
+	var err error
+
+	switch systemName {
+	case "otel", "opentelemetry":
+		endpoint := app.cfg.GetOtelEndpoint()
+		tracer, err = otelTracer.NewOtelTracer(serviceName, endpoint)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", "opentelemetry"),
+			slog.String("service", serviceName),
+			slog.String("endpoint", endpoint),
+		)
+	case "jaeger":
+		serviceURL := app.cfg.GetTracingInfraURL(systemName)
+		tracer, err = projectTracer.NewJaegerTracer(serviceName, serviceURL)
+		if err != nil {
+			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
+		}
+		slog.Info("tracer initialized successfully",
+			slog.String("type", systemName),
+			slog.String("service", serviceName),
+			slog.String("endpoint", serviceURL),
+		)
+	default:
+		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
+	}
+
+	tracerPort := tracing.NewTracePort(tracer)
+	return tracerPort
 }
 
 func (app *App) initAccessor() {
@@ -227,6 +283,7 @@ func (app *App) initReportingService() port.Service {
 		app.authService,
 		app.questionService,
 		app.cfg.GetWorkersLimit(),
+		app.cfg.GetAsyncTimeout(),
 	)
 
 	if err != nil {
@@ -236,80 +293,6 @@ func (app *App) initReportingService() port.Service {
 	service = serv
 
 	return service
-}
-
-func (app *App) startWithGracefulShutdown() {
-	ctx, cancel := context.WithCancel(context.Background())
-	app.cancel = cancel
-
-	sigOSChan := make(chan os.Signal, 1)
-	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		slog.Info("Starting public server")
-		app.publicServer.Start()
-	}()
-
-	app.wg.Add(1)
-	go func() {
-		defer app.wg.Done()
-		slog.Info("Starting consumer")
-		app.consumer.Start() //nolint:errcheck,gosec //ok
-	}()
-
-	select {
-	case sig := <-sigOSChan:
-		slog.Info("Received os shutdown signal", "signal", sig.String())
-		app.shutdown()
-	case <-ctx.Done():
-		slog.Info("Application context cancelled")
-		app.shutdown()
-	}
-}
-
-func (app *App) shutdown() {
-	slog.Info("Starting graceful shutdown...")
-
-	shutdownTimeout := 2 * time.Second
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), shutdownTimeout)
-	defer shutdownCancel()
-
-	if app.publicServer != nil {
-		slog.Info("Stopping public server...")
-		app.publicServer.Stop()
-	}
-
-	if app.consumer != nil {
-		slog.Info("Stopping consumer...")
-		app.consumer.Stop() //nolint:errcheck,gosec //ok
-	}
-
-	done := make(chan struct{})
-	go func() {
-		app.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		slog.Info("All services stopped gracefully")
-	case <-shutdownCtx.Done():
-		slog.Warn("Graceful shutdown timeout exceeded, forcing exit")
-	}
-
-	if app.cancel != nil {
-		app.cancel()
-	}
-
-	slog.Info("Application shutdown completed")
-}
-
-func (app *App) Stop() {
-	if app.cancel != nil {
-		app.cancel()
-	}
 }
 
 func (app *App) panic(err error, args ...any) {

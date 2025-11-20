@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/parta4ok/kvs/reporting/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
 )
 
@@ -21,6 +22,7 @@ type ReportingService struct {
 	broker         MessageBroker
 	representer    entities.Representer
 	format         entities.Format
+	asyncTimeout   time.Duration
 	authClient     AuthClient
 	questionClient QuestionClient
 	tasks          []func() error
@@ -31,6 +33,7 @@ type ReportingService struct {
 	wg             sync.WaitGroup
 }
 
+//nolint:funlen //ok
 func NewReportingService(
 	broker MessageBroker,
 	representer entities.Representer,
@@ -38,6 +41,7 @@ func NewReportingService(
 	authClient AuthClient,
 	questionClient QuestionClient,
 	workersLimit int,
+	asyncTimeout time.Duration,
 ) (*ReportingService, error) {
 	if broker == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "broker not set")
@@ -63,6 +67,10 @@ func NewReportingService(
 		return nil, errors.Wrap(entities.ErrInvalidParam, "workers limit must be greater than 0")
 	}
 
+	if asyncTimeout < 3*time.Second {
+		asyncTimeout = 3 * time.Second
+	}
+
 	stop := &atomic.Bool{}
 	stop.Store(false)
 
@@ -73,6 +81,7 @@ func NewReportingService(
 		authClient:     authClient,
 		questionClient: questionClient,
 		workersLimit:   workersLimit,
+		asyncTimeout:   asyncTimeout,
 		tasks:          make([]func() error, 0),
 		errChan:        make(chan error, workersLimit),
 		cond:           *sync.NewCond(&sync.Mutex{}),
@@ -127,16 +136,21 @@ func (service *ReportingService) Worker() {
 	service.wg.Done()
 }
 
+//nolint:funlen //ok
 func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, mentorID string,
 ) error {
+	_, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedTopicsByGroups")
+	defer cancel()
+
 	if service.stopSignal.Load() {
 		err := ErrReportingServiceStopped
+		span.SetError(err, "GetPassedTopicsByGroups")
 		slog.Error("GetPassedTopicsByGroups", "error", err)
 		return errors.Wrap(err, "GetPassedTopicsByGroups")
 	}
 
 	fn := func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
 		defer cancel()
 
 		students, err := service.authClient.GetMentorGroups(ctx, mentorID)
@@ -188,15 +202,21 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 }
 
 func (service *ReportingService) DeliverySessionResult(
-	ctx context.Context, session *entities.SessionResult) error {
+	ctx context.Context,
+	session *entities.SessionResult,
+) error {
+	_, span, cancel := tracing.GlobalTracer().Start(ctx, "DeliverySessionResult")
+	defer cancel()
+
 	if service.stopSignal.Load() {
 		err := ErrReportingServiceStopped
+		span.SetError(err, "DeliverySessionResult")
 		slog.Error("DeliverySessionResult", "error", err)
 		return errors.Wrap(err, "DeliverySessionResult")
 	}
 
 	fn := func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
 		defer cancel()
 
 		linkedUsers, err := service.authClient.GetLinkedUsers(ctx, session.UserID)

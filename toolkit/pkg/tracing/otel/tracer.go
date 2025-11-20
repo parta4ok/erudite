@@ -35,39 +35,36 @@ type OtelSpan struct {
 	span oteltrace.Span
 }
 
+//nolint:funlen,gocritic //ok
 func NewOtelTracer(serviceName string, endpoint string) (*OtelTracer, error) {
 	slog.Info("Creating OTLP exporter", "endpoint", endpoint, "service", serviceName)
 
 	var exporter sdktrace.SpanExporter
 	var err error
 
-	// Auto-detect protocol based on endpoint format
 	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
-		// HTTP protocol with scheme
 		slog.Info("Using OTLP HTTP protocol", "endpoint", endpoint)
 		exporter, err = otlptracehttp.New(
 			context.Background(),
 			otlptracehttp.WithEndpoint(endpoint),
 			otlptracehttp.WithURLPath("/v1/traces"),
-			otlptracehttp.WithInsecure(), // Use HTTP instead of HTTPS for local development
+			otlptracehttp.WithInsecure(),
 		)
 	} else if strings.Contains(endpoint, ":4318") {
-		// HTTP protocol without scheme (detect by port 4318)
 		httpEndpoint := "http://" + endpoint
 		slog.Info("Using OTLP HTTP protocol (auto-detected)", "endpoint", httpEndpoint)
 		exporter, err = otlptracehttp.New(
 			context.Background(),
 			otlptracehttp.WithEndpoint(httpEndpoint),
 			otlptracehttp.WithURLPath("/v1/traces"),
-			otlptracehttp.WithInsecure(), // Use HTTP instead of HTTPS for local development
+			otlptracehttp.WithInsecure(),
 		)
 	} else {
-		// gRPC protocol (default for other cases)
 		slog.Info("Using OTLP gRPC protocol", "endpoint", endpoint)
 		exporter, err = otlptracegrpc.New(
 			context.Background(),
 			otlptracegrpc.WithEndpoint(endpoint),
-			otlptracegrpc.WithInsecure(), // Use insecure connection for local development
+			otlptracegrpc.WithInsecure(),
 		)
 	}
 
@@ -77,7 +74,6 @@ func NewOtelTracer(serviceName string, endpoint string) (*OtelTracer, error) {
 	}
 	slog.Info("OTLP exporter created successfully", "endpoint", endpoint)
 
-	// Create resource with service name
 	resource := resource.NewWithAttributes(
 		semconv.SchemaURL,
 		semconv.ServiceName(serviceName),

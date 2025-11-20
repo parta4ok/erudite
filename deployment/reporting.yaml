@@ -4,6 +4,7 @@ reporting:
             port: :8070
             timeout: 5s
     workers_limit: 5
+    async_timeout: 3s
     representer:
         format: html
     logging:

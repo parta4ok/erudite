@@ -67,6 +67,7 @@ func TestReportingService_ConcurrentExecution(t *testing.T) {
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
+				time.Second*3,
 			)
 			require.NoError(t, err)
 			t.Cleanup(func() { service.Stop() })
@@ -145,6 +146,7 @@ func TestReportingService_RaceConditions(t *testing.T) {
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
+				time.Second*3,
 			)
 			require.NoError(t, err)
 			t.Cleanup(func() { service.Stop() })
@@ -229,6 +231,7 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
+				time.Second*3,
 			)
 			require.NoError(t, err)
 
@@ -378,6 +381,7 @@ func TestReportingService_ErrorHandling(t *testing.T) {
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
 				authClient, questionClient, tc.workersLimit,
+				time.Second*3,
 			)
 			require.NoError(t, err)
 			t.Cleanup(func() { service.Stop() })
@@ -423,6 +427,7 @@ func createTestServiceBasic(t *testing.T, ctrl *gomock.Controller, workersLimit 
 	service, err := cases.NewReportingService(
 		broker, representer, "json",
 		authClient, questionClient, workersLimit,
+		time.Second*3,
 	)
 	require.NoError(t, err)
 

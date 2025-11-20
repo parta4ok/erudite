@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -22,6 +19,8 @@ import (
 )
 
 const (
+	serverType = "reporting public"
+
 	basePath     = "/reporting/v1"
 	passedTopics = "/passed-topics"
 
@@ -116,7 +115,7 @@ func New(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-func (s *Server) Start() {
+func (s *Server) Start(ctx context.Context) error {
 	s.registerRoutes()
 
 	s.server = &http.Server{
@@ -127,31 +126,35 @@ func (s *Server) Start() {
 		IdleTimeout:       s.cfg.Timeout,
 	}
 
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error(err.Error())
+			slog.Error("listen and serve", "error", err)
 		}
 	}()
 
-	<-done
+	<-ctx.Done()
 
-	s.Stop()
+	return nil
 }
 
-func (s *Server) Stop() {
+func (s *Server) Stop(ctx context.Context) error {
 	slog.Info("server will be stopping")
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancelFn()
+	slog.Info("starting server shutdown process")
+	start := time.Now()
 
 	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error(errors.Wrapf(entities.ErrInternal, "shutdown err: %v", err).Error())
+		slog.Error("server shutdown", "error", err, "duration", time.Since(start))
+		return err
 	}
 
-	slog.Info("server stop gracefully")
+	slog.Info("server stop gracefully", "duration", time.Since(start))
+
+	return nil
+}
+
+func (s *Server) Type() string {
+	return serverType
 }
 
 func (s *Server) registerRoutes() {
@@ -180,10 +183,11 @@ func (s *Server) registerRoutes() {
 // @Failure      500  {object}  dto.ErrorDTO   "Internal server error"
 // @Router       /{mentor_id}/passed-topics [get]
 func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
-	slog.Info("GetPassedTopics started")
-	resp.Header().Set("Content-Type", "application/json")
 	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "GetPassedTopicsHandlerSpan")
 	defer cancel()
+
+	slog.Info("GetPassedTopics started")
+	resp.Header().Set("Content-Type", "application/json")
 
 	if err := s.checkUserRights(ctx, []string{rightGetReport}); err != nil {
 		slog.Error(err.Error())
@@ -195,9 +199,9 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 	mentorID := chi.URLParam(req, "mentor_id")
 
 	if mentorID == "" {
-		err := errors.Wrap(entities.ErrInvalidParam, "mentor_id invalid")
+		err := errors.Wrap(entities.ErrInvalidParam, "mentor id invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "mentor_id invalid")
+		span.SetError(err, "mentor id invalid")
 		s.errProcessing(resp, err)
 		return
 	}

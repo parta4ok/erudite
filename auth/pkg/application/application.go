@@ -148,7 +148,7 @@ func (app *App) initTracer(cfg *config.Config) {
 	serviceName := cfg.TracingSystemName()
 	serviceURL := cfg.GetTracingInfraURL(systemName)
 
-	tracer, err := projectTracer.NewJaegerTracer(serviceName, serviceURL)
+	tracer, err := projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
 	if err != nil {
 		err := errors.Wrap(err, "jaeger tracer init failure")
 		slog.Error(err.Error())

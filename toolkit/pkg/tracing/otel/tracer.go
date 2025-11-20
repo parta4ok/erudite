@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -20,9 +19,25 @@ import (
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
+// Local interface definitions to avoid circular imports
+type Tracer interface {
+	Start(ctx context.Context, operationName string) (context.Context, Span, func())
+	Close() error
+}
+
+type Span interface {
+	SetError(err error, message string)
+	SetTag(key string, value interface{})
+	GetSpanID() string
+	GetTraceID() string
+	Start(context.Context) error
+	Stop(context.Context) error
+	Type() string
+}
+
 var (
-	_ tracing.Tracer = (*OtelTracer)(nil)
-	_ tracing.Span   = (*OtelSpan)(nil)
+	_ Tracer = (*OtelTracer)(nil)
+	_ Span   = (*OtelSpan)(nil)
 )
 
 type OtelTracer struct {
@@ -111,7 +126,7 @@ func NewOtelTracer(serviceName string, endpoint string) (*OtelTracer, error) {
 
 func (ot *OtelTracer) Start(
 	ctx context.Context, operationName string,
-) (context.Context, tracing.Span, func()) {
+) (context.Context, Span, func()) {
 	slog.Info("Starting span", "operation", operationName)
 	newCtx, span := ot.tracer.Start(ctx, operationName)
 
@@ -209,4 +224,16 @@ func (os *OtelSpan) GetSpanID() string {
 
 func (os *OtelSpan) GetTraceID() string {
 	return os.span.SpanContext().TraceID().String()
+}
+
+func (os *OtelSpan) Start(_ context.Context) error {
+	return nil
+}
+
+func (os *OtelSpan) Stop(_ context.Context) error {
+	return nil
+}
+
+func (os *OtelSpan) Type() string {
+	return "otel"
 }

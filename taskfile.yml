@@ -182,3 +182,20 @@ tasks:
             - cd auth && swag init -g ./internal/port/http/public/doc.go --output ./internal/port/http/public/ --outputTypes json --parseDependency=false --parseInternal=false
             - mkdir -p api/http/v1/auth
             - mv auth/internal/port/http/public/swagger.json api/http/v1/auth/swagger.json
+    
+    show_logs_reporting:
+        desc: Show logs of reporting_service container
+        cmds:
+            - container_id=$(docker ps | grep reporting | awk '{print $1}'); echo "$container_id"; docker logs "$container_id" --tail=50
+    show_logs_question:
+        desc: Show logs of question_service container
+        cmds:
+            - container_id=$(docker ps | grep question | awk '{print $1}'); echo "$container_id"; docker logs "$container_id" --tail=50
+    show_logs_auth:
+        desc: Show logs of auth_service container
+        cmds:
+            - container_id=$(docker ps | grep auth | awk '{print $1}'); echo "$container_id"; docker logs "$container_id" --tail=50
+    show_logs_notificationhub:
+        desc: Show logs of notificationhub_service container
+        cmds:
+            - container_id=$(docker ps | grep notificationhub | awk '{print $1}'); echo "$container_id"; docker logs "$container_id" --tail=50

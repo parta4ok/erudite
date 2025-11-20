@@ -6,14 +6,29 @@ import (
 
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/config"
 )
 
+// Local interface definitions to avoid circular imports
+type Tracer interface {
+	Start(ctx context.Context, operationName string) (context.Context, Span, func())
+	Close() error
+}
+
+type Span interface {
+	SetError(err error, message string)
+	SetTag(key string, value interface{})
+	GetSpanID() string
+	GetTraceID() string
+	Start(context.Context) error
+	Stop(context.Context) error
+	Type() string
+}
+
 var (
-	_ tracing.Tracer = (*JaegerTracer)(nil)
-	_ tracing.Span   = (*JaegerSpan)(nil)
+	_ Tracer = (*JaegerTracer)(nil)
+	_ Span   = (*JaegerSpan)(nil)
 )
 
 type JaegerTracer struct {
@@ -53,7 +68,7 @@ func NewJaegerTracer(serviceName string, jaegerEndpoint string) (*JaegerTracer, 
 }
 
 func (jt *JaegerTracer) Start(ctx context.Context, operationName string) (context.Context,
-	tracing.Span, func()) {
+	Span, func()) {
 	var span opentracing.Span
 
 	if parentSpan := opentracing.SpanFromContext(ctx); parentSpan != nil {
@@ -93,4 +108,16 @@ func (js *JaegerSpan) GetSpanID() string {
 
 func (js *JaegerSpan) GetTraceID() string {
 	return js.span.Context().(jaeger.SpanContext).TraceID().String()
+}
+
+func (js *JaegerSpan) Start(_ context.Context) error {
+	return nil
+}
+
+func (js *JaegerSpan) Stop(_ context.Context) error {
+	return nil
+}
+
+func (js *JaegerSpan) Type() string {
+	return "jaeger"
 }

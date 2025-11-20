@@ -140,7 +140,7 @@ func (app *App) initTracer() *tracing.TracerPort {
 	switch systemName {
 	case "otel", "opentelemetry":
 		endpoint := app.config.GetOtelEndpoint()
-		tracer, err = otelTracer.NewOtelTracer(serviceName, endpoint)
+		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
 		if err != nil {
 			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
 		}
@@ -151,7 +151,7 @@ func (app *App) initTracer() *tracing.TracerPort {
 		)
 	case "jaeger":
 		serviceURL := app.config.GetTracingInfraURL(systemName)
-		tracer, err = projectTracer.NewJaegerTracer(serviceName, serviceURL)
+		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
 		if err != nil {
 			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
 		}

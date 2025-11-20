@@ -19,6 +19,7 @@ import (
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/logger"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
 	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
@@ -52,9 +53,14 @@ func NewApp(cfgPath string) *App {
 }
 
 func (app *App) Start() {
-
-	app.initConfiguredLogger()
-	slog.Info("logger configuration completed")
+	baseLogger := logger.NewBaseLogger(
+		app.cfg.GetLogLevel(),
+		app.cfg.GetLogAddSource(),
+		app.cfg.GetLogFormat(),
+		app.cfg.GetServiceName(),
+		app.cfg.GetServiceVersion(),
+	)
+	baseLogger.InitConfiguredLogger()
 
 	tracingPort := app.initTracer()
 	app.tracingPort = tracingPort
@@ -83,51 +89,6 @@ func (app *App) Start() {
 	baseApp.StartPortsWithGracefulShutdown()
 }
 
-func (app *App) initConfiguredLogger() {
-	level := parseLogLevel(app.cfg.GetLogLevel())
-
-	opts := &slog.HandlerOptions{
-		Level:     level,
-		AddSource: app.cfg.GetLogAddSource(),
-	}
-
-	var handler slog.Handler
-
-	switch app.cfg.GetLogFormat() {
-	case "text":
-		handler = slog.NewTextHandler(os.Stdout, opts)
-	default:
-		handler = slog.NewJSONHandler(os.Stdout, opts)
-	}
-
-	logger := slog.New(handler).With(
-		"service", app.cfg.GetServiceName(),
-		"version", app.cfg.GetServiceVersion(),
-	)
-
-	slog.SetDefault(logger)
-
-	slog.Info("Logger reconfigured from config",
-		"level", app.cfg.GetLogLevel(),
-		"format", app.cfg.GetLogFormat(),
-		"add_source", app.cfg.GetLogAddSource())
-}
-
-func parseLogLevel(levelStr string) slog.Level {
-	switch levelStr {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
 func (app *App) initTracer() *tracing.TracerPort {
 	slog.Info("init tracer started")
 
@@ -147,7 +108,7 @@ func (app *App) initTracer() *tracing.TracerPort {
 	switch systemName {
 	case "otel", "opentelemetry":
 		endpoint := app.cfg.GetOtelEndpoint()
-		tracer, err = otelTracer.NewOtelTracer(serviceName, endpoint)
+		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
 		if err != nil {
 			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
 		}
@@ -158,7 +119,7 @@ func (app *App) initTracer() *tracing.TracerPort {
 		)
 	case "jaeger":
 		serviceURL := app.cfg.GetTracingInfraURL(systemName)
-		tracer, err = projectTracer.NewJaegerTracer(serviceName, serviceURL)
+		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
 		if err != nil {
 			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
 		}

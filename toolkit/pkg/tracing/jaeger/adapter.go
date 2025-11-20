@@ -20,7 +20,8 @@ type JaegerTracerAdapter struct {
 	tracer *JaegerTracer
 }
 
-func (a *JaegerTracerAdapter) Start(ctx context.Context, operationName string) (context.Context, tracing.Span, func()) {
+func (a *JaegerTracerAdapter) Start(ctx context.Context, operationName string) (
+	context.Context, tracing.Span, func()) {
 	newCtx, span, cancel := a.tracer.Start(ctx, operationName)
 	return newCtx, &JaegerSpanAdapter{span: span.(*JaegerSpan)}, cancel
 }

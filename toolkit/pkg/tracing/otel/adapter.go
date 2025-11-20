@@ -20,7 +20,8 @@ type OtelTracerAdapter struct {
 	tracer *OtelTracer
 }
 
-func (a *OtelTracerAdapter) Start(ctx context.Context, operationName string) (context.Context, tracing.Span, func()) {
+func (a *OtelTracerAdapter) Start(ctx context.Context, operationName string) (
+	context.Context, tracing.Span, func()) {
 	newCtx, span, cancel := a.tracer.Start(ctx, operationName)
 	return newCtx, &OtelSpanAdapter{span: span.(*OtelSpan)}, cancel
 }

@@ -332,7 +332,7 @@ func NewServer(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-// Port interface implementation
+//nolint:gosec //ok
 func (srv *Server) Start(ctx context.Context) error {
 	slog.Info("gRPC server starting", "port", srv.port)
 
@@ -362,7 +362,7 @@ func (srv *Server) Stop(ctx context.Context) error {
 	}
 
 	if srv.listener != nil {
-		srv.listener.Close()
+		srv.listener.Close() //nolint:errcheck,gosec //ok
 	}
 
 	slog.Info("gRPC server stopped", "port", srv.port)

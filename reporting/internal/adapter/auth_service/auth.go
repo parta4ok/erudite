@@ -166,6 +166,26 @@ func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entiti
 	}, nil
 }
 
+func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
+	slog.Info("GetGroupTitleByID started", slog.String("id", groupID))
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByID")
+	defer cancel()
+
+	req := &authv1.GroupID{
+		GroupID: groupID,
+	}
+
+	group, err := srv.client.GetGroupTitleByID(ctx, req)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "GetGroupTitleByID failure: %v", err)
+		span.SetError(err, "GetGroupTitleByID failure")
+		slog.Error(err.Error())
+		return "", err
+	}
+
+	return group.Group.GetName(), nil
+}
+
 func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
 	slog.Info("Introspect started")
 

@@ -1,3 +1,4 @@
+//nolint:dupl //ok
 package command
 
 import (
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	_ entities.Command = (*IntrospectCommand)(nil)
+	_ entities.Command = (*GetUserByIDCommand)(nil)
 )
 
 type GetUserByIDCommand struct {
@@ -29,7 +30,7 @@ func NewGetUserByIDCommand(storage common.Storage, userID string) *GetUserByIDCo
 }
 
 func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
-	slog.Info("IntrospectCommand exec started")
+	slog.Info("GetUserByIDCommand exec started")
 	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDCommandSpan")
 	defer cancel()
 
@@ -45,7 +46,7 @@ func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandR
 		return nil, err
 	}
 
-	slog.Info("IntrospectCommand exec completed")
+	slog.Info("GetUserByIDCommand exec completed")
 	return &entities.CommandResult{
 		Success: true,
 		Payload: user,

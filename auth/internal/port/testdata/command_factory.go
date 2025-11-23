@@ -76,6 +76,20 @@ func (mr *MockCommandFactoryMockRecorder) NewDeleteUserCommand(userID interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDeleteUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDeleteUserCommand), userID)
 }
 
+// NewGetGroupTitleByIDCommand mocks base method.
+func (m *MockCommandFactory) NewGetGroupTitleByIDCommand(groupID string) entities.Command {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewGetGroupTitleByIDCommand", groupID)
+	ret0, _ := ret[0].(entities.Command)
+	return ret0
+}
+
+// NewGetGroupTitleByIDCommand indicates an expected call of NewGetGroupTitleByIDCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetGroupTitleByIDCommand(groupID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetGroupTitleByIDCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetGroupTitleByIDCommand), groupID)
+}
+
 // NewGetLinkedUsersCommand mocks base method.
 func (m *MockCommandFactory) NewGetLinkedUsersCommand(userID string) entities.Command {
 	m.ctrl.T.Helper()

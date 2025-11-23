@@ -201,6 +201,7 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 	return nil
 }
 
+//nolint:funlen //ok
 func (service *ReportingService) DeliverySessionResult(
 	ctx context.Context,
 	session *entities.SessionResult,
@@ -225,6 +226,12 @@ func (service *ReportingService) DeliverySessionResult(
 			return errors.Wrap(err, "get linked users with auth client failure")
 		}
 
+		groupTitile, err := service.authClient.GetGroupTitleByID(ctx, linkedUsers.Student.GroupID)
+		if err != nil{
+			slog.Error("get group title by group id", "error", err)
+			return errors.Wrap(err, "get group title by group id")
+		}
+
 		recipient := linkedUsers.Mentor
 
 		var report entities.Report
@@ -232,7 +239,7 @@ func (service *ReportingService) DeliverySessionResult(
 		sessionResultReport, err := entities.NewSessionResult(
 			linkedUsers.Student.ID,
 			linkedUsers.Student.Fullname,
-			linkedUsers.Student.GroupID,
+			groupTitile,
 			session.Topics,
 			session.Questions,
 			session.UserAnswer,

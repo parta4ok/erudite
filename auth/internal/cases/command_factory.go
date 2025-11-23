@@ -105,3 +105,7 @@ func (cf *CommandFactory) NewGetMentorGroupsCommand(mentorID string) entities.Co
 func (cf *CommandFactory) NewGetUserByIDCommand(userID string) entities.Command {
 	return command.NewGetUserByIDCommand(cf.storage, userID)
 }
+
+func (cf *CommandFactory) NewGetGroupTitleByIDCommand(groupID string) entities.Command {
+	return command.NewGetGroupTitleByIDCommand(cf.storage, groupID)
+}

@@ -35,6 +35,21 @@ func (m *MockAuthClient) EXPECT() *MockAuthClientMockRecorder {
 	return m.recorder
 }
 
+// GetGroupTitleByID mocks base method.
+func (m *MockAuthClient) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroupTitleByID", ctx, groupID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGroupTitleByID indicates an expected call of GetGroupTitleByID.
+func (mr *MockAuthClientMockRecorder) GetGroupTitleByID(ctx, groupID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupTitleByID", reflect.TypeOf((*MockAuthClient)(nil).GetGroupTitleByID), ctx, groupID)
+}
+
 // GetLinkedUsers mocks base method.
 func (m *MockAuthClient) GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedMentorAndStudent, error) {
 	m.ctrl.T.Helper()

@@ -49,6 +49,21 @@ func (mr *MockStorageMockRecorder) AddGroup(ctx, gid, title, mentorID interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGroup", reflect.TypeOf((*MockStorage)(nil).AddGroup), ctx, gid, title, mentorID)
 }
 
+// GetGroupTitleByID mocks base method.
+func (m *MockStorage) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroupTitleByID", ctx, groupID)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetGroupTitleByID indicates an expected call of GetGroupTitleByID.
+func (mr *MockStorageMockRecorder) GetGroupTitleByID(ctx, groupID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupTitleByID", reflect.TypeOf((*MockStorage)(nil).GetGroupTitleByID), ctx, groupID)
+}
+
 // GetLinkedUsers mocks base method.
 func (m *MockStorage) GetLinkedUsers(ctx context.Context, userID string) (*entities.LinkedUsers, error) {
 	m.ctrl.T.Helper()

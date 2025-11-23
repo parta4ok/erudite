@@ -9,6 +9,7 @@ service AuthService {
   rpc GetLinkedUsers(LinkedID) returns (LinkedUsersResponse);
   rpc GetMentorGroups(MentorID) returns (GroupsResponse);
   rpc GetUserByID(UserID) returns (UserInfoResponse);
+  rpc GetGroupTitleByID(GroupID) returns (GroupResponse);
 }
 
 message IntrospectRequest {
@@ -44,6 +45,10 @@ message UserID {
 	string UserID = 1;
 }
 
+message GroupID {
+	string GroupID = 1;
+}
+
 message LinkedUsersResponse {
 	UserInfo Recipient = 1;
   	UserInfo Student = 2;
@@ -69,6 +74,11 @@ message Group {
 	string id = 1;
 	string name = 2;
 	repeated Student students = 3;
+}
+
+message GroupResponse {
+	Group Group = 1;
+	Error Error = 2;
 }
 
 message GroupsResponse {

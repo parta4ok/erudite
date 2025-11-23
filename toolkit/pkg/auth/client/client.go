@@ -54,3 +54,8 @@ func (c *AuthClient) GetUserByID(ctx context.Context, req *authv1.UserID,
 	opts ...grpc.CallOption) (*authv1.UserInfoResponse, error) {
 	return c.client.GetUserByID(ctx, req, opts...)
 }
+
+func (c *AuthClient) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID,
+	opts ...grpc.CallOption) (*authv1.GroupResponse, error) {
+	return c.client.GetGroupTitleByID(ctx, req, opts...)
+}

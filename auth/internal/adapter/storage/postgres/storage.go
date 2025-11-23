@@ -204,7 +204,6 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 
 	var params = []interface{}{user.ID, user.Username, user.PasswordHash, user.Rights,
 		contactsRaw, gid, user.FullName}
-	slog.Info("-- store user with params", slog.Any("params", params))
 	query := `INSERT INTO auth.users (uid, name, password_hash, rights, contacts, group_id, fullname)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
@@ -562,4 +561,32 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 
 	slog.Info("GetMentorsGroups completed")
 	return groups, nil
+}
+
+func (s *Storage) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
+	slog.Info("GetGroupTitleByID started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByIDPostgresSpan")
+	defer cancel()
+
+	query := `SELECT title FROM auth.groups WHERE gid=$1`
+	params := []interface{}{groupID}
+
+	row := s.db.QueryRow(ctx, query, params...)
+
+	var groupTitle string
+	if err := row.Scan(&groupTitle); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = errors.Wrapf(entities.ErrNotFound,
+				"group with id=%s not found, err:%v", groupID, err)
+			span.SetError(err, "group not found")
+			slog.Error("group not found", "group_id", groupID, "error", err)
+			return "", err
+		}
+		err = errors.Wrapf(entities.ErrInternal, "get group title failed, id=%s, err:%v", groupID, err)
+		span.SetError(err, "get group title failed")
+		slog.Error("get group title failed", "group_id", groupID, "error", err)
+		return "", err
+	}
+
+	return groupTitle, nil
 }

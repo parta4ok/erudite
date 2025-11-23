@@ -12,4 +12,5 @@ type AuthClient interface {
 	GetLinkedUsers(ctx context.Context, id string) (*entities.LinkedMentorAndStudent, error)
 	GetUserByID(ctx context.Context, id string) (*entities.User, error)
 	Introspect(ctx context.Context, jwt string) (*entities.Claims, error)
+	GetGroupTitleByID(ctx context.Context, groupID string) (string, error)
 }

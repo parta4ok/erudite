@@ -15,4 +15,5 @@ type CommandFactory interface {
 	NewAddGroupCommand(title string, linkedID string) entities.Command
 	NewGetMentorGroupsCommand(mentorID string) entities.Command
 	NewGetUserByIDCommand(userID string) entities.Command
+	NewGetGroupTitleByIDCommand(groupID string) entities.Command
 }

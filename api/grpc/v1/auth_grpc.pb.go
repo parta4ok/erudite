@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_Introspect_FullMethodName      = "/auth.AuthService/Introspect"
-	AuthService_GetLinkedUsers_FullMethodName  = "/auth.AuthService/GetLinkedUsers"
-	AuthService_GetMentorGroups_FullMethodName = "/auth.AuthService/GetMentorGroups"
-	AuthService_GetUserByID_FullMethodName     = "/auth.AuthService/GetUserByID"
+	AuthService_Introspect_FullMethodName        = "/auth.AuthService/Introspect"
+	AuthService_GetLinkedUsers_FullMethodName    = "/auth.AuthService/GetLinkedUsers"
+	AuthService_GetMentorGroups_FullMethodName   = "/auth.AuthService/GetMentorGroups"
+	AuthService_GetUserByID_FullMethodName       = "/auth.AuthService/GetUserByID"
+	AuthService_GetGroupTitleByID_FullMethodName = "/auth.AuthService/GetGroupTitleByID"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -33,6 +34,7 @@ type AuthServiceClient interface {
 	GetLinkedUsers(ctx context.Context, in *LinkedID, opts ...grpc.CallOption) (*LinkedUsersResponse, error)
 	GetMentorGroups(ctx context.Context, in *MentorID, opts ...grpc.CallOption) (*GroupsResponse, error)
 	GetUserByID(ctx context.Context, in *UserID, opts ...grpc.CallOption) (*UserInfoResponse, error)
+	GetGroupTitleByID(ctx context.Context, in *GroupID, opts ...grpc.CallOption) (*GroupResponse, error)
 }
 
 type authServiceClient struct {
@@ -83,6 +85,16 @@ func (c *authServiceClient) GetUserByID(ctx context.Context, in *UserID, opts ..
 	return out, nil
 }
 
+func (c *authServiceClient) GetGroupTitleByID(ctx context.Context, in *GroupID, opts ...grpc.CallOption) (*GroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GroupResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetGroupTitleByID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -91,6 +103,7 @@ type AuthServiceServer interface {
 	GetLinkedUsers(context.Context, *LinkedID) (*LinkedUsersResponse, error)
 	GetMentorGroups(context.Context, *MentorID) (*GroupsResponse, error)
 	GetUserByID(context.Context, *UserID) (*UserInfoResponse, error)
+	GetGroupTitleByID(context.Context, *GroupID) (*GroupResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -112,6 +125,9 @@ func (UnimplementedAuthServiceServer) GetMentorGroups(context.Context, *MentorID
 }
 func (UnimplementedAuthServiceServer) GetUserByID(context.Context, *UserID) (*UserInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserByID not implemented")
+}
+func (UnimplementedAuthServiceServer) GetGroupTitleByID(context.Context, *GroupID) (*GroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetGroupTitleByID not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -206,6 +222,24 @@ func _AuthService_GetUserByID_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_GetGroupTitleByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupID)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetGroupTitleByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetGroupTitleByID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetGroupTitleByID(ctx, req.(*GroupID))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +262,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserByID",
 			Handler:    _AuthService_GetUserByID_Handler,
+		},
+		{
+			MethodName: "GetGroupTitleByID",
+			Handler:    _AuthService_GetGroupTitleByID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

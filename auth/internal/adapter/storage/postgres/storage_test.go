@@ -470,3 +470,51 @@ func TestStorage_GetMentorGroups(t *testing.T) {
 	require.True(t, physicsStudentIDs[student2Physics.ID])
 	require.True(t, physicsStudentIDs[student3Physics.ID])
 }
+
+func TestStorage_GetGroupTitleByID_Success(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	testUser := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     uuid.NewString(),
+		Rights:       []string{"read", "write"},
+		Contacts:     map[string]string{"phone": "891111-11", "tg": "@JDoe"},
+	}
+
+	err := db.StoreUser(ctx, testUser)
+	require.NoError(t, err)
+
+	groupID := uuid.NewString()
+	groupTitle := uuid.NewString()
+
+	err = db.AddGroup(ctx, groupID, groupTitle, testUser.ID)
+	require.NoError(t, err)
+
+	resTitle, err := db.GetGroupTitleByID(ctx, groupID)
+	require.NoError(t, err)
+	require.Equal(t, groupTitle, resTitle)
+}
+
+func TestStorage_GetGroupTitleByID_NotFound(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	groupID := uuid.NewString()
+
+	resTitle, err := db.GetGroupTitleByID(ctx, groupID)
+	require.ErrorIs(t, err, entities.ErrNotFound)
+	require.Equal(t, "", resTitle)
+}

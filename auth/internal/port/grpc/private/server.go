@@ -286,6 +286,56 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 	return userResponse, nil
 }
 
+//nolint:funlen //ok
+func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID,
+) (*authv1.GroupResponse, error) {
+	slog.Info("GetGroupTitleByID started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByIDGRPCHandlerSpan")
+	defer cancel()
+
+	if req.GetGroupID() == "" {
+		err := errors.Wrap(entities.ErrInvalidParam, "group id is invalid")
+		slog.Error(err.Error())
+		span.SetError(err, "group id is invalid")
+		return &authv1.GroupResponse{
+			Group: nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	res, err := a.factory.NewGetGroupTitleByIDCommand(req.GetGroupID()).Exec(ctx)
+	if err != nil {
+		err := errors.Wrap(err, "GetGroupTitleByIDCommand execution failed")
+		slog.Error(err.Error())
+		span.SetError(err, "GetGroupTitleByIDCommand execution failed")
+		return &authv1.GroupResponse{
+			Group: nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	title, ok := res.Payload.(string)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
+		slog.Error(err.Error())
+		span.SetError(err, "cast command result failure")
+		return &authv1.GroupResponse{
+			Group: nil,
+			Error: &authv1.Error{Message: err.Error()},
+		}, nil
+	}
+
+	groupResponse := &authv1.GroupResponse{
+		Group: &authv1.Group{
+			Id:   req.GetGroupID(),
+			Name: title,
+		},
+		Error: nil,
+	}
+
+	return groupResponse, nil
+}
+
 type Server struct {
 	authService *AuthService
 	server      *grpc.Server

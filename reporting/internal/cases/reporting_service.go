@@ -227,7 +227,7 @@ func (service *ReportingService) DeliverySessionResult(
 		}
 
 		groupTitile, err := service.authClient.GetGroupTitleByID(ctx, linkedUsers.Student.GroupID)
-		if err != nil{
+		if err != nil {
 			slog.Error("get group title by group id", "error", err)
 			return errors.Wrap(err, "get group title by group id")
 		}

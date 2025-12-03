@@ -10,14 +10,17 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
+	"github.com/parta4ok/kvs/question/internal/entities/event"
 	_ "github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/question/pkg/dto"
+	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 )
 
@@ -169,7 +172,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	return questions, nil
 }
 
-//nolint:funlen //ok
+//nolint:funlen,gosec //ok
 func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) error {
 	slog.Info("StoreSession started")
 	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "StoreSessionPostgresSpan")
@@ -280,11 +283,40 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 			sesseionResult.IsSuccess, sesseionResult.Grade)
 	}
 
-	_, err := s.db.Exec(ctx, query, parameters...)
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal,
+			"create new transaction finished with failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "create new transaction finished with failure")
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx) //nolint:errcheck //ok
+		}
+	}()
+
+	_, err = tx.Exec(ctx, query, parameters...)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "store session finished with failure: %v", err)
 		slog.Error(err.Error())
 		span.SetError(err, "db.Exec insert session")
+		return err
+	}
+
+	_, err = s.storeSessionResultEvent(ctx, tx, session)
+	if err != nil {
+		slog.Error(err.Error())
+		span.SetError(err, "saveEvent")
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "commit store session finished with failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "commit store session finished with failure")
 		return err
 	}
 
@@ -867,4 +899,196 @@ func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 	}
 
 	return passedTopics, nil
+}
+
+func (s *Storage) storeSessionResultEvent(ctx context.Context, tx pgx.Tx, session *entities.Session,
+) (pgconn.CommandTag, error) {
+	slog.Info("storeSessionResultEvent started", "session_state", session.GetStatus())
+
+	if session.GetStatus() != entities.CompletedState {
+		return pgconn.CommandTag{}, nil
+	}
+
+	sessionResult, err := session.GetSessionResult()
+	if err != nil {
+		slog.Error("session.GetSessionResult", "error", err)
+		return pgconn.CommandTag{}, err
+	}
+
+	payloadData, err := json.Marshal(natsDTO.SessionResultDTO{
+		UserID:      session.GetUserID(),
+		Topics:      session.GetTopics(),
+		Questions:   sessionResult.Questions,
+		UserAnswers: sessionResult.UserAnswers,
+		IsExpire:    sessionResult.IsExpire,
+		IsSuccess:   sessionResult.IsSuccess,
+		Grade:       sessionResult.Grade,
+	})
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "marshalling failed with err: %v", err)
+		slog.Error("marshalling failed", "error", err)
+		return pgconn.CommandTag{}, err
+	}
+
+	data, err := json.Marshal(natsDTO.EventDTO{
+		EventType: event.SessionCompleteEventType.String(),
+		Payload:   payloadData,
+	})
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "marshalling failed with err: %v", err)
+		slog.Error("marshalling failed", "error", err)
+		return pgconn.CommandTag{}, err
+	}
+
+	params := []interface{}{event.SessionCompleteEventType, data}
+
+	query := `INSERT INTO kvs.outbox (type, payload) VALUES ($1, $2)`
+
+	return tx.Exec(ctx, query, params...)
+}
+
+func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, error) {
+	slog.Info("GetUnpublishedEvents started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUnpublishedEventsPostgresSpan")
+	defer cancel()
+
+	query := `
+		SELECT id, type, payload
+		FROM kvs.outbox
+		WHERE published = FALSE
+		LIMIT 100
+		FOR UPDATE SKIP LOCKED;
+	`
+	rows, err := s.db.Query(ctx, query)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "rows with unsended events failure: %v", err)
+		slog.Warn("rows with unsended events", "error", err)
+		span.SetError(err, "rows with unsended events failure")
+		return nil, err
+	}
+	defer rows.Close()
+
+	unpublishedEvents := make([]event.Event, 0, 100)
+	for rows.Next() {
+		var (
+			id        int
+			eventType string
+			payload   []byte
+		)
+
+		if err := rows.Scan(&id, &eventType, &payload); err != nil {
+			err := errors.Wrapf(entities.ErrInternal, "scan unsended events failure: %v", err)
+			slog.Warn("scan unsended events", "error", err)
+			span.SetError(err, "scan unsended events failure")
+			return nil, err
+		}
+		var concreteEvent event.Event
+		switch eventType {
+		case event.SessionCompleteEventType.String():
+			sessionCompleteEvent, err := event.NewSessionCompleteEvent(payload)
+			if err != nil {
+				err := errors.Wrapf(entities.ErrInternal, "NewSessionCompleteEvent failure: %v", err)
+				slog.Warn("NewSessionCompleteEvent", "error", err)
+				span.SetError(err, "NewSessionCompleteEvent failure")
+				return nil, err
+			}
+			sessionCompleteEvent.SetNum(id)
+
+			concreteEvent = sessionCompleteEvent
+		default:
+			err := errors.Wrap(entities.ErrInternal, "unknown event type")
+			slog.Warn("unknown event type", "error", err)
+			span.SetError(err, "unknown event type")
+			return nil, err
+		}
+		unpublishedEvents = append(unpublishedEvents, concreteEvent)
+	}
+
+	return unpublishedEvents, nil
+}
+
+//nolint:funlen,gosec //ok
+func (s *Storage) MarkEventAsPublished(
+	ctx context.Context,
+	id int,
+	fn func(ctx context.Context) error,
+) error {
+	slog.Info("MarkEventAsPublished started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "MarkEventAsPublishedPostgresSpan")
+	defer cancel()
+
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal,
+			"create new transaction finished with failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "create new transaction finished with failure")
+		return err
+	}
+
+	defer func() {
+		if err != nil {
+			tx.Rollback(ctx) //nolint:errcheck //ok
+		}
+	}()
+
+	params := []interface{}{id}
+
+	query := `
+		UPDATE kvs.outbox
+		SET
+		published = TRUE,
+		published_at = NOW()
+		WHERE id = $1;
+	`
+
+	tag, err := tx.Exec(ctx, query, params...)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "mark event as sended failure: %v", err)
+		slog.Error("mark event as sended failure", "error", err)
+		span.SetError(err, "mark event as sended failure")
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		err = errors.Wrapf(entities.ErrInternal, "expected one affected row, now: %d", tag.RowsAffected())
+		slog.Error("expected one affected row", "error", err)
+		span.SetError(err, "expected one affected row")
+		return err
+	}
+
+	if err = fn(ctx); err != nil {
+		slog.Error("send to publisher", "error", err)
+		span.SetError(err, "send to publisher")
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "commit mark event as published: %v", err)
+		slog.Error("commit mark event as published", "error", err)
+		span.SetError(err, "commit mark event as published")
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) FlushPublishedEvents(ctx context.Context) error {
+	slog.Info("FlushPublishedEvents started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "FlushPublishedEventsPostgresSpan")
+	defer cancel()
+
+	query := `
+	DELETE FROM kvs.outbox
+	WHERE id IN (SELECT id FROM kvs.outbox WHERE published = TRUE LIMIT 1000);
+	`
+	_, err := s.db.Exec(ctx, query)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "deleting published events finished with err: %v", err)
+		slog.Error("deleting published events finished with err", "error", err)
+		span.SetError(err, "deleting published events finished with err")
+		return err
+	}
+
+	return err
 }

@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	entities "github.com/parta4ok/kvs/question/internal/entities"
+	event "github.com/parta4ok/kvs/question/internal/entities/event"
 )
 
 // MockMessageBroker is a mock of MessageBroker interface.
@@ -35,16 +35,16 @@ func (m *MockMessageBroker) EXPECT() *MockMessageBrokerMockRecorder {
 	return m.recorder
 }
 
-// SessionFinishedEvent mocks base method.
-func (m *MockMessageBroker) SessionFinishedEvent(ctx context.Context, sessionResult *entities.SessionResult) error {
+// Publish mocks base method.
+func (m *MockMessageBroker) Publish(ctx context.Context, event event.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SessionFinishedEvent", ctx, sessionResult)
+	ret := m.ctrl.Call(m, "Publish", ctx, event)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SessionFinishedEvent indicates an expected call of SessionFinishedEvent.
-func (mr *MockMessageBrokerMockRecorder) SessionFinishedEvent(ctx, sessionResult interface{}) *gomock.Call {
+// Publish indicates an expected call of Publish.
+func (mr *MockMessageBrokerMockRecorder) Publish(ctx, event interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SessionFinishedEvent", reflect.TypeOf((*MockMessageBroker)(nil).SessionFinishedEvent), ctx, sessionResult)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockMessageBroker)(nil).Publish), ctx, event)
 }

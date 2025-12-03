@@ -5,10 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -110,7 +107,6 @@ func New(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-// Port interface implementation
 func (s *Server) Start(ctx context.Context) error {
 	slog.Info("HTTP public server starting", "port", s.cfg.Port)
 	s.registerRoutes()
@@ -152,46 +148,6 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func (s *Server) Type() string {
 	return httpPublicPortType
-}
-
-// Legacy methods for backward compatibility
-func (s *Server) LegacyStart() {
-	slog.Info("public port started")
-	s.registerRoutes()
-
-	s.server = &http.Server{
-		Addr:              s.cfg.Port,
-		Handler:           s.router,
-		ReadHeaderTimeout: s.cfg.Timeout,
-		WriteTimeout:      s.cfg.Timeout,
-		IdleTimeout:       s.cfg.Timeout,
-	}
-
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error(err.Error())
-		}
-	}()
-
-	<-done
-
-	s.LegacyStop()
-}
-
-func (s *Server) LegacyStop() {
-	slog.Info("server will be stopping")
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancelFn()
-
-	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error(errors.Wrapf(entities.ErrInternal, "shutdown err: %v", err).Error())
-	}
-
-	slog.Info("server stop gracefully")
 }
 
 func (s *Server) registerRoutes() {

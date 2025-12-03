@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	natsDriver "github.com/nats-io/nats.go"
 	"github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
-	"github.com/parta4ok/kvs/question/internal/entities"
+	"github.com/parta4ok/kvs/question/internal/entities/event"
 	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ var (
 	natsUrl = os.Getenv("TEST_NATS_CONN")
 )
 
-func TestPublisher_SessionFinishedEvent(t *testing.T) {
+func TestPublisher_Publish(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -37,48 +37,49 @@ func TestPublisher_SessionFinishedEvent(t *testing.T) {
 	natsStream, err := nats.NewPublisher(pub, subject)
 	require.NoError(t, err)
 
-	msgCh := make(chan natsDTO.EventDTO, 1)
+	msgCh := make(chan []byte, 1)
 	nc, err := natsDriver.Connect(natsUrl)
 	require.NoError(t, err)
 	defer nc.Drain()
 
 	sub, err := nc.Subscribe(subject, func(msg *natsDriver.Msg) {
-		var messageDto natsDTO.EventDTO
-		err := json.Unmarshal(msg.Data, &messageDto)
-		require.NoError(t, err)
-		msgCh <- messageDto
+		msgCh <- msg.Data
 	})
 	require.NoError(t, err)
 	defer sub.Unsubscribe()
 
-	finishedSession := &entities.SessionResult{
+	sessionResultDTO := natsDTO.SessionResultDTO{
 		UserID:      uuid.NewString(),
 		Topics:      []string{uuid.NewString(), uuid.NewString()},
 		Questions:   map[string][]string{uuid.NewString(): {uuid.NewString(), uuid.NewString()}},
 		UserAnswers: map[string][]string{uuid.NewString(): {uuid.NewString(), uuid.NewString()}},
 		IsExpire:    false,
-		IsSuccess:   false,
-		Grade:       "10%",
+		IsSuccess:   true,
+		Grade:       "85%",
 	}
 
-	err = natsStream.SessionFinishedEvent(ctx, finishedSession)
+	payload, err := json.Marshal(sessionResultDTO)
+	require.NoError(t, err)
+
+	sessionEvent, err := event.NewSessionCompleteEvent(payload)
+	require.NoError(t, err)
+
+	err = natsStream.Publish(ctx, sessionEvent)
 	require.NoError(t, err)
 
 	select {
 	case recv := <-msgCh:
-		require.Equal(t, nats.SessionFinishedEventType, recv.EventType)
-
-		var sessionResultDTO natsDTO.SessionResultDTO
-		err := json.Unmarshal(recv.Payload, &sessionResultDTO)
+		var receivedDTO natsDTO.SessionResultDTO
+		err := json.Unmarshal(recv, &receivedDTO)
 		require.NoError(t, err)
 
-		require.Equal(t, finishedSession.UserID, sessionResultDTO.UserID)
-		require.Equal(t, finishedSession.Topics, sessionResultDTO.Topics)
-		require.Equal(t, finishedSession.Questions, sessionResultDTO.Questions)
-		require.Equal(t, finishedSession.UserAnswers, sessionResultDTO.UserAnswers)
-		require.Equal(t, finishedSession.IsExpire, sessionResultDTO.IsExpire)
-		require.Equal(t, finishedSession.IsSuccess, sessionResultDTO.IsSuccess)
-		require.Equal(t, finishedSession.Grade, sessionResultDTO.Grade)
+		require.Equal(t, sessionResultDTO.UserID, receivedDTO.UserID)
+		require.Equal(t, sessionResultDTO.Topics, receivedDTO.Topics)
+		require.Equal(t, sessionResultDTO.Questions, receivedDTO.Questions)
+		require.Equal(t, sessionResultDTO.UserAnswers, receivedDTO.UserAnswers)
+		require.Equal(t, sessionResultDTO.IsExpire, receivedDTO.IsExpire)
+		require.Equal(t, sessionResultDTO.IsSuccess, receivedDTO.IsSuccess)
+		require.Equal(t, sessionResultDTO.Grade, receivedDTO.Grade)
 	case <-ctx.Done():
 		t.Errorf("message not received")
 	}

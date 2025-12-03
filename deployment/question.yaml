@@ -18,6 +18,11 @@ kvs:
     session:
         time_to_respond: 1m
         day_session_limit: 1
+    sheduler:
+        publisher:
+            interval: 2s
+        flusher:
+            interval: 1m
 postgres:
     connection: postgresql://postgres:password@postgres:5432/knowledge
 auth_service:

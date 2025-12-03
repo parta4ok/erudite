@@ -1,0 +1,12 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS kvs.outbox (
+	id SERIAL PRIMARY KEY,
+	type VARCHAR(255) NOT NULL,
+	payload JSONB NOT NULL,
+	published BOOL NOT NULL DEFAULT false,
+	saved_at TIMESTAMP NOT NULL DEFAULT NOW(),
+	published_at TIMESTAMP
+);
+
+END;

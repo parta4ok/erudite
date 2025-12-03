@@ -150,3 +150,11 @@ func (cfg *Config) GetOtelEndpoint() string {
 func (cfg *Config) GetOtelInsecure() bool {
 	return cfg.viper.GetBool("otel.insecure")
 }
+
+func (cfg *Config) GetPublisherInterval() time.Duration {
+	return cfg.viper.GetDuration("kvs.sheduler.publisher.interval")
+}
+
+func (cfg *Config) GetFlusherInterval() time.Duration {
+	return cfg.viper.GetDuration("kvs.sheduler.flusher.interval")
+}

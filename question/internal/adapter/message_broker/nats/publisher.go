@@ -2,12 +2,11 @@ package nats
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
-	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
+	"github.com/parta4ok/kvs/question/internal/entities/event"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	"github.com/pkg/errors"
@@ -37,43 +36,12 @@ func NewPublisher(pub *publisher.Publisher, subject string) (*Publisher, error) 
 	}, nil
 }
 
-func (p *Publisher) SessionFinishedEvent(ctx context.Context,
-	sessionResult *entities.SessionResult) error {
-	slog.Info("Publisher: SessionFinishedEvent started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "NATSPublisherSessionFinishedEventSpan")
+func (p *Publisher) Publish(ctx context.Context, event event.Event) error {
+	slog.Info("Publisher: processing event started", "type", event.Type())
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "NATSPublisherEventSpan")
 	defer cancel()
-	data := natsDTO.SessionResultDTO{
-		UserID:      sessionResult.UserID,
-		Topics:      sessionResult.Topics,
-		Questions:   sessionResult.Questions,
-		UserAnswers: sessionResult.UserAnswers,
-		IsExpire:    sessionResult.IsExpire,
-		IsSuccess:   sessionResult.IsSuccess,
-		Grade:       sessionResult.Grade,
-	}
 
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		err = errors.Wrapf(entities.ErrInternal, "failed to marshal session result: %v", err)
-		slog.Error(err.Error())
-		span.SetError(err, "failed to marshal session result")
-		return err
-	}
-
-	event := natsDTO.EventDTO{
-		EventType: SessionFinishedEventType,
-		Payload:   bytes,
-	}
-
-	message, err := json.Marshal(event)
-	if err != nil {
-		err = errors.Wrapf(entities.ErrInternal, "failed to marshal event: %v", err)
-		slog.Error(err.Error())
-		span.SetError(err, "failed to marshal event")
-		return err
-	}
-
-	if err = p.pub.Publish(ctx, p.subject, message); err != nil {
+	if err := p.pub.Publish(ctx, p.subject, event.Payload()); err != nil {
 		if errors.Is(err, publisher.ErrInternal) {
 			err = errors.Wrapf(entities.ErrInternal, "publish failure: %v", err)
 		}

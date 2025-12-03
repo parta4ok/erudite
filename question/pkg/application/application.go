@@ -1,6 +1,7 @@
 package appication
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
 	authservice "github.com/parta4ok/kvs/question/internal/adapter/introspector/auth_service"
 	"github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
+	"github.com/parta4ok/kvs/question/internal/adapter/storage"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/cases"
 	"github.com/parta4ok/kvs/question/internal/entities"
@@ -18,6 +20,8 @@ import (
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/cron"
+	"github.com/parta4ok/kvs/toolkit/pkg/logger"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
 	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
@@ -30,6 +34,7 @@ type App struct {
 	publicServer  *public.Server
 	privateServer *private.Server
 	tracerPort    *tracing.TracerPort
+	sheduler      *cron.Sheduler
 	tracing       bool
 }
 
@@ -46,13 +51,20 @@ func NewApp(cfgPath string) *App {
 }
 
 func (app *App) Start() {
-	app.initConfiguredLogger()
+	baseLogger := logger.NewBaseLogger(
+		app.config.GetLogLevel(),
+		app.config.GetLogAddSource(),
+		app.config.GetLogFormat(),
+		app.config.GetServiceName(),
+		app.config.GetServiceVersion(),
+	)
+	baseLogger.InitConfiguredLogger()
 	slog.Info("logger configuration completed")
 
 	tracerPort := app.initTracer()
 	app.tracerPort = tracerPort
 
-	storage, sessionStorage := app.initStorage()
+	storage, sessionStorage, eventStorage := app.initStorage()
 	generator := app.initGenerator()
 	authClient := app.initAuthServiceClient()
 	accessor := app.initAccessor()
@@ -60,65 +72,26 @@ func (app *App) Start() {
 	service := app.initSessionServiceBase(storage, sessionStorage, generator)
 	broker := app.initBroker()
 
-	wrappedService := app.initWrappedSessionService(service, broker)
+	sheduler := app.initSheduler(eventStorage, broker)
+	app.sheduler = sheduler
 
-	pubicServer := app.initPublicPort(wrappedService, authClient, accessor)
+	pubicServer := app.initPublicPort(service, authClient, accessor)
 	app.publicServer = pubicServer
 
-	privateServer := app.initPrivatePort(wrappedService)
+	privateServer := app.initPrivatePort(service)
 	app.privateServer = privateServer
 
-	ports := []baseApplication.Port{app.privateServer, app.publicServer, app.tracerPort}
+	ports := []baseApplication.Port{
+		app.privateServer,
+		app.publicServer,
+		app.tracerPort,
+		app.sheduler,
+	}
 
 	baseApp := baseApplication.NewBaseApplication()
 	baseApp.SetTimeout(4 * time.Second)
 	baseApp.SetPorts(ports)
 	baseApp.StartPortsWithGracefulShutdown()
-}
-
-func (app *App) initConfiguredLogger() {
-	level := parseLogLevel(app.config.GetLogLevel())
-
-	opts := &slog.HandlerOptions{
-		Level:     level,
-		AddSource: app.config.GetLogAddSource(),
-	}
-
-	var handler slog.Handler
-
-	switch app.config.GetLogFormat() {
-	case "text":
-		handler = slog.NewTextHandler(os.Stdout, opts)
-	default:
-		handler = slog.NewJSONHandler(os.Stdout, opts)
-	}
-
-	logger := slog.New(handler).With(
-		"service", app.config.GetServiceName(),
-		"version", app.config.GetServiceVersion(),
-	)
-
-	slog.SetDefault(logger)
-
-	slog.Info("Logger reconfigured from config",
-		"level", app.config.GetLogLevel(),
-		"format", app.config.GetLogFormat(),
-		"add_source", app.config.GetLogAddSource())
-}
-
-func parseLogLevel(levelStr string) slog.Level {
-	switch levelStr {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn", "warning":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
 }
 
 func (app *App) initTracer() *tracing.TracerPort {
@@ -185,11 +158,12 @@ func (app *App) initBroker() cases.MessageBroker {
 	return broker
 }
 
-func (app *App) initStorage() (cases.Storage, entities.SessionStorage) {
+func (app *App) initStorage() (cases.Storage, entities.SessionStorage, storage.EventStorage) {
 	slog.Info("init storage started")
 
-	var storage cases.Storage
+	var baseStorage cases.Storage
 	var sessionStorage entities.SessionStorage
+	var eventStorage storage.EventStorage
 
 	storageType := app.config.GetServiceStorageType()
 	connStr := app.config.GetStorageConnStr(storageType)
@@ -199,14 +173,15 @@ func (app *App) initStorage() (cases.Storage, entities.SessionStorage) {
 		if err != nil {
 			app.panic(err)
 		}
-		storage = s
+		baseStorage = s
 		sessionStorage = s
+		eventStorage = s
 	default:
 		err := errors.Wrap(entities.ErrInvalidParam, "invalid storage type")
 		app.panic(err)
 	}
 
-	return storage, sessionStorage
+	return baseStorage, sessionStorage, eventStorage
 }
 
 func (app *App) initAccessor() public.Accessor {
@@ -265,25 +240,6 @@ func (app *App) initSessionServiceBase(
 	sessionService = serv
 
 	return sessionService
-}
-
-func (app *App) initWrappedSessionService(
-	service cases.SessionService,
-	broker cases.MessageBroker,
-) cases.SessionService {
-	slog.Info("init wrapped_session_service started")
-	var wrappedService cases.SessionService
-
-	brokerEventTimeOut := app.config.GetEventTimeout()
-	srv, err := cases.NewSessionServiceBusDecorator(service, broker,
-		cases.WithCustomEventTimeout(brokerEventTimeOut))
-	if err != nil {
-		app.panic(err)
-	}
-
-	wrappedService = srv
-
-	return wrappedService
 }
 
 func (app *App) initAuthServiceClient() public.Introspector {
@@ -357,7 +313,69 @@ func (app *App) initPrivatePort(sessionServiceBase cases.SessionService) *privat
 	return server
 }
 
+func (app *App) initSheduler(
+	eventStorage storage.EventStorage,
+	broker cases.MessageBroker,
+) *cron.Sheduler {
+	sheduler, err := cron.NewSheduler()
+	if err != nil {
+		app.panic(err)
+	}
+
+	if err = sheduler.NewJob(app.config.GetPublisherInterval(),
+		app.publishEvents, eventStorage, broker); err != nil {
+		app.panic(err)
+	}
+	if err = sheduler.NewJob(app.config.GetFlusherInterval(),
+		app.flushEvents, eventStorage); err != nil {
+		app.panic(err)
+	}
+
+	return sheduler
+}
+
 func (app *App) panic(err error, args ...any) {
 	slog.Error(err.Error(), args...)
 	os.Exit(1)
+}
+
+func (app *App) publishEvents(eventStorage storage.EventStorage, broker cases.MessageBroker) {
+	slog.Info("cron publishEvents start")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	unpublishedEvents, err := eventStorage.GetUnpublishedEvents(ctx)
+	if err != nil {
+		slog.Warn("get unpublished events", "error", err)
+	}
+
+	for _, event := range unpublishedEvents {
+		fn := func(ctx context.Context) error {
+			if err := broker.Publish(ctx, event); err != nil {
+				slog.Warn("publish event", "error", err)
+				return err
+			}
+
+			return nil
+		}
+
+		if err := eventStorage.MarkEventAsPublished(ctx, event.Num(), fn); err != nil {
+			slog.Warn("mark event as published", "error", err)
+		}
+	}
+
+	slog.Info("cron publishEvents finished")
+}
+
+func (app *App) flushEvents(eventStorage storage.EventStorage) {
+	slog.Info("cron flushEvents start")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	if err := eventStorage.FlushPublishedEvents(ctx); err != nil {
+		slog.Warn("flush published events", "error", err)
+	}
+	slog.Info("cron flushEvents finished")
 }

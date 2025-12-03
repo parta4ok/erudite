@@ -4,6 +4,7 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -11,15 +12,21 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/jackc/pgx/v5/pgxpool"
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/entities"
+	"github.com/parta4ok/kvs/question/internal/entities/event"
 	"github.com/parta4ok/kvs/question/internal/entities/testdata"
 	"github.com/stretchr/testify/require"
 )
 
 var (
 	cstr = os.Getenv("TEST_PG_CONN")
+)
+
+var (
+	ErrTest = errors.New("test error")
 )
 
 func makeDB(t *testing.T, opts ...postgres.StorageOption) *postgres.Storage {
@@ -450,4 +457,74 @@ func findCorrectAnswer(q entities.Question) []string {
 	}
 
 	return []string{q.Variants()[0]}
+}
+
+func TestStorage_MarkEventAsPublished_Rollback(t *testing.T) {
+	t.Parallel()
+
+	e, err := event.NewSessionCompleteEvent([]byte(`{"event_type":"SessionResultEvent", "payload":{"id":1}}`))
+	require.NoError(t, err)
+
+	query := `INSERT INTO kvs.outbox (type, payload) VALUES($1, $2) RETURNING id`
+	params := []interface{}{event.SessionCompleteEventType.String(), e.Payload()}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	db, err := pgxpool.New(ctx, cstr)
+	require.NoError(t, err)
+
+	var id int
+	err = db.QueryRow(ctx, query, params...).Scan(&id)
+	require.NoError(t, err)
+	require.Greater(t, id, 0)
+
+	storage := makeDB(t)
+
+	fnWithErr := func(ctx context.Context) error {
+		return ErrTest
+	}
+
+	err = storage.MarkEventAsPublished(ctx, id, fnWithErr)
+	require.ErrorIs(t, err, ErrTest)
+
+	var published bool
+	err = db.QueryRow(ctx, `SELECT published FROM kvs.outbox WHERE id = $1`, id).Scan(&published)
+	require.NoError(t, err)
+	require.False(t, published)
+}
+
+func TestStorage_MarkEventAsPublished_Commit(t *testing.T) {
+	t.Parallel()
+
+	e, err := event.NewSessionCompleteEvent([]byte(`{"event_type":"SessionResultEvent", "payload":{"id":1}}`))
+	require.NoError(t, err)
+
+	query := `INSERT INTO kvs.outbox (type, payload) VALUES($1, $2) RETURNING id`
+	params := []interface{}{event.SessionCompleteEventType.String(), e.Payload()}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	db, err := pgxpool.New(ctx, cstr)
+	require.NoError(t, err)
+
+	var id int
+	err = db.QueryRow(ctx, query, params...).Scan(&id)
+	require.NoError(t, err)
+	require.Greater(t, id, 0)
+
+	storage := makeDB(t)
+
+	fnSuccess := func(ctx context.Context) error {
+		return nil
+	}
+
+	err = storage.MarkEventAsPublished(ctx, id, fnSuccess)
+	require.NoError(t, err)
+
+	var published bool
+	err = db.QueryRow(ctx, `SELECT published FROM kvs.outbox WHERE id = $1`, id).Scan(&published)
+	require.NoError(t, err)
+	require.True(t, published)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	port "github.com/parta4ok/kvs/reporting/internal/port"
 	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -192,7 +193,8 @@ func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
 			return errors.Wrap(entities.ErrInternal, "failed to cast session event")
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx := middleware.ExtractTraceFromNatsMessage(context.Background(), msg)
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		if err := c.service.DeliverySessionResult(ctx, &entities.SessionResult{

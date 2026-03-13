@@ -26,7 +26,7 @@ jwt:
 tracing:
     system: otel
     servicename: auth
-    enabled: false
+    enabled: true
 otel:
     endpoint: jaeger:4317
     insecure: true

@@ -9,6 +9,8 @@ import (
 	"net/url"
 
 	"github.com/pkg/errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 const (
@@ -79,6 +81,8 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 	slog.Info("request data", slog.String("method", req.Method), slog.String("url", req.URL.String()))
 	req.Header.Set("Content-Type", "application/json")
 
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	
 	resp, err := client.c.Do(req)
 	if err != nil {
 		slog.Error("client.do failure", "error", err)
@@ -108,7 +112,6 @@ func (client *Client) processErr(statusCode int) error {
 	switch statusCode { //nolint:gocritic // will be extension on the next steps
 	case http.StatusBadRequest:
 		return ErrBadRequest
-
 	}
 	return ErrInternal
 }

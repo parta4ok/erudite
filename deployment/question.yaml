@@ -34,7 +34,7 @@ nats:
 tracing:
     system: otel
     servicename: question
-    enabled: false
+    enabled: true
 otel:
     endpoint: jaeger:4317
     insecure: true

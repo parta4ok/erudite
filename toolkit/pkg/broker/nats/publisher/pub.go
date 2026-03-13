@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/nats-io/nats.go"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -50,11 +51,14 @@ func (publisher *Publisher) Publish(ctx context.Context, subject string, message
 	}
 
 	slog.Info("About to publish message via JetStream")
-	ack, err := publisher.conn.PublishMsg(&nats.Msg{
+	msg := &nats.Msg{
 		Subject: subject,
 		Data:    message,
-	}, nats.Context(ctx))
+	}
 
+	middleware.InjectTraceToNatsMessage(ctx, msg)
+
+	ack, err := publisher.conn.PublishMsg(msg, nats.Context(ctx))
 	if err != nil {
 		slog.Error("JetStream publish failed", slog.String("error", err.Error()))
 		return errors.Wrapf(ErrInternal, "failed to publish message: %v", err)

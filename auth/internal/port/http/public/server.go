@@ -14,6 +14,7 @@ import (
 	"github.com/parta4ok/kvs/auth/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -151,7 +152,10 @@ func (s *Server) Type() string {
 }
 
 func (s *Server) registerRoutes() {
-	s.router.Use(s.timeoutMiddleware)
+	s.router.Use(
+		middleware.TracingMiddleware,
+		s.timeoutMiddleware,
+	)
 
 	s.router.Post(basePath+signinPath, s.Signin)
 	s.router.Put(basePath+addUserPath, s.AddUser)

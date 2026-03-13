@@ -11,6 +11,7 @@ import (
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
 	port "github.com/parta4ok/kvs/notificationhub/internal/port"
 	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -196,6 +197,7 @@ func (c *NatsConsumer) handleMessage(msg *nats.Msg) {
 
 func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
 	slog.Info("processEvent", slog.String("subject", msg.Subject))
+	ctx := middleware.ExtractTraceFromNatsMessage(c.ctx, msg)
 
 	var reportEventDTO natsDTO.ReportEventDTO
 	if err := json.Unmarshal(msg.Data, &reportEventDTO); err != nil {
@@ -227,7 +229,7 @@ func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
 		slog.Error("new normal event", "error", err)
 	}
 
-	if err := c.service.SendMessage(c.ctx, event); err != nil {
+	if err := c.service.SendMessage(ctx, event); err != nil {
 		slog.Error("send message", "error", err)
 	}
 

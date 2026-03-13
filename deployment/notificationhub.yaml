@@ -20,7 +20,7 @@ nats:
 tracing:
     system: otel
     servicename: notificationhub
-    enabled: false
+    enabled: true
 otel:
     endpoint: jaeger:4317
     insecure: true

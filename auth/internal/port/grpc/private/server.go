@@ -12,6 +12,7 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/auth/internal/port"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -365,7 +366,9 @@ func (srv *Server) setOptions(opts ...ServerOption) {
 
 func NewServer(opts ...ServerOption) (*Server, error) {
 	serv := &Server{
-		server:      grpc.NewServer(),
+		server: grpc.NewServer(
+			grpc.UnaryInterceptor(middleware.UnaryServerInterceptor()),
+		),
 		authService: &AuthService{},
 	}
 

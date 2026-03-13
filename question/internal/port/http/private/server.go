@@ -12,6 +12,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
 	"github.com/pkg/errors"
 )
 
@@ -128,6 +129,7 @@ func (s *Server) Type() string {
 
 func (s *Server) registerRoutes() {
 	s.router.Use(
+		middleware.TracingMiddleware,
 		s.timeoutMiddleware,
 	)
 

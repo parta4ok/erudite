@@ -8,10 +8,11 @@ import (
 )
 
 type CommandFactory struct {
-	storage     common.Storage
-	jwtProvider common.JWTProvider
-	hasher      common.Hasher
-	idGenerator common.IDGenerator
+	storage       common.Storage
+	jwtProvider   common.JWTProvider
+	hasher        common.Hasher
+	idGenerator   common.IDGenerator
+	messageBroker common.MessageBroker
 }
 
 type CommandFactoryOption func(*CommandFactory)
@@ -40,6 +41,12 @@ func WithIDGenerator(generator common.IDGenerator) CommandFactoryOption {
 	}
 }
 
+func WithMessageBroker(broker common.MessageBroker) CommandFactoryOption {
+	return func(cf *CommandFactory) {
+		cf.messageBroker = broker
+	}
+}
+
 func (cf *CommandFactory) setOptions(opts ...CommandFactoryOption) {
 	for _, opt := range opts {
 		opt(cf)
@@ -65,6 +72,10 @@ func NewCommandFactory(opts ...CommandFactoryOption) (*CommandFactory, error) {
 
 	if factory.idGenerator == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "id generator not set")
+	}
+
+	if factory.messageBroker == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "message broker not set")
 	}
 
 	return factory, nil
@@ -108,4 +119,9 @@ func (cf *CommandFactory) NewGetUserByIDCommand(userID string) entities.Command 
 
 func (cf *CommandFactory) NewGetGroupTitleByIDCommand(groupID string) entities.Command {
 	return command.NewGetGroupTitleByIDCommand(cf.storage, groupID)
+}
+
+func (cf *CommandFactory) NewDynamicRegisterCommand(userID, provider string) entities.Command {
+	return command.NewDynamicRegisterCommand(cf.storage, cf.idGenerator, cf.messageBroker,
+		userID, provider)
 }

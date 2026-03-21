@@ -23,6 +23,10 @@ jwt:
     aud: [students]
     iss: erudite_app
     ttl: 24h
+nats:
+    url: nats://nats:4222
+    subject: sessions.*
+    event_timeout: 5s
 tracing:
     system: otel
     servicename: auth

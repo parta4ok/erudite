@@ -3,6 +3,7 @@ package entities
 const (
 	ReportFinishedSession = MessageType("report.session_result")
 	ReportPassedTopics    = MessageType("report.passed_topics")
+	ReportShortPassword   = MessageType("report.short_password")
 )
 
 const (

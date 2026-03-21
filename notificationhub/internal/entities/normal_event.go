@@ -24,7 +24,8 @@ func NewNormalEvent(
 	recipient *User,
 ) (*NormalEvent, error) {
 	if !strings.HasPrefix(kind, ReportFinishedSession.String()) &&
-		!strings.HasPrefix(kind, ReportPassedTopics.String()) {
+		!strings.HasPrefix(kind, ReportPassedTopics.String()) &&
+		!strings.HasPrefix(kind, ReportShortPassword.String()) {
 		return nil, errors.Wrapf(ErrInvalidParam, "unknown event type: %s", kind)
 	}
 

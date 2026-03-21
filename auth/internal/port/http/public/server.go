@@ -19,13 +19,14 @@ import (
 )
 
 const (
-	basePath            = "/auth/v1"
-	signinPath          = "/signin"
-	addUserPath         = "/add-user"
-	deleteUserPath      = "/delete-user"
-	updateUserPath      = "/update-user"
-	addGroupPath        = "/add-group"
-	getMentorGroupsPath = "/mentor-groups"
+	basePath                = "/auth/v1"
+	signinPath              = "/signin"
+	addUserPath             = "/add-user"
+	deleteUserPath          = "/delete-user"
+	updateUserPath          = "/update-user"
+	addGroupPath            = "/add-group"
+	getMentorGroupsPath     = "/mentor-groups"
+	dynamicregistrationPath = "/dynamic-registration"
 
 	right_admin  = "admin"
 	right_mentor = "mentor"
@@ -165,6 +166,7 @@ func (s *Server) registerRoutes() {
 		r.Patch(updateUserPath+"/{user_id}", s.UpdateUser)
 		r.Get("/{user_id}"+getMentorGroupsPath, s.GetMentorGroups)
 	})
+	s.router.Post(basePath+dynamicregistrationPath, s.DynamicRegistration)
 }
 
 // Sign in user
@@ -804,4 +806,66 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	}
 
 	return nil
+}
+
+// DynamicRegistration initiates dynamic registration by sending a 4-digit code
+//
+// @Summary      Dynamic registration
+// @Description  Generates a 4-digit code and sends it to via the provider (email, telegram, etc.)
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.DynamicRegistrationDTO true "User ID and delivery provider"
+// @Success      200 "Code sent successfully"
+// @Failure      400  {object}  dto.ErrorDTO "Invalid request parameters"
+// @Failure      409  {object}  dto.ErrorDTO "Conflict"
+// @Failure      500  {object}  dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/dynamic-registration [post]
+//
+//nolint:funlen //ok
+func (s *Server) DynamicRegistration(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("DynamicRegistration started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "DynamicRegistrationHandlerSpan")
+	defer cancel()
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	var requestDTO dto.DynamicRegistrationDTO
+	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
+		err := errors.Wrapf(entities.ErrInvalidParam,
+			"decode req body to DynamicRegistrationDTO failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err, "decode to DynamicRegistrationDTO")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	res, err := s.factory.NewDynamicRegisterCommand(requestDTO.UserID, requestDTO.Provider).Exec(ctx)
+	if err != nil {
+		err := errors.Wrap(err, "dynamic register command executing failure")
+		slog.Error(err.Error())
+		span.SetError(err, "exec DynamicRegisterCommand")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if res == nil {
+		err := errors.Wrap(entities.ErrInternal,
+			"dynamic register command executing completed with nil result")
+		slog.Error(err.Error())
+		span.SetError(err, "nil DynamicRegisterCommand result")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	if !res.Success {
+		err := errors.Wrap(entities.ErrInternal,
+			"Dynamic register command executing completed with bad status")
+		slog.Error(err.Error())
+		span.SetError(err, "bad DynamicRegisterCommand result status")
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
 }

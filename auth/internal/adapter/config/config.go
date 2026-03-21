@@ -147,3 +147,11 @@ func (cfg *Config) GetTracingInfraProbability(tracingSystemName string) string {
 func (cfg *Config) GetOtelEndpoint() string {
 	return cfg.viper.GetString("otel.endpoint")
 }
+
+func (cfg *Config) GetNatsURL() string {
+	return cfg.viper.GetString("nats.url")
+}
+
+func (cfg *Config) GetNatsSubject() string {
+	return cfg.viper.GetString("nats.subject")
+}

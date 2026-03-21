@@ -33,3 +33,15 @@ type UserDTO struct {
 	Contacts map[string]string `json:"contacts"`
 	GroupID  string            `json:"group_id,omitempty"`
 }
+
+type DynamicRegistrationEventDTO struct {
+	Kind      string         `json:"kind"`
+	Format    string         `json:"format"`
+	Payload   []byte         `json:"payload"`
+	Recipient DynamicUserDTO `json:"recipient"`
+}
+
+type DynamicUserDTO struct {
+	UserID   string            `json:"id"`
+	Contacts map[string]string `json:"contacts"`
+}

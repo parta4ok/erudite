@@ -10,6 +10,7 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/adapter/generator/google"
 	"github.com/parta4ok/kvs/auth/internal/adapter/hasher/bcryption"
 	jwtprovider "github.com/parta4ok/kvs/auth/internal/adapter/jwt_provider"
+	"github.com/parta4ok/kvs/auth/internal/adapter/message_broker/nats"
 	"github.com/parta4ok/kvs/auth/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/auth/internal/cases"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
@@ -19,6 +20,7 @@ import (
 	"github.com/parta4ok/kvs/auth/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
+	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/logger"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
 	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
@@ -65,8 +67,9 @@ func (app *App) Start() {
 	hasher := app.initHasher()
 	generator := app.initGenerator()
 	accessor := app.initAccessor()
+	messageBroker := app.initBroker()
 
-	commandFactory := app.initCommandFactory(storage, provider, hasher, generator)
+	commandFactory := app.initCommandFactory(storage, provider, hasher, generator, messageBroker)
 
 	privateServer := app.initPrivateGRPCPort(commandFactory)
 	app.privateServer = privateServer
@@ -83,6 +86,22 @@ func (app *App) Start() {
 	})
 
 	baseApp.StartPortsWithGracefulShutdown()
+}
+
+func (app *App) initBroker() common.MessageBroker {
+	slog.Info("init broker started")
+
+	var broker common.MessageBroker
+
+	pub := app.initNatsPub()
+	nats, err := nats.NewPublisher(pub)
+	if err != nil {
+		app.panic(err)
+	}
+
+	broker = nats
+
+	return broker
 }
 
 func (app *App) initTracer() *tracing.TracerPort {
@@ -192,7 +211,7 @@ func (app *App) initGenerator() common.IDGenerator {
 
 func (app *App) initCommandFactory(storage common.Storage,
 	provider common.JWTProvider, hasher common.Hasher,
-	generator common.IDGenerator) port.CommandFactory {
+	generator common.IDGenerator, messageBroker common.MessageBroker) port.CommandFactory {
 	slog.Info("initCommandFactory started")
 
 	factory, err := cases.NewCommandFactory(
@@ -200,6 +219,7 @@ func (app *App) initCommandFactory(storage common.Storage,
 		cases.WithJWTProvider(provider),
 		cases.WithHasher(hasher),
 		cases.WithIDGenerator(generator),
+		cases.WithMessageBroker(messageBroker),
 	)
 	if err != nil {
 		err := errors.Wrap(err, "new command factory init failure")
@@ -260,6 +280,18 @@ func (app *App) initPrivateGRPCPort(factory port.CommandFactory) *private.Server
 	}
 
 	return server
+}
+
+func (app *App) initNatsPub() *publisher.Publisher {
+	slog.Info("init nats publisher started")
+
+	natsUrl := app.cfg.GetNatsURL()
+	pub, err := publisher.NewPublisher(natsUrl)
+	if err != nil {
+		app.panic(err)
+	}
+
+	return pub
 }
 
 func (app *App) panic(err error, args ...any) {

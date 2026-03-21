@@ -590,3 +590,28 @@ func (s *Storage) GetGroupTitleByID(ctx context.Context, groupID string) (string
 
 	return groupTitle, nil
 }
+
+func (s *Storage) StoreDynamicRegistrations(ctx context.Context,
+	reg *entities.DynamicRegistrationParameters) error {
+	slog.Info("StoreDynamicRegistrations started")
+	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "StoreDynamicRegistrationsPostgresSpan")
+	defer cancel()
+
+	query := `
+	INSERT INTO auth.dynamic_registrations
+	(sid, code, provider, contact, created_at, approve_period)
+	VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	params := []any{reg.RegistrationID(), reg.Code(), reg.Provider(), reg.Contact(),
+		reg.StartedAt(), reg.ApprovePeriod()}
+
+	_, err := s.db.Exec(ctx, query, params...)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal,
+			"insert dynamic registration parameters failure: %v", err)
+		span.SetError(err, "insert dynamic registration parameters failure")
+		return err
+	}
+
+	return nil
+}

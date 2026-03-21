@@ -70,7 +70,6 @@ func NewNatsConsumer(conn string,
 	}, nil
 }
 
-// Port interface implementation
 func (c *NatsConsumer) Start(ctx context.Context) error {
 	slog.Info("Starting NATS consumer for report events")
 
@@ -217,6 +216,7 @@ func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
 	)
 	if err != nil {
 		slog.Error("new user", "error", err)
+		return err
 	}
 
 	event, err := entities.NewNormalEvent(
@@ -227,6 +227,7 @@ func (c *NatsConsumer) processEvent(msg *nats.Msg) error {
 	)
 	if err != nil {
 		slog.Error("new normal event", "error", err)
+		return err
 	}
 
 	if err := c.service.SendMessage(ctx, event); err != nil {

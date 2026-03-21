@@ -76,6 +76,20 @@ func (mr *MockCommandFactoryMockRecorder) NewDeleteUserCommand(userID interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDeleteUserCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDeleteUserCommand), userID)
 }
 
+// NewDynamicRegisterCommand mocks base method.
+func (m *MockCommandFactory) NewDynamicRegisterCommand(userID, provider string) entities.Command {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewDynamicRegisterCommand", userID, provider)
+	ret0, _ := ret[0].(entities.Command)
+	return ret0
+}
+
+// NewDynamicRegisterCommand indicates an expected call of NewDynamicRegisterCommand.
+func (mr *MockCommandFactoryMockRecorder) NewDynamicRegisterCommand(userID, provider interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDynamicRegisterCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDynamicRegisterCommand), userID, provider)
+}
+
 // NewGetGroupTitleByIDCommand mocks base method.
 func (m *MockCommandFactory) NewGetGroupTitleByIDCommand(groupID string) entities.Command {
 	m.ctrl.T.Helper()

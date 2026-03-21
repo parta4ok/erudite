@@ -15,10 +15,11 @@ func TestNewCommandFactory(t *testing.T) {
 	t.Parallel()
 
 	type deps struct {
-		storage     bool
-		jwtProvider bool
-		hasher      bool
-		idGenerator bool
+		storage      bool
+		jwtProvider  bool
+		hasher       bool
+		idGenerator  bool
+		messgeBroker bool
 	}
 	tests := []struct {
 		name    string
@@ -51,8 +52,20 @@ func TestNewCommandFactory(t *testing.T) {
 			errMsg:  "id generator not set",
 		},
 		{
-			name:    "all deps",
+			name:    "no broker",
 			deps:    deps{storage: true, jwtProvider: true, hasher: true, idGenerator: true},
+			wantErr: true,
+			errMsg:  "message broker not set",
+		},
+		{
+			name: "all deps",
+			deps: deps{
+				storage:      true,
+				jwtProvider:  true,
+				hasher:       true,
+				idGenerator:  true,
+				messgeBroker: true,
+			},
 			wantErr: false,
 		},
 	}
@@ -75,6 +88,9 @@ func TestNewCommandFactory(t *testing.T) {
 			}
 			if tc.deps.idGenerator {
 				opts = append(opts, cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)))
+			}
+			if tc.deps.messgeBroker{
+				opts = append(opts, cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)))
 			}
 
 			factory, err := cases.NewCommandFactory(opts...)
@@ -100,6 +116,7 @@ func TestCommandFactory_NewIntrospectedCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)
@@ -118,6 +135,7 @@ func TestCommandFactory_NewSignInCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)
@@ -136,6 +154,7 @@ func TestCommandFactory_NewAddUserCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)
@@ -159,6 +178,7 @@ func TestCommandFactory_NewDeleteUserCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)
@@ -178,6 +198,7 @@ func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)
@@ -197,6 +218,7 @@ func TestCommandFactory_NewGetLinkedUsersCommand(t *testing.T) {
 		cases.WithJWTProvider(testdata.NewMockJWTProvider(ctrl)),
 		cases.WithHasher(testdata.NewMockHasher(ctrl)),
 		cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)),
+		cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, factory)

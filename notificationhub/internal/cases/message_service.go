@@ -2,7 +2,6 @@ package cases
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
@@ -29,8 +28,6 @@ func (ms *MessageService) SendMessage(ctx context.Context, message entities.Even
 		slog.Error(err.Error())
 		return err
 	}
-
-	fmt.Println(message.GetRecipient())
 
 	if err := ms.notifier.Notify(ctx, message); err != nil {
 		err = errors.Wrap(err, "failed to notify recipient")

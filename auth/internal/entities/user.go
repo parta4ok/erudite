@@ -12,6 +12,11 @@ type User struct {
 	GroupID      string
 }
 
+type DynamicUser struct {
+	UserID   string
+	Contacts map[string]string
+}
+
 func NewUser(username string,
 	password string,
 	fullName string,
@@ -34,5 +39,16 @@ func NewUser(username string,
 		Rights:       rights,
 		Contacts:     contacts,
 		GroupID:      groupID,
+	}, nil
+}
+
+func NewDynamicUser(userID, provider string) (*DynamicUser, error) {
+	if userID == "" || provider == "" {
+		return nil, errors.Wrap(ErrInvalidParam, "userID or provider is empty")
+	}
+
+	return &DynamicUser{
+		UserID:   userID,
+		Contacts: map[string]string{provider: userID},
 	}, nil
 }

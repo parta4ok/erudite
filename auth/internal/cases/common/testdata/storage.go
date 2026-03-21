@@ -138,6 +138,20 @@ func (mr *MockStorageMockRecorder) RemoveUser(ctx, userID interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUser", reflect.TypeOf((*MockStorage)(nil).RemoveUser), ctx, userID)
 }
 
+// StoreDynamicRegistrations mocks base method.
+func (m *MockStorage) StoreDynamicRegistrations(ctx context.Context, reg *entities.DynamicRegistrationParameters) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StoreDynamicRegistrations", ctx, reg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StoreDynamicRegistrations indicates an expected call of StoreDynamicRegistrations.
+func (mr *MockStorageMockRecorder) StoreDynamicRegistrations(ctx, reg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreDynamicRegistrations", reflect.TypeOf((*MockStorage)(nil).StoreDynamicRegistrations), ctx, reg)
+}
+
 // StoreUser mocks base method.
 func (m *MockStorage) StoreUser(ctx context.Context, user *entities.User) error {
 	m.ctrl.T.Helper()

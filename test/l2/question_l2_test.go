@@ -677,7 +677,7 @@ func TestCompleteStudentWorkflowWithLinkedID(t *testing.T) {
 	adminJWT := getJwt(t)
 	require.NotEmpty(t, adminJWT)
 
-	mentorID, mentorJWT := createMentorWithEmail(t, adminJWT, "nvmaslenko@gmail.com")
+	mentorID, mentorJWT := createMentorWithEmail(t, adminJWT, "nvmaslenko@yandex.ru")
 	require.NotEmpty(t, mentorID)
 	require.NotEmpty(t, mentorJWT)
 

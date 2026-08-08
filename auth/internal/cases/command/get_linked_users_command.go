@@ -8,7 +8,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 var (
@@ -31,7 +31,7 @@ func NewGetLinkedUsersCommand(storage common.Storage, userID string) *GetLinkedU
 
 func (command *GetLinkedUsersCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("GetLinkedUserCommand exec started", slog.String("student_id", command.userID))
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetLinkedUsersCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetLinkedUsersCommandExecSpan")
 	defer cancel()
 
 	if command.userID == "" {
@@ -42,7 +42,7 @@ func (command *GetLinkedUsersCommand) Exec(ctx context.Context) (*entities.Comma
 	if err != nil {
 		err = errors.Wrap(err, "get linked users failure")
 		slog.Error(err.Error())
-		span.SetError(err, "get linked users failure")
+		span.SetError(err)
 		return nil, err
 	}
 

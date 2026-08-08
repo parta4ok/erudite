@@ -21,7 +21,7 @@ import (
 	_ "github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 var (
@@ -87,7 +87,7 @@ func (s *Storage) Close() {
 
 func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	slog.Info("GetTopics started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetTopicsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetTopicsPostgresSpan")
 	defer cancel()
 
 	query := `SELECT t.name FROM kvs.topics t`
@@ -96,7 +96,7 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "getting topic names failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "db.Query select topics")
+		span.SetError(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -108,7 +108,7 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 		if err := rows.Scan(&topicName); err != nil {
 			err := errors.Wrapf(entities.ErrInternal, "scan topic name failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "rows.Scan topic name")
+			span.SetError(err)
 			return nil, err
 		}
 		topics = append(topics, topicName)
@@ -117,7 +117,7 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 	if err := rows.Err(); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "rows err: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "rows.Err")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -129,7 +129,7 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	[]entities.Question, error) {
 	slog.Info("GetQuesions started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetQuesionsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetQuesionsPostgresSpan")
 	defer cancel()
 
 	if err := s.checkTopics(ctx, topics); err != nil {
@@ -155,7 +155,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	if errDB != nil {
 		err := errors.Wrapf(entities.ErrInternal, "get questions from db failure: %v", errDB)
 		slog.Error(err.Error())
-		span.SetError(err, "db.Query select questions")
+		span.SetError(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -164,7 +164,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 	if err != nil {
 		err := errors.Wrap(err, "processingQuestionsRows")
 		slog.Error(err.Error())
-		span.SetError(err, "processingQuestionsRows")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -175,7 +175,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 //nolint:funlen,gosec //ok
 func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) error {
 	slog.Info("StoreSession started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "StoreSessionPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "StoreSessionPostgresSpan")
 	defer cancel()
 
 	userID := session.GetUserID()
@@ -197,7 +197,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		questionsIDs, err := s.getQuestionsIDs(session)
 		if err != nil {
 			slog.Error(err.Error())
-			span.SetError(err, "getQuestionsIDs")
+			span.SetError(err)
 			return err
 		}
 
@@ -205,7 +205,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session GetStartedAt failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session GetStartedAt")
+			span.SetError(err)
 			return err
 		}
 
@@ -213,7 +213,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session GetSessionDurationLimit failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session GetSessionDurationLimit")
+			span.SetError(err)
 			return err
 		}
 
@@ -226,7 +226,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "getQuestionsIDs failure")
 			slog.Error(err.Error())
-			span.SetError(err, "getQuestionsIDs")
+			span.SetError(err)
 			return err
 		}
 
@@ -234,7 +234,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session GetStartedAt failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session GetStartedAt")
+			span.SetError(err)
 			return err
 		}
 
@@ -242,7 +242,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session GetUserAnswers failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session GetUserAnswers")
+			span.SetError(err)
 			return err
 		}
 
@@ -259,7 +259,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrapf(entities.ErrInternal, "marshalling failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "json.Marshal userAnswersList")
+			span.SetError(err)
 			return err
 		}
 
@@ -267,7 +267,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session IsExpired failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session IsExpired")
+			span.SetError(err)
 			return err
 		}
 
@@ -275,7 +275,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		if err != nil {
 			err := errors.Wrap(err, "session GetSessionResult failure")
 			slog.Error(err.Error())
-			span.SetError(err, "session GetSessionResult")
+			span.SetError(err)
 			return err
 		}
 
@@ -288,7 +288,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 		err = errors.Wrapf(entities.ErrInternal,
 			"create new transaction finished with failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "create new transaction finished with failure")
+		span.SetError(err)
 		return err
 	}
 
@@ -302,21 +302,21 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "store session finished with failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "db.Exec insert session")
+		span.SetError(err)
 		return err
 	}
 
 	_, err = s.storeSessionResultEvent(ctx, tx, session)
 	if err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "saveEvent")
+		span.SetError(err)
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "commit store session finished with failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "commit store session finished with failure")
+		span.SetError(err)
 		return err
 	}
 
@@ -327,7 +327,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session,
 	error) {
 	slog.Info("GetSessionBySessionID started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetSessionBySessionIDPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetSessionBySessionIDPostgresSpan")
 	defer cancel()
 
 	query := `
@@ -357,12 +357,12 @@ func (s *Storage) GetSessionBySessionID(ctx context.Context, sessionID string) (
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrapf(entities.ErrNotFound, "not found session with requested id: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "no rows found for sessionID")
+			span.SetError(err)
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "scan session data failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "row.Scan session data")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -376,7 +376,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 	userID string, topics []string, questionsIDs []string, duration_limit uint64, answersRaw []byte,
 	createdAt *time.Time, isExpired *bool) (*entities.Session, error) {
 	slog.Info("recoverSession started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "recoverSessionPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "recoverSessionPostgresSpan")
 	defer cancel()
 
 	switch stateName {
@@ -387,7 +387,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
-			span.SetError(err, "NewSession init state")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -404,7 +404,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
-			span.SetError(err, "NewSession active state")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -412,7 +412,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		if err != nil {
 			err = errors.Wrap(err, "getQuestionsByID failure")
 			slog.Error(err.Error())
-			span.SetError(err, "getQuestionsByID")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -434,7 +434,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
-			span.SetError(err, "NewSession completed state")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -442,7 +442,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 		if err != nil {
 			err = errors.Wrap(err, "getQuestionsByID failure")
 			slog.Error(err.Error())
-			span.SetError(err, "getQuestionsByID")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -464,7 +464,7 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 			if err != nil {
 				err = errors.Wrap(err, "creating user answer failure")
 				slog.Error(err.Error())
-				span.SetError(err, "NewUserAnswer")
+				span.SetError(err)
 				return nil, err
 			}
 			answers = append(answers, answer)
@@ -480,14 +480,14 @@ func (s *Storage) recoverSession(ctx context.Context, sessionID string, stateNam
 
 	err := errors.Wrapf(entities.ErrInternal, "unknown session state: %s", stateName)
 	slog.Error(err.Error())
-	span.SetError(err, "unknown session state")
+	span.SetError(err)
 	return nil, err
 }
 
 func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []string) (
 	[]entities.Question, error) {
 	slog.Info("getQuestionsByID strarted")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "getQuestionsByIDPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "getQuestionsByIDPostgresSpan")
 	defer cancel()
 
 	query := `
@@ -509,7 +509,7 @@ func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []string) (
 		err := errors.Wrapf(entities.ErrInternal,
 			"get questions from db failure: %s", errDB.Error())
 		slog.Error(err.Error())
-		span.SetError(err, "db.Query select questions by IDs")
+		span.SetError(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -518,7 +518,7 @@ func (s *Storage) getQuestionsByID(ctx context.Context, questionsIDs []string) (
 	if err != nil {
 		err := errors.Wrap(err, "processingQuestionsRows failure")
 		slog.Error(err.Error())
-		span.SetError(err, "processingQuestionsRows")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -612,7 +612,7 @@ func (s *Storage) getQuestionsIDs(session *entities.Session) ([]string, error) {
 func (s *Storage) IsDailySessionLimitReached(ctx context.Context, userID string,
 	topics []string, dailyLimit int) (bool, error) {
 	slog.Info("IsDailySessionLimitReached started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "IsDailySessionLimitReachedPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "IsDailySessionLimitReachedPostgresSpan")
 	defer cancel()
 
 	query := `
@@ -652,7 +652,7 @@ ORDER BY
 		}
 		err := errors.Wrapf(entities.ErrInternal, "scan failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "row.Scan IsDailySessionLimitReached")
+		span.SetError(err)
 		return false, err
 	}
 
@@ -668,7 +668,7 @@ ORDER BY
 func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string) (
 	[]*entities.Session, error) {
 	slog.Info("GetAllCompletedUserSessions started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx,
+	ctx, span, cancel := tracer.Start(ctx,
 		"GetAllCompletedUserSessionsPostgresSpan")
 	defer cancel()
 
@@ -702,7 +702,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 		}
 		err := errors.Wrapf(entities.ErrInternal, "search completed user sessions failure: %v", err)
 		slog.Warn(err.Error())
-		span.SetError(err, "db.Query select completed sessions")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -727,7 +727,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 			&isExpired, &isPassed, &comment, &createdAt, &updatedAt); err != nil {
 			err := errors.Wrapf(entities.ErrInternal, "scan session data failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "rows.Scan session data")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -737,7 +737,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 		if err != nil {
 			err = errors.Wrap(err, "creating new session with sessionID option failure")
 			slog.Error(err.Error())
-			span.SetError(err, "NewSession completed state")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -745,7 +745,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 		if err != nil {
 			err = errors.Wrap(err, "getQuestionsByID failure")
 			slog.Error(err.Error())
-			span.SetError(err, "getQuestionsByID")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -758,7 +758,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 		if err := json.Unmarshal(answersRaw, &answersListDTO); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "unmarshaling failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "json.Unmarshal answersRaw")
+			span.SetError(err)
 			return nil, err
 		}
 
@@ -782,7 +782,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 	if err := rows.Err(); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "rows err: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "rows.Err")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -792,7 +792,7 @@ func (s *Storage) GetAllCompletedUserSessions(ctx context.Context, userID string
 
 func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) error {
 	slog.Info("checkTopics started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "checkTopicsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "checkTopicsPostgresSpan")
 	defer cancel()
 
 	existsTopic, err := s.GetTopics(ctx)
@@ -805,7 +805,7 @@ func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) erro
 			err := errors.Wrapf(entities.ErrNotFound,
 				"requested topic: %s not included in existings topics", requestedTopic)
 			slog.Error(err.Error())
-			span.SetError(err, "requested topics not found")
+			span.SetError(err)
 			return err
 		}
 	}
@@ -816,7 +816,7 @@ func (s *Storage) checkTopics(ctx context.Context, requestdTopics []string) erro
 func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 	map[string][]*entities.Topic, error) {
 	slog.Info("GetPassedUserTopics started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedUserTopicsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetPassedUserTopicsPostgresSpan")
 	defer cancel()
 
 	passedTopics := make(map[string][]*entities.Topic, 0)
@@ -831,7 +831,7 @@ func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 		}
 		err := errors.Wrapf(entities.ErrInternal, "not found existed topics failure: %v", err)
 		slog.Warn(err.Error())
-		span.SetError(err, "db.Query not found existed topics")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -849,7 +849,7 @@ func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 	if rows.Err() != nil {
 		err := errors.Wrapf(entities.ErrInternal, "rows with titles had failure: %v", err)
 		slog.Warn(err.Error())
-		span.SetError(err, "rows with titles had failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -867,7 +867,7 @@ func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 		}
 		err := errors.Wrapf(entities.ErrInternal, "search passed users topics failure: %v", err)
 		slog.Warn(err.Error())
-		span.SetError(err, "db.Query search passed users topics")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -894,7 +894,7 @@ func (s *Storage) GetPassedUserTopics(ctx context.Context, studentds []string) (
 	if rows.Err() != nil {
 		err := errors.Wrapf(entities.ErrInternal, "rows with passed titles had failure: %v", err)
 		slog.Warn(err.Error())
-		span.SetError(err, "rows with passed titles had failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -949,7 +949,7 @@ func (s *Storage) storeSessionResultEvent(ctx context.Context, tx pgx.Tx, sessio
 
 func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, error) {
 	slog.Info("GetUnpublishedEvents started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUnpublishedEventsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetUnpublishedEventsPostgresSpan")
 	defer cancel()
 
 	query := `
@@ -963,7 +963,7 @@ func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, erro
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "rows with unsended events failure: %v", err)
 		slog.Warn("rows with unsended events", "error", err)
-		span.SetError(err, "rows with unsended events failure")
+		span.SetError(err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -979,7 +979,7 @@ func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, erro
 		if err := rows.Scan(&id, &eventType, &payload); err != nil {
 			err := errors.Wrapf(entities.ErrInternal, "scan unsended events failure: %v", err)
 			slog.Warn("scan unsended events", "error", err)
-			span.SetError(err, "scan unsended events failure")
+			span.SetError(err)
 			return nil, err
 		}
 		var concreteEvent event.Event
@@ -989,7 +989,7 @@ func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, erro
 			if err != nil {
 				err := errors.Wrapf(entities.ErrInternal, "NewSessionCompleteEvent failure: %v", err)
 				slog.Warn("NewSessionCompleteEvent", "error", err)
-				span.SetError(err, "NewSessionCompleteEvent failure")
+				span.SetError(err)
 				return nil, err
 			}
 			sessionCompleteEvent.SetNum(id)
@@ -998,7 +998,7 @@ func (s *Storage) GetUnpublishedEvents(ctx context.Context) ([]event.Event, erro
 		default:
 			err := errors.Wrap(entities.ErrInternal, "unknown event type")
 			slog.Warn("unknown event type", "error", err)
-			span.SetError(err, "unknown event type")
+			span.SetError(err)
 			return nil, err
 		}
 		unpublishedEvents = append(unpublishedEvents, concreteEvent)
@@ -1014,7 +1014,7 @@ func (s *Storage) MarkEventAsPublished(
 	fn func(ctx context.Context) error,
 ) error {
 	slog.Info("MarkEventAsPublished started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "MarkEventAsPublishedPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "MarkEventAsPublishedPostgresSpan")
 	defer cancel()
 
 	tx, err := s.db.Begin(ctx)
@@ -1022,7 +1022,7 @@ func (s *Storage) MarkEventAsPublished(
 		err = errors.Wrapf(entities.ErrInternal,
 			"create new transaction finished with failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "create new transaction finished with failure")
+		span.SetError(err)
 		return err
 	}
 
@@ -1046,27 +1046,27 @@ func (s *Storage) MarkEventAsPublished(
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "mark event as sended failure: %v", err)
 		slog.Error("mark event as sended failure", "error", err)
-		span.SetError(err, "mark event as sended failure")
+		span.SetError(err)
 		return err
 	}
 
 	if tag.RowsAffected() == 0 {
 		err = errors.Wrapf(entities.ErrInternal, "expected one affected row, now: %d", tag.RowsAffected())
 		slog.Error("expected one affected row", "error", err)
-		span.SetError(err, "expected one affected row")
+		span.SetError(err)
 		return err
 	}
 
 	if err = fn(ctx); err != nil {
 		slog.Error("send to publisher", "error", err)
-		span.SetError(err, "send to publisher")
+		span.SetError(err)
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "commit mark event as published: %v", err)
 		slog.Error("commit mark event as published", "error", err)
-		span.SetError(err, "commit mark event as published")
+		span.SetError(err)
 		return err
 	}
 
@@ -1075,7 +1075,7 @@ func (s *Storage) MarkEventAsPublished(
 
 func (s *Storage) FlushPublishedEvents(ctx context.Context) error {
 	slog.Info("FlushPublishedEvents started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "FlushPublishedEventsPostgresSpan")
+	ctx, span, cancel := tracer.Start(ctx, "FlushPublishedEventsPostgresSpan")
 	defer cancel()
 
 	query := `
@@ -1086,7 +1086,7 @@ func (s *Storage) FlushPublishedEvents(ctx context.Context) error {
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "deleting published events finished with err: %v", err)
 		slog.Error("deleting published events finished with err", "error", err)
-		span.SetError(err, "deleting published events finished with err")
+		span.SetError(err)
 		return err
 	}
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 var (
@@ -34,7 +34,7 @@ func NewUpdateUserCommand(storage common.Storage, hasher common.Hasher, user *en
 
 func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("UpdateUserCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "UpdateUserCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "UpdateUserCommandExecSpan")
 	defer cancel()
 
 	if command.user == nil {
@@ -46,7 +46,7 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 		if err != nil {
 			err := errors.Wrap(err, "hash password failure")
 			slog.Error(err.Error())
-			span.SetError(err, "hash password failure")
+			span.SetError(err)
 			return nil, err
 		}
 		command.user.PasswordHash = hash
@@ -55,7 +55,7 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 	if err := command.storage.UpdateUser(ctx, command.user); err != nil {
 		err = errors.Wrap(err, "update user failure")
 		slog.Error(err.Error())
-		span.SetError(err, "update user failure")
+		span.SetError(err)
 		return nil, err
 	}
 

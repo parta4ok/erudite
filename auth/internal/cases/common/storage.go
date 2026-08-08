@@ -19,3 +19,6 @@ type Storage interface {
 	GetGroupTitleByID(ctx context.Context, groupID string) (string, error)
 	StoreDynamicRegistrations(ctx context.Context, reg *entities.DynamicRegistrationParameters) error
 }
+
+
+type Simple struct {}

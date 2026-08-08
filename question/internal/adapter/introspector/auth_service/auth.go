@@ -8,7 +8,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/auth/client"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func NewAuthService(port string) (*AuthService, error) {
 
 func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
 	slog.Info("Introspect started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AuthServiceIntrospectSpan")
+	ctx, span, cancel := tracer.Start(ctx, "AuthServiceIntrospectSpan")
 	defer cancel()
 
 	req := &authv1.IntrospectRequest{
@@ -48,21 +48,21 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.C
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "introspect failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if resp.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
 		slog.Error(err.Error())
-		span.SetError(err, "introspect failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if resp.Claims == nil {
 		err := errors.Wrap(entities.ErrForbidden, "nil claims")
 		slog.Error(err.Error())
-		span.SetError(err, "nil claims")
+		span.SetError(err)
 		return nil, err
 	}
 

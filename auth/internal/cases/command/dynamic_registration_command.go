@@ -11,7 +11,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -56,12 +56,12 @@ func NewDynamicRegisterCommand(
 //nolint:funlen //ok
 func (cmd *DynamicRegisterCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("DynamicRegisterCommand started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "DynamicRegisterCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "DynamicRegisterCommandExecSpan")
 	defer cancel()
 
 	if cmd.userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID is incorrect")
-		span.SetError(err, "userID is incorrect")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -69,27 +69,27 @@ func (cmd *DynamicRegisterCommand) Exec(ctx context.Context) (*entities.CommandR
 	if err != nil {
 		if !errors.Is(err, entities.ErrNotFound) {
 			err := errors.Wrapf(err, "get user by name '%s' failed", cmd.userID)
-			span.SetError(err, "get user by name failed")
+			span.SetError(err)
 			return nil, err
 		}
 	}
 
 	if existingUser != nil {
 		err := errors.Wrapf(entities.ErrAlreadyExists, "user with name '%s' already exist", cmd.userID)
-		span.SetError(err, "user with ID already exist")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if !slices.Contains(DefaultProviders, cmd.provider) {
 		err := errors.Wrapf(entities.ErrInvalidParam, "provider %s is not is not avaliable", cmd.provider)
-		span.SetError(err, "provider is not is not avaliable")
+		span.SetError(err)
 		return nil, err
 	}
 
 	combination, err := rand.Int(rand.Reader, big.NewInt(10000))
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "generateted big int failure: %v", err)
-		span.SetError(err, "generateted big int failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -97,27 +97,27 @@ func (cmd *DynamicRegisterCommand) Exec(ctx context.Context) (*entities.CommandR
 	user, err := entities.NewDynamicUser(cmd.userID, cmd.provider)
 	if err != nil {
 		err := errors.Wrap(err, "creating dynamic user failure")
-		span.SetError(err, "creating dynamic user failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	event, err := entities.NewBaseEvent(entities.NotificationAboutShortPassword, []byte(code), user)
 	if err != nil {
 		err := errors.Wrap(err, "creating base event failure")
-		span.SetError(err, "creating base event failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if err := cmd.messageBroker.SendEvent(ctx, event); err != nil {
 		err := errors.Wrap(err, "send event failure")
-		span.SetError(err, "send event failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	registrationID, err := cmd.generator.Generate(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "generateted sessionID failure")
-		span.SetError(err, "generateted sessionID failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -125,13 +125,13 @@ func (cmd *DynamicRegisterCommand) Exec(ctx context.Context) (*entities.CommandR
 		cmd.userID, cmd.provider, DefaultDuration)
 	if err != nil {
 		err := errors.Wrap(err, "new dynamic registration failure")
-		span.SetError(err, "new dynamic registration failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if err := cmd.storage.StoreDynamicRegistrations(ctx, registration); err != nil {
 		err := errors.Wrap(err, "store dynamic registration failure")
-		span.SetError(err, "store dynamic registration failure")
+		span.SetError(err)
 		return nil, err
 	}
 

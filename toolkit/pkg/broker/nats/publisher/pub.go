@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/nats-io/nats.go"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -56,7 +56,7 @@ func (publisher *Publisher) Publish(ctx context.Context, subject string, message
 		Data:    message,
 	}
 
-	middleware.InjectTraceToNatsMessage(ctx, msg)
+	tracer.InjectNATS(ctx, msg)
 
 	ack, err := publisher.conn.PublishMsg(msg, nats.Context(ctx))
 	if err != nil {

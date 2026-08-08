@@ -1,3 +1,4 @@
+servicename: auth
 auth:
     grpc:
         private:
@@ -28,12 +29,5 @@ nats:
     subject: sessions.*
     event_timeout: 5s
 tracing:
-    system: otel
-    servicename: auth
-    enabled: true
-otel:
-    endpoint: jaeger:4317
-    insecure: true
-jaeger:
-    address: jaeger:6831
-    probability: 1.0
+    jaeger: jaeger:4318
+    switch_on: true

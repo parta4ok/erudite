@@ -7,92 +7,117 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
+
+	"github.com/parta4ok/kvs/toolkit/pkg/config"
+	"github.com/parta4ok/kvs/toolkit/pkg/logger"
+	"github.com/parta4ok/kvs/toolkit/pkg/port"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
-type Port interface {
-	Start(ctx context.Context) error
-	Stop(ctx context.Context) error
-	Type() string
-}
-
 type BaseApplication struct {
-	ports   []Port
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	timeout time.Duration
+	cfg    config.BaseConfig
+	logger *logger.BaseLogger
+	ports  []port.BasePort
 }
 
-func NewBaseApplication() *BaseApplication {
-	return &BaseApplication{}
+type Builder struct {
+	cfg config.BaseConfig
+	app *BaseApplication
 }
 
-func (app *BaseApplication) SetPorts(ports []Port) {
-	app.ports = ports
+func NewBuilder(cfg config.BaseConfig) *Builder {
+	return &Builder{
+		cfg: cfg,
+		app: &BaseApplication{
+			cfg: cfg,
+		},
+	}
 }
 
-func (app *BaseApplication) SetTimeout(timeout time.Duration) {
-	app.timeout = timeout
+func (b *Builder) WithLogger() *Builder {
+	logger := logger.NewBaseLogger(
+		b.cfg.LogLevel(),
+		b.cfg.LogAddSource(),
+		b.cfg.LogFormat(),
+		b.cfg.ServiceName(),
+		b.cfg.ServiceVersion(),
+	)
+	logger.InitConfiguredLogger()
+	b.app.logger = logger
+
+	return b
 }
 
-//nolint:gosec //ok
-func (app *BaseApplication) StartPortsWithGracefulShutdown() {
-	ctx, cancel := context.WithCancel(context.Background())
-	app.cancel = cancel
+func (b *Builder) WithTracer() *Builder {
+	tp := tracer.NewPort(
+		b.cfg.ServiceName(),
+		b.cfg.ServiceVersion(),
+		b.cfg.TracingEndpoint(),
+		b.cfg.TracingEnabled(),
+	)
 
-	sigOSChan := make(chan os.Signal, 1)
-	signal.Notify(sigOSChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	b.app.ports = append(b.app.ports, tp)
+	return b
+}
 
-	for _, port := range app.ports {
-		app.wg.Go(
-			func() {
-				slog.Info("starting listener", "type", port.Type())
-				port.Start(ctx) //nolint:errcheck //ok
-			})
+func (b *Builder) WithPort(p port.BasePort) *Builder {
+	b.app.ports = append(b.app.ports, p)
+	return b
+}
+
+func (b *Builder) Build() *BaseApplication {
+	return b.app
+}
+
+func (app *BaseApplication) RunAndAwait(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errChan := make(chan error, len(app.ports))
+
+	var wg sync.WaitGroup
+	for _, p := range app.ports {
+		wg.Go(func() {
+			if err := p.Start(ctx); err != nil {
+				errChan <- err
+			}
+		})
 	}
 
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	defer signal.Stop(sigChan)
+
+	var runErr error
 	select {
-	case sig := <-sigOSChan:
-		slog.Info("received os shutdown signal", "signal", sig.String())
-		app.cancel()
-		app.shutdown()
+	case err := <-errChan:
+		slog.Error("port failed, terminating service", "error", err)
+		runErr = err
+	case sig := <-sigChan:
+		slog.Info("shutdown signal received", "signal", sig.String())
 	case <-ctx.Done():
-		slog.Info("application context cancelled")
-		app.shutdown()
+		slog.Info("context cancelled")
 	}
+
+	cancel()
+	app.stopAll()
+	wg.Wait()
+
+	return runErr
 }
 
-//nolint:gosec //ok
-func (app *BaseApplication) shutdown() {
-	slog.Info("Starting graceful shutdown...")
+func (app *BaseApplication) stopAll() {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), app.cfg.ShutdownTimeout())
+	defer cancel()
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), app.timeout)
-	defer shutdownCancel()
-
-	for _, port := range app.ports {
-		app.wg.Go(
-			func() {
-				slog.Info("stopping port", "port", port.Type())
-				port.Stop(shutdownCtx) //nolint:errcheck //ok
-			})
+	var wg sync.WaitGroup
+	for _, p := range app.ports {
+		wg.Go(func() {
+			if err := p.Stop(shutdownCtx); err != nil {
+				slog.Error("port stop failed", "error", err)
+			}
+		})
 	}
-
-	done := make(chan struct{})
-	go func() {
-		app.wg.Wait()
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		slog.Info("all ports stopped gracefully")
-	case <-shutdownCtx.Done():
-		slog.Warn("gracefull shutdown timeout exceeded, forcing exit")
-	}
-
-	if app.cancel != nil {
-		app.cancel()
-	}
-
-	slog.Info("aplication shutdown completed")
+	
+	wg.Wait()
 }

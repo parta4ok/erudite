@@ -6,7 +6,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func NewSignInCommand(storage common.Storage, provider common.JWTProvider,
 
 func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("SignIn command started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "SignInCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "SignInCommandExecSpan")
 	defer cancel()
 
 	if command.userName == "" {
@@ -52,7 +52,7 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByUsername")
 		slog.Error(err.Error())
-		span.SetError(err, "GetUserByUsername")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -60,14 +60,14 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	if err != nil {
 		err = errors.Wrap(err, "IsHash failire")
 		slog.Error(err.Error())
-		span.SetError(err, "IsHash failire")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if !isHash {
 		err = errors.Wrapf(entities.ErrInvalidPassword, "approvePassword failire: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "approvePassword failire")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	if err != nil {
 		err = errors.Wrap(err, "Generate JWT failure")
 		slog.Error(err.Error())
-		span.SetError(err, "Generate JWT failure")
+		span.SetError(err)
 		return nil, err
 	}
 

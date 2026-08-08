@@ -6,7 +6,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +35,7 @@ func NewAddGroupCommand(storage common.Storage, generator common.IDGenerator,
 
 func (command *AddGroupCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("AddGroupCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AddGroupCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "AddGroupCommandExecSpan")
 	defer cancel()
 
 	if command.title == "" || command.linkedID == "" {
@@ -46,14 +46,14 @@ func (command *AddGroupCommand) Exec(ctx context.Context) (*entities.CommandResu
 	if err != nil {
 		err := errors.Wrap(err, "generate failure")
 		slog.Error(err.Error())
-		span.SetError(err, "generate failure")
+		span.SetError(err)
 		return nil, err
 	}
 
 	if err := command.storage.AddGroup(ctx, gid, command.title, command.linkedID); err != nil {
 		err := errors.Wrap(err, "add group failure")
 		slog.Error(err.Error())
-		span.SetError(err, "add group failure")
+		span.SetError(err)
 		return nil, err
 	}
 

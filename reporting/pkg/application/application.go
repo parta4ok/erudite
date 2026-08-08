@@ -1,43 +1,38 @@
-package appication
+package application
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 
 	authservice "github.com/parta4ok/kvs/reporting/internal/adapter/auth_service"
 	"github.com/parta4ok/kvs/reporting/internal/adapter/config"
-	"github.com/parta4ok/kvs/reporting/internal/adapter/message_broker/nats"
+	natsbroker "github.com/parta4ok/kvs/reporting/internal/adapter/message_broker/nats"
 	questionservice "github.com/parta4ok/kvs/reporting/internal/adapter/question_service"
 	"github.com/parta4ok/kvs/reporting/internal/adapter/representer"
 	"github.com/parta4ok/kvs/reporting/internal/cases"
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	"github.com/parta4ok/kvs/reporting/internal/port"
 	"github.com/parta4ok/kvs/reporting/internal/port/http/public"
-	consumer "github.com/parta4ok/kvs/reporting/internal/port/nats"
+	natsconsumer "github.com/parta4ok/kvs/reporting/internal/port/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
-	"github.com/parta4ok/kvs/toolkit/pkg/logger"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
-	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	natsport "github.com/parta4ok/kvs/toolkit/pkg/port/nats"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
 
+const (
+	sessionStream       = "session_stream"
+	sessionConsumerName = "session-consumer"
+)
+
 type App struct {
-	cfg             *config.Config
-	tracingPort     *tracing.TracerPort
-	publicServer    *public.Server
-	consumer        *consumer.NatsConsumer
-	pub             cases.MessageBroker
-	authService     cases.AuthClient
-	questionService cases.QuestionClient
-	representer     entities.Representer
-	accessor        public.Accessor
-	tracing         bool
+	cfg *config.Config
 }
 
 func NewApp(cfgPath string) *App {
@@ -53,90 +48,30 @@ func NewApp(cfgPath string) *App {
 }
 
 func (app *App) Start() {
-	baseLogger := logger.NewBaseLogger(
-		app.cfg.GetLogLevel(),
-		app.cfg.GetLogAddSource(),
-		app.cfg.GetLogFormat(),
-		app.cfg.GetServiceName(),
-		app.cfg.GetServiceVersion(),
-	)
-	baseLogger.InitConfiguredLogger()
+	broker := app.initBroker()
+	authClient := app.initAuthClient()
+	questionClient := app.initQuestionClient()
+	repr := app.initRepresenter()
+	acc := app.initAccessor()
 
-	tracingPort := app.initTracer()
-	app.tracingPort = tracingPort
+	service := app.initReportingService(broker, authClient, questionClient, repr)
 
-	app.initBroker()
-	app.initAuthClient()
-	app.initQuestionClient()
-	app.initRepresenter()
-	app.initAccessor()
+	publicPort := app.initPublicPort(service, authClient, acc)
+	consumerPort := app.initConsumerPort(service)
 
-	service := app.initReportingService()
+	baseApp := baseApplication.NewBuilder(app.cfg).
+		WithLogger().
+		WithTracer().
+		WithPort(publicPort).
+		WithPort(consumerPort).
+		Build()
 
-	pubicServer := app.initPublicPort(service)
-	app.publicServer = pubicServer
-	consumer := app.initConsumer(service)
-	app.consumer = consumer
-
-	baseApp := baseApplication.NewBaseApplication()
-	baseApp.SetTimeout(5 * time.Second)
-	baseApp.SetPorts([]baseApplication.Port{
-		app.publicServer,
-		app.consumer,
-		app.tracingPort,
-	})
-
-	baseApp.StartPortsWithGracefulShutdown()
+	if err := baseApp.RunAndAwait(context.Background()); err != nil {
+		app.panic(err)
+	}
 }
 
-func (app *App) initTracer() *tracing.TracerPort {
-	slog.Info("init tracer started")
-
-	if !app.cfg.IsTracingEnabled() {
-		slog.Info("tracing disabled")
-		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
-		return tracerPort
-	}
-
-	app.tracing = true
-	systemName := app.cfg.GetTracingType()
-	serviceName := app.cfg.TracingSystemName()
-
-	var tracer tracing.Tracer
-	var err error
-
-	switch systemName {
-	case "otel", "opentelemetry":
-		endpoint := app.cfg.GetOtelEndpoint()
-		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", "opentelemetry"),
-			slog.String("service", serviceName),
-			slog.String("endpoint", endpoint),
-		)
-	case "jaeger":
-		serviceURL := app.cfg.GetTracingInfraURL(systemName)
-		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", systemName),
-			slog.String("service", serviceName),
-			slog.String("endpoint", serviceURL),
-		)
-	default:
-		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
-	}
-
-	tracerPort := tracing.NewTracePort(tracer)
-	return tracerPort
-}
-
-func (app *App) initAccessor() {
+func (app *App) initAccessor() public.Accessor {
 	slog.Info("initAccessor started")
 
 	a, err := accessor.NewRightAccessor()
@@ -145,47 +80,69 @@ func (app *App) initAccessor() {
 		app.panic(err)
 	}
 
-	app.accessor = a
+	return a
 }
 
-func (app *App) initPublicPort(service port.Service) *public.Server {
+func (app *App) initPublicPort(
+	service port.Service,
+	introspector public.Introspector,
+	acc public.Accessor,
+) *httpport.Port {
 	slog.Info("init public port started")
 
-	port := app.cfg.GetPublicPort()
+	addr := app.cfg.GetPublicPort()
 	timeout := app.cfg.GetPublicTimeout()
 
 	server, err := public.New(
 		public.WithService(service),
-		public.WithIntrospector(app.authService),
-		public.WithConfig(&public.ServerCfg{
-			Port:    port,
-			Timeout: timeout,
-		}),
-		public.WithAccessor(app.accessor))
+		public.WithIntrospector(introspector),
+		public.WithAccessor(acc),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new public server init failure")
+		app.panic(err)
+	}
+
+	httpPort, err := httpport.NewPort(
+		httpport.Config{Addr: addr, Timeout: timeout},
+		httpport.WithType(public.PortType),
+		httpport.WithMiddleware(tracer.HTTPServerMiddleware, server.IntrospectMiddleware),
+		httpport.WithRoutes(server.Routes()...),
+	)
 	if err != nil {
 		err := errors.Wrap(err, "new public port init failure")
 		app.panic(err)
 	}
 
-	return server
+	return httpPort
 }
 
-func (app *App) initConsumer(service port.Service) *consumer.NatsConsumer {
-	slog.Info("init consumer started")
+func (app *App) initConsumerPort(service port.Service) *natsport.Port {
+	slog.Info("init consumer port started")
 
-	consumer, err := consumer.NewNatsConsumer(
-		app.cfg.GetNatsURL(),
-		app.cfg.GetNatsSubject(),
-		service,
+	consumer, err := natsconsumer.NewConsumer(service)
+	if err != nil {
+		app.panic(err)
+	}
+
+	natsPort, err := natsport.NewPort(
+		natsport.Config{
+			Conn:    app.cfg.GetNatsURL(),
+			Stream:  sessionStream,
+			Durable: sessionConsumerName,
+			Subject: app.cfg.GetNatsSubject(),
+		},
+		natsport.WithType("reporting_nats_consumer"),
+		natsport.WithHandler(consumer.HandleMessage),
 	)
 	if err != nil {
 		app.panic(err)
 	}
 
-	return consumer
+	return natsPort
 }
 
-func (app *App) initBroker() {
+func (app *App) initBroker() cases.MessageBroker {
 	slog.Info("init broker publisher started")
 
 	pub, err := publisher.NewPublisher(app.cfg.GetNatsURL())
@@ -193,15 +150,15 @@ func (app *App) initBroker() {
 		app.panic(err)
 	}
 
-	b, err := nats.NewPublisher(pub)
+	b, err := natsbroker.NewPublisher(pub)
 	if err != nil {
 		app.panic(err)
 	}
 
-	app.pub = b
+	return b
 }
 
-func (app *App) initAuthClient() {
+func (app *App) initAuthClient() *authservice.AuthService {
 	slog.Info("init auth client started")
 
 	authAdapter, err := authservice.NewAuthService(app.cfg.GetAuthConn())
@@ -209,10 +166,10 @@ func (app *App) initAuthClient() {
 		app.panic(err)
 	}
 
-	app.authService = authAdapter
+	return authAdapter
 }
 
-func (app *App) initQuestionClient() {
+func (app *App) initQuestionClient() cases.QuestionClient {
 	slog.Info("init question client started")
 
 	client, err := questionservice.New(app.cfg.GetQuestionConn())
@@ -220,40 +177,41 @@ func (app *App) initQuestionClient() {
 		app.panic(err)
 	}
 
-	app.questionService = client
+	return client
 }
 
-func (app *App) initRepresenter() {
+func (app *App) initRepresenter() entities.Representer {
 	slog.Info("init representer started")
 
-	representer, err := representer.NewRepresenter()
+	repr, err := representer.NewRepresenter()
 	if err != nil {
 		app.panic(err)
 	}
 
-	app.representer = representer
+	return repr
 }
 
-func (app *App) initReportingService() port.Service {
-	var service port.Service
-
+func (app *App) initReportingService(
+	broker cases.MessageBroker,
+	authClient cases.AuthClient,
+	questionClient cases.QuestionClient,
+	repr entities.Representer,
+) port.Service {
 	serv, err := cases.NewReportingService(
-		app.pub,
-		app.representer,
+		broker,
+		repr,
 		app.cfg.GetRepresenterFormat(),
-		app.authService,
-		app.questionService,
+		authClient,
+		questionClient,
 		app.cfg.GetWorkersLimit(),
+		app.cfg.GetQueueimit(),
 		app.cfg.GetAsyncTimeout(),
 	)
-
 	if err != nil {
 		app.panic(err)
 	}
 
-	service = serv
-
-	return service
+	return serv
 }
 
 func (app *App) panic(err error, args ...any) {

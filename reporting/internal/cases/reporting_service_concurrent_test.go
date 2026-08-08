@@ -66,7 +66,7 @@ func TestReportingService_ConcurrentExecution(t *testing.T) {
 
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
-				authClient, questionClient, tc.workersLimit,
+				authClient, questionClient, tc.workersLimit, 100,
 				time.Second*3,
 			)
 			require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestReportingService_RaceConditions(t *testing.T) {
 
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
-				authClient, questionClient, tc.workersLimit,
+				authClient, questionClient, tc.workersLimit, 100,
 				time.Second*3,
 			)
 			require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestReportingService_GracefulShutdown(t *testing.T) {
 
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
-				authClient, questionClient, tc.workersLimit,
+				authClient, questionClient, tc.workersLimit, 100,
 				time.Second*3,
 			)
 			require.NoError(t, err)
@@ -380,7 +380,7 @@ func TestReportingService_ErrorHandling(t *testing.T) {
 
 			service, err := cases.NewReportingService(
 				broker, representer, "json",
-				authClient, questionClient, tc.workersLimit,
+				authClient, questionClient, tc.workersLimit, 100,
 				time.Second*3,
 			)
 			require.NoError(t, err)
@@ -426,7 +426,7 @@ func createTestServiceBasic(t *testing.T, ctrl *gomock.Controller, workersLimit 
 
 	service, err := cases.NewReportingService(
 		broker, representer, "json",
-		authClient, questionClient, workersLimit,
+		authClient, questionClient, workersLimit, 100,
 		time.Second*3,
 	)
 	require.NoError(t, err)

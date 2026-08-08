@@ -1,3 +1,4 @@
+servicename: reporting
 reporting:
     http:
         public:
@@ -14,6 +15,7 @@ reporting:
         level: info
         format: json
         add_source: true
+    queue_limit: 100
 auth_service:
     address: "auth_app:8091"
 question_service:
@@ -23,12 +25,5 @@ nats:
     subject: sessions.*
     event_timeout: 5s
 tracing:
-    system: otel
-    servicename: reporting
-    enabled: true
-otel:
-    endpoint: jaeger:4317
-    insecure: true
-jaeger:
-    address: jaeger:6831
-    probability: 1.0
+    jaeger: jaeger:4318
+    switch_on: true

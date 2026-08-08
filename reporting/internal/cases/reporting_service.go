@@ -110,11 +110,15 @@ func (service *ReportingService) errorHandlerStart() {
 }
 
 func (service *ReportingService) Worker() {
-	for task := range service.tasks {
-		if err := task(); err != nil {
-			service.errChan <- err
+	for {
+		select {
+		case task := <-service.tasks:
+			if err := task(); err != nil {
+				service.errChan <- err
+			}
+		case <-service.stopChan:
+			return
 		}
-
 	}
 }
 
@@ -122,7 +126,6 @@ func (service *ReportingService) Stop() error {
 	stopped := false
 	service.once.Do(func() {
 		close(service.stopChan)
-		close(service.tasks)
 
 		service.wg.Wait()
 

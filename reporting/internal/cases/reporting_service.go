@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/parta4ok/kvs/reporting/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -25,12 +24,15 @@ type ReportingService struct {
 	asyncTimeout   time.Duration
 	authClient     AuthClient
 	questionClient QuestionClient
-	tasks          []func() error
-	errChan        chan error
-	workersLimit   int
-	cond           sync.Cond
-	stopSignal     *atomic.Bool
-	wg             sync.WaitGroup
+
+	tasks    chan func() error
+	errChan  chan error
+	stopChan chan struct{}
+
+	workersLimit int
+
+	once sync.Once
+	wg   sync.WaitGroup
 }
 
 //nolint:funlen //ok
@@ -41,6 +43,7 @@ func NewReportingService(
 	authClient AuthClient,
 	questionClient QuestionClient,
 	workersLimit int,
+	queueLimit int,
 	asyncTimeout time.Duration,
 ) (*ReportingService, error) {
 	if broker == nil {
@@ -67,12 +70,13 @@ func NewReportingService(
 		return nil, errors.Wrap(entities.ErrInvalidParam, "workers limit must be greater than 0")
 	}
 
-	if asyncTimeout < 3*time.Second {
-		asyncTimeout = 3 * time.Second
+	if queueLimit == 0 {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "queue limit must be greater than 0")
 	}
 
-	stop := &atomic.Bool{}
-	stop.Store(false)
+	if asyncTimeout < time.Second {
+		asyncTimeout = time.Second
+	}
 
 	service := &ReportingService{
 		broker:         broker,
@@ -82,16 +86,16 @@ func NewReportingService(
 		questionClient: questionClient,
 		workersLimit:   workersLimit,
 		asyncTimeout:   asyncTimeout,
-		tasks:          make([]func() error, 0),
-		errChan:        make(chan error, workersLimit),
-		cond:           *sync.NewCond(&sync.Mutex{}),
-		stopSignal:     stop,
-		wg:             sync.WaitGroup{},
+
+		tasks:    make(chan func() error, queueLimit),
+		errChan:  make(chan error, queueLimit),
+		stopChan: make(chan struct{}),
+
+		wg: sync.WaitGroup{},
 	}
 
 	for range service.workersLimit {
-		service.wg.Add(1)
-		go service.Worker()
+		service.wg.Go(service.Worker)
 	}
 
 	go service.errorHandlerStart()
@@ -107,47 +111,40 @@ func (service *ReportingService) errorHandlerStart() {
 
 func (service *ReportingService) Worker() {
 	for {
-		service.cond.L.Lock()
-
-		for len(service.tasks) == 0 && !service.stopSignal.Load() {
-			service.cond.Wait()
-		}
-
-		if service.stopSignal.Load() {
-			service.cond.L.Unlock()
-			break
-		}
-
-		task := service.tasks[0]
-		if len(service.tasks) == 1 {
-			service.tasks = make([]func() error, 0)
-		}
-		if len(service.tasks) > 1 {
-			service.tasks = service.tasks[1:]
-		}
-
-		service.cond.L.Unlock()
-
-		if err := task(); err != nil {
-			service.errChan <- errors.Wrap(err, "worker processing was end with failure")
+		select {
+		case task := <-service.tasks:
+			if err := task(); err != nil {
+				service.errChan <- err
+			}
+		case <-service.stopChan:
+			return
 		}
 	}
+}
 
-	service.wg.Done()
+func (service *ReportingService) Stop() error {
+	stopped := false
+	service.once.Do(func() {
+		close(service.stopChan)
+
+		service.wg.Wait()
+
+		close(service.errChan)
+		stopped = true
+	})
+
+	if !stopped {
+		return errors.Wrap(ErrReportingServiceStopped, "service already stopped")
+	}
+
+	return nil
 }
 
 //nolint:funlen //ok
 func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, mentorID string,
 ) error {
-	_, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedTopicsByGroups")
+	_, span, cancel := tracer.Start(ctx, "GetPassedTopicsByGroups")
 	defer cancel()
-
-	if service.stopSignal.Load() {
-		err := ErrReportingServiceStopped
-		span.SetError(err, "GetPassedTopicsByGroups")
-		slog.Error("GetPassedTopicsByGroups", "error", err)
-		return errors.Wrap(err, "GetPassedTopicsByGroups")
-	}
 
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
@@ -192,11 +189,14 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 		return service.eventProcessing(ctx, report, recipient)
 	}
 
-	service.cond.L.Lock()
-	defer service.cond.L.Unlock()
-
-	service.tasks = append(service.tasks, fn)
-	service.cond.Signal()
+	select {
+	case service.tasks <- fn:
+	case <-service.stopChan:
+		err := ErrReportingServiceStopped
+		span.SetError(err)
+		slog.Error("GetPassedTopicsByGroups", "error", err)
+		return errors.Wrap(err, "GetPassedTopicsByGroups")
+	}
 
 	return nil
 }
@@ -206,15 +206,8 @@ func (service *ReportingService) DeliverySessionResult(
 	ctx context.Context,
 	session *entities.SessionResult,
 ) error {
-	_, span, cancel := tracing.GlobalTracer().Start(ctx, "DeliverySessionResult")
+	_, span, cancel := tracer.Start(ctx, "DeliverySessionResult")
 	defer cancel()
-
-	if service.stopSignal.Load() {
-		err := ErrReportingServiceStopped
-		span.SetError(err, "DeliverySessionResult")
-		slog.Error("DeliverySessionResult", "error", err)
-		return errors.Wrap(err, "DeliverySessionResult")
-	}
 
 	fn := func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
@@ -262,32 +255,20 @@ func (service *ReportingService) DeliverySessionResult(
 		return service.eventProcessing(ctx, report, recipient)
 	}
 
-	service.cond.L.Lock()
-	defer service.cond.L.Unlock()
-
-	service.tasks = append(service.tasks, fn)
-	service.cond.Signal()
-
-	return nil
-}
-
-func (service *ReportingService) Stop() error {
-	if service.stopSignal.Load() {
+	select {
+	case service.tasks <- fn:
+	case <-service.stopChan:
 		err := ErrReportingServiceStopped
-		slog.Error("service already stopped", "error", err)
-		return errors.Wrap(err, "service already stopped")
+		span.SetError(err)
+		slog.Error("DeliverySessionResult", "error", err)
+		return errors.Wrap(err, "DeliverySessionResult")
 	}
 
-	service.stopSignal.Store(true)
-	service.cond.Broadcast()
-	service.wg.Wait()
-
-	close(service.errChan)
-
 	return nil
 }
 
-func (service *ReportingService) eventProcessing(ctx context.Context,
+func (service *ReportingService) eventProcessing(
+	ctx context.Context,
 	report entities.Report,
 	recipient *entities.User) error {
 	report.SetMessageType()

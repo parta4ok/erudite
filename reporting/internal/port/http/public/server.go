@@ -7,20 +7,19 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	port "github.com/parta4ok/kvs/reporting/internal/port"
 	"github.com/parta4ok/kvs/reporting/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
 const (
-	serverType = "reporting public"
+	PortType = "http_public_reporting"
 
 	basePath     = "/reporting/v1"
 	passedTopics = "/passed-topics"
@@ -29,17 +28,9 @@ const (
 )
 
 type Server struct {
-	router       *chi.Mux
-	server       *http.Server
 	service      port.Service
 	introspector Introspector
 	accessor     Accessor
-	cfg          *ServerCfg
-}
-
-type ServerCfg struct {
-	Port    string
-	Timeout time.Duration
 }
 
 type ServerOption func(*Server)
@@ -47,12 +38,6 @@ type ServerOption func(*Server)
 func WithService(srv port.Service) ServerOption {
 	return func(s *Server) {
 		s.service = srv
-	}
-}
-
-func WithConfig(cfg *ServerCfg) ServerOption {
-	return func(s *Server) {
-		s.cfg = cfg
 	}
 }
 
@@ -75,11 +60,7 @@ func (s *Server) setOption(opts ...ServerOption) {
 }
 
 func New(opts ...ServerOption) (*Server, error) {
-	r := chi.NewMux()
-
-	serv := &Server{
-		router: r,
-	}
+	serv := &Server{}
 
 	serv.setOption(opts...)
 
@@ -101,73 +82,17 @@ func New(opts ...ServerOption) (*Server, error) {
 		return nil, err
 	}
 
-	if serv.cfg == nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "config not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
-	if serv.cfg.Port == "" {
-		err := errors.Wrap(entities.ErrInternal, "port not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
 	return serv, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	s.registerRoutes()
-
-	s.server = &http.Server{
-		Addr:              s.cfg.Port,
-		Handler:           s.router,
-		ReadHeaderTimeout: s.cfg.Timeout,
-		WriteTimeout:      s.cfg.Timeout,
-		IdleTimeout:       s.cfg.Timeout,
+func (s *Server) Routes() []httpport.Route {
+	return []httpport.Route{
+		{
+			Method:  http.MethodGet,
+			Pattern: fmt.Sprintf("%s/{mentor_id}%s", basePath, passedTopics),
+			Handler: s.GetPassedTopics,
+		},
 	}
-
-	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("listen and serve", "error", err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	return nil
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-	slog.Info("server will be stopping")
-
-	slog.Info("starting server shutdown process")
-	start := time.Now()
-
-	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error("server shutdown", "error", err, "duration", time.Since(start))
-		return err
-	}
-
-	slog.Info("server stop gracefully", "duration", time.Since(start))
-
-	return nil
-}
-
-func (s *Server) Type() string {
-	return serverType
-}
-
-func (s *Server) registerRoutes() {
-	s.router.Use(
-		middleware.TracingMiddleware,
-		s.timeoutMiddleware,
-		s.introspectMiddleware,
-	)
-
-	s.router.Route(basePath, func(r chi.Router) {
-		r.Get(fmt.Sprintf("/{mentor_id}%s", passedTopics), s.GetPassedTopics)
-	})
 }
 
 // Get report about passed topics
@@ -185,7 +110,7 @@ func (s *Server) registerRoutes() {
 // @Failure      500  {object}  dto.ErrorDTO   "Internal server error"
 // @Router       /{mentor_id}/passed-topics [get]
 func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "GetPassedTopicsHandlerSpan")
+	ctx, span, cancel := tracer.Start(req.Context(), "GetPassedTopicsHandlerSpan")
 	defer cancel()
 
 	slog.Info("GetPassedTopics started")
@@ -193,7 +118,7 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.checkUserRights(ctx, []string{rightGetReport}); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "checkUserRights")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -203,14 +128,14 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 	if mentorID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "mentor id invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "mentor id invalid")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
 
 	if err := s.service.GetPassedTopicsByGroups(ctx, mentorID); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "GetPassedTopicsByGroups")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -246,17 +171,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	resp.Write(errDtoData) //nolint:errcheck,gosec //ok
 }
 
-func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		ctx, cancel := context.WithTimeout(req.Context(), s.cfg.Timeout)
-		defer cancel()
-
-		req = req.WithContext(ctx)
-		next.ServeHTTP(resp, req)
-	})
-}
-
-func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
+func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {

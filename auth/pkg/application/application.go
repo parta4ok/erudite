@@ -1,40 +1,35 @@
 package application
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 
 	"github.com/parta4ok/kvs/auth/internal/adapter/config"
 	"github.com/parta4ok/kvs/auth/internal/adapter/generator/google"
 	"github.com/parta4ok/kvs/auth/internal/adapter/hasher/bcryption"
 	jwtprovider "github.com/parta4ok/kvs/auth/internal/adapter/jwt_provider"
-	"github.com/parta4ok/kvs/auth/internal/adapter/message_broker/nats"
+	natsbroker "github.com/parta4ok/kvs/auth/internal/adapter/message_broker/nats"
 	"github.com/parta4ok/kvs/auth/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/auth/internal/cases"
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/auth/internal/port"
-	"github.com/parta4ok/kvs/auth/internal/port/grpc/private"
+	grpcprivate "github.com/parta4ok/kvs/auth/internal/port/grpc/private"
 	"github.com/parta4ok/kvs/auth/internal/port/http/public"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
-	"github.com/parta4ok/kvs/toolkit/pkg/logger"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
-	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
+	grpcport "github.com/parta4ok/kvs/toolkit/pkg/port/grpc"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
 
 type App struct {
-	cfg           *config.Config
-	privateServer *private.Server
-	publicServer  *public.Server
-	tracerPort    *tracing.TracerPort
-	tracing       bool
+	cfg *config.Config
 }
 
 func NewApp(cfgPath string) *App {
@@ -50,105 +45,40 @@ func NewApp(cfgPath string) *App {
 }
 
 func (app *App) Start() {
-	baseLogger := logger.NewBaseLogger(
-		app.cfg.GetLogLevel(),
-		app.cfg.GetLogAddSource(),
-		app.cfg.GetLogFormat(),
-		app.cfg.GetServiceName(),
-		app.cfg.GetServiceVersion(),
-	)
-	baseLogger.InitConfiguredLogger()
-
-	tracerPort := app.initTracer()
-	app.tracerPort = tracerPort
-
 	storage := app.initStorage()
 	provider := app.initJWTProvider()
 	hasher := app.initHasher()
 	generator := app.initGenerator()
-	accessor := app.initAccessor()
+	acc := app.initAccessor()
 	messageBroker := app.initBroker()
 
 	commandFactory := app.initCommandFactory(storage, provider, hasher, generator, messageBroker)
 
-	privateServer := app.initPrivateGRPCPort(commandFactory)
-	app.privateServer = privateServer
+	privatePort := app.initPrivateGRPCPort(commandFactory)
+	publicPort := app.initPublicHTTPPort(commandFactory, acc)
 
-	publicServer := app.initPublicHTTPPort(commandFactory, accessor)
-	app.publicServer = publicServer
+	baseApp := baseApplication.NewBuilder(app.cfg).
+		WithLogger().
+		WithTracer().
+		WithPort(privatePort).
+		WithPort(publicPort).
+		Build()
 
-	baseApp := baseApplication.NewBaseApplication()
-	baseApp.SetTimeout(5 * time.Second)
-	baseApp.SetPorts([]baseApplication.Port{
-		app.privateServer,
-		app.publicServer,
-		app.tracerPort,
-	})
-
-	baseApp.StartPortsWithGracefulShutdown()
+	if err := baseApp.RunAndAwait(context.Background()); err != nil {
+		app.panic(err)
+	}
 }
 
 func (app *App) initBroker() common.MessageBroker {
 	slog.Info("init broker started")
 
-	var broker common.MessageBroker
-
 	pub := app.initNatsPub()
-	nats, err := nats.NewPublisher(pub)
+	broker, err := natsbroker.NewPublisher(pub)
 	if err != nil {
 		app.panic(err)
 	}
 
-	broker = nats
-
 	return broker
-}
-
-func (app *App) initTracer() *tracing.TracerPort {
-	slog.Info("init tracer started")
-
-	if !app.cfg.IsTracingEnabled() {
-		slog.Info("tracing disabled")
-		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
-		return tracerPort
-	}
-
-	app.tracing = true
-	systemName := app.cfg.GetTracingType()
-	serviceName := app.cfg.TracingSystemName()
-
-	var tracer tracing.Tracer
-	var err error
-
-	switch systemName {
-	case "otel", "opentelemetry":
-		endpoint := app.cfg.GetOtelEndpoint()
-		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", "opentelemetry"),
-			slog.String("service", serviceName),
-			slog.String("endpoint", endpoint),
-		)
-	case "jaeger":
-		serviceURL := app.cfg.GetTracingInfraURL(systemName)
-		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", systemName),
-			slog.String("service", serviceName),
-			slog.String("endpoint", serviceURL),
-		)
-	default:
-		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
-	}
-
-	tracerPort := tracing.NewTracePort(tracer)
-	return tracerPort
 }
 
 func (app *App) initAccessor() public.Accessor {
@@ -246,40 +176,60 @@ func (app *App) initJWTProvider() common.JWTProvider {
 }
 
 func (app *App) initPublicHTTPPort(factory port.CommandFactory,
-	accessor public.Accessor) *public.Server {
+	acc public.Accessor) *httpport.Port {
 	slog.Info("init public http port started")
 
-	port := app.cfg.GetPublicPort()
-	interval := app.cfg.GetPublicTimeout()
+	addr := app.cfg.GetPublicPort()
+	timeout := app.cfg.GetPublicTimeout()
 
 	server, err := public.New(
 		public.WithFactory(factory),
-		public.WithAccessor(accessor),
-		public.WithConfig(&public.ServerCfg{Port: port, Timeout: interval}),
+		public.WithAccessor(acc),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new public server init failure")
+		app.panic(err)
+	}
+
+	httpPort, err := httpport.NewPort(
+		httpport.Config{Addr: addr, Timeout: timeout},
+		httpport.WithType(public.PortType),
+		httpport.WithMiddleware(tracer.HTTPServerMiddleware),
+		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {
 		err := errors.Wrap(err, "new public http port init failure")
 		app.panic(err)
 	}
 
-	return server
+	return httpPort
 }
 
-func (app *App) initPrivateGRPCPort(factory port.CommandFactory) *private.Server {
+func (app *App) initPrivateGRPCPort(factory port.CommandFactory) *grpcport.Port {
 	slog.Info("init private grpc port started")
 
-	port := app.cfg.GetPrivatePort()
+	grpcAddr := ":" + app.cfg.GetPrivatePort()
 
-	server, err := private.NewServer(
-		private.WithFactory(factory),
-		private.WithPort(port),
+	authService, err := grpcprivate.New(
+		grpcprivate.WithFactory(factory),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new auth grpc service init failure")
+		app.panic(err)
+	}
+
+	grpcPort, err := grpcport.NewPort(
+		grpcport.Config{Addr: grpcAddr},
+		grpcport.WithType(grpcprivate.PortType),
+		grpcport.WithServerOptions(grpcprivate.ServerOptions()...),
+		grpcport.WithRegister(authService.Register),
 	)
 	if err != nil {
 		err := errors.Wrap(err, "new private grpc port init failure")
 		app.panic(err)
 	}
 
-	return server
+	return grpcPort
 }
 
 func (app *App) initNatsPub() *publisher.Publisher {

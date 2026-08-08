@@ -7,7 +7,7 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/cases"
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	"github.com/parta4ok/kvs/toolkit/pkg/question/client"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func New(port string) (*QuestionClient, error) {
 func (q *QuestionClient) GetPassedStudentsTopics(ctx context.Context, students []string) (
 	map[string][]entities.Topic, error) {
 	slog.Info("GetPassedStudentsTopics started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetPassedStudentsTopicsSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetPassedStudentsTopicsSpan")
 	defer cancel()
 
 	passedTopics, err := q.client.GetPassedStudentsTopics(ctx, students)
@@ -45,12 +45,12 @@ func (q *QuestionClient) GetPassedStudentsTopics(ctx context.Context, students [
 		if errors.Is(err, client.ErrBadRequest) {
 			err = errors.Wrapf(entities.ErrInvalidParam, "GetPassedStudentsTopics failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "GetPassedStudentsTopics failure")
+			span.SetError(err)
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "GetPassedStudentsTopics failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "GetPassedStudentsTopics failure")
+		span.SetError(err)
 		return nil, err
 	}
 

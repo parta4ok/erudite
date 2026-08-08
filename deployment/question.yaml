@@ -1,3 +1,4 @@
+service_name: question
 kvs:
     http:
         public:
@@ -32,12 +33,5 @@ nats:
     subject: sessions.result
     event_timeout: 5s
 tracing:
-    system: otel
-    servicename: question
-    enabled: true
-otel:
-    endpoint: jaeger:4317
-    insecure: true
-jaeger:
-    address: jaeger:6831
-    probability: 1.0
+    jaeger: jaeger:4318
+    switch_on: true

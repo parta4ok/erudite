@@ -235,6 +235,55 @@
                 }
             }
         },
+        "/auth/v1/dynamic-registration": {
+            "post": {
+                "description": "Generates a 4-digit code and sends it to via the provider (email, telegram, etc.)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Dynamic registration",
+                "parameters": [
+                    {
+                        "description": "User ID and delivery provider",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DynamicRegistrationDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Code sent successfully"
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/v1/signin": {
             "post": {
                 "description": "Authenticates user with provided credentials and returns JWT token",
@@ -506,6 +555,19 @@
                 "user_id": {
                     "description": "required: true",
                     "type": "string"
+                }
+            }
+        },
+        "dto.DynamicRegistrationDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "example": "user@test.ru"
+                },
+                "provider": {
+                    "type": "string",
+                    "example": "email"
                 }
             }
         },

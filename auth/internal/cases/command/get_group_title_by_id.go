@@ -7,7 +7,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -32,7 +32,7 @@ func NewGetGroupTitleByIDCommand(storage common.Storage, groupID string) *GetGro
 func (command *GetGroupTitleByIDCommand) Exec(ctx context.Context) (
 	*entities.CommandResult, error) {
 	slog.Info("GetGroupTitleByIDCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByIDCommandSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetGroupTitleByIDCommandSpan")
 	defer cancel()
 
 	if command.groupID == "" {
@@ -43,7 +43,7 @@ func (command *GetGroupTitleByIDCommand) Exec(ctx context.Context) (
 	if err != nil {
 		err = errors.Wrap(err, "GetGroupTitleByID")
 		slog.Error(err.Error())
-		span.SetError(err, "GetGroupTitleByID")
+		span.SetError(err)
 		return nil, err
 	}
 

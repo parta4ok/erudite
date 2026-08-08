@@ -2,21 +2,18 @@ package private
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"net"
 
 	"google.golang.org/grpc"
 
 	authv1 "github.com/parta4ok/kvs/api/grpc/v1"
 	"github.com/parta4ok/kvs/auth/internal/entities"
 	"github.com/parta4ok/kvs/auth/internal/port"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
-const grpcPortType = "grpc_private"
+const PortType = "grpc_private"
 
 type AuthService struct {
 	authv1.UnimplementedAuthServiceServer
@@ -27,14 +24,14 @@ type AuthService struct {
 func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequest,
 ) (*authv1.IntrospectResponse, error) {
 	slog.Info("Introspect started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "IntrospectGRPCHandlerSpan")
+	ctx, span, cancel := tracer.Start(ctx, "IntrospectGRPCHandlerSpan")
 	defer cancel()
 
 	token := req.Token
 	if token == "" {
 		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
 		slog.Error(err.Error())
-		span.SetError(err, "token is empty")
+		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -45,7 +42,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if err != nil {
 		err := errors.Wrap(err, "introspect command exec failure")
 		slog.Error(err.Error())
-		span.SetError(err, "introspect command exec failure")
+		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -56,7 +53,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
 			slog.Error(err.Error())
-			span.SetError(err, "introspect command exec failure")
+			span.SetError(err)
 			return &authv1.IntrospectResponse{
 				Claims: nil,
 				Error:  &authv1.Error{Message: err.Error()},
@@ -68,7 +65,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert claims failure")
 		slog.Error(err.Error())
-		span.SetError(err, "assert claims failure")
+		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -93,14 +90,14 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 ) (*authv1.LinkedUsersResponse, error) {
 	slog.Info("GetLinkedUser started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetLinkedUsersGRPCHandlerSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetLinkedUsersGRPCHandlerSpan")
 	defer cancel()
 
 	userID := req.LinkedID
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is empty")
 		slog.Error(err.Error())
-		span.SetError(err, "user id is empty")
+		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -112,7 +109,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if err != nil {
 		err := errors.Wrap(err, "get user command exec failure")
 		slog.Error(err.Error())
-		span.SetError(err, "get user command exec failure")
+		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -124,7 +121,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "get user command exec failure")
 			slog.Error(err.Error())
-			span.SetError(err, "get user command exec failure")
+			span.SetError(err)
 			return &authv1.LinkedUsersResponse{
 				Recipient: nil,
 				Student:   nil,
@@ -137,7 +134,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert linked users data failure")
 		slog.Error(err.Error())
-		span.SetError(err, "assert linked users data failure")
+		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
 			Student:   nil,
@@ -174,13 +171,13 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 ) (*authv1.GroupsResponse, error) {
 	slog.Info("GetLinkedUser started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetMentorGroupsGRPCHandlerSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetMentorGroupsGRPCHandlerSpan")
 	defer cancel()
 
 	if req.GetMentorID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "mentorID is invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "mentorID is invalid")
+		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -191,7 +188,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	if err != nil {
 		err := errors.Wrap(err, "GetMentorGroupsCommand execution failed")
 		slog.Error(err.Error())
-		span.SetError(err, "GetMentorGroupsCommand execution failed")
+		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -202,7 +199,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
 		slog.Error(err.Error())
-		span.SetError(err, "cast command result failure")
+		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
 			Error:  &authv1.Error{Message: err.Error()},
@@ -237,13 +234,13 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 ) (*authv1.UserInfoResponse, error) {
 	slog.Info("GetUserByID started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDGRPCHandlerSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetUserByIDGRPCHandlerSpan")
 	defer cancel()
 
 	if req.GetUserID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "user id is invalid")
+		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -254,7 +251,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 	if err != nil {
 		err := errors.Wrap(err, "GetUserByIDCommand execution failed")
 		slog.Error(err.Error())
-		span.SetError(err, "GetUserByIDCommand execution failed")
+		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -265,7 +262,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
 		slog.Error(err.Error())
-		span.SetError(err, "cast command result failure")
+		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -291,13 +288,13 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID,
 ) (*authv1.GroupResponse, error) {
 	slog.Info("GetGroupTitleByID started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByIDGRPCHandlerSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetGroupTitleByIDGRPCHandlerSpan")
 	defer cancel()
 
 	if req.GetGroupID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "group id is invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "group id is invalid")
+		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -308,7 +305,7 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 	if err != nil {
 		err := errors.Wrap(err, "GetGroupTitleByIDCommand execution failed")
 		slog.Error(err.Error())
-		span.SetError(err, "GetGroupTitleByIDCommand execution failed")
+		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -319,7 +316,7 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
 		slog.Error(err.Error())
-		span.SetError(err, "cast command result failure")
+		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,
 			Error: &authv1.Error{Message: err.Error()},
@@ -337,118 +334,38 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 	return groupResponse, nil
 }
 
-type Server struct {
-	authService *AuthService
-	server      *grpc.Server
-	port        string
-	listener    net.Listener
-}
-
-type ServerOption func(*Server)
+type ServerOption func(*AuthService)
 
 func WithFactory(factory port.CommandFactory) ServerOption {
-	return func(srv *Server) {
-		srv.authService.factory = factory
+	return func(a *AuthService) {
+		a.factory = factory
 	}
 }
 
-func WithPort(port string) ServerOption {
-	return func(srv *Server) {
-		srv.port = port
-	}
-}
+func New(opts ...ServerOption) (*AuthService, error) {
+	a := &AuthService{}
 
-func (srv *Server) setOptions(opts ...ServerOption) {
 	for _, opt := range opts {
-		opt(srv)
-	}
-}
-
-func NewServer(opts ...ServerOption) (*Server, error) {
-	serv := &Server{
-		server: grpc.NewServer(
-			grpc.UnaryInterceptor(middleware.UnaryServerInterceptor()),
-		),
-		authService: &AuthService{},
+		opt(a)
 	}
 
-	serv.setOptions(opts...)
-
-	if serv.authService.factory == nil {
+	if a.factory == nil {
 		return nil, errors.Wrap(entities.ErrInvalidParam, "factory not set")
 	}
 
-	if serv.port == "" {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "port not set")
-	}
-
-	return serv, nil
+	return a, nil
 }
 
-//nolint:gosec //ok
-func (srv *Server) Start(ctx context.Context) error {
-	slog.Info("gRPC server starting", "port", srv.port)
-
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", srv.port))
-	if err != nil {
-		return errors.Wrapf(entities.ErrInternal, "net listen failure: %v", err)
-	}
-
-	srv.listener = listener
-	authv1.RegisterAuthServiceServer(srv.server, srv.authService)
-
-	go func() {
-		if err := srv.server.Serve(listener); err != nil {
-			slog.Error("gRPC server serve error", "error", err)
-		}
-	}()
-
-	slog.Info("gRPC server started", "port", srv.port)
-	return nil
+// Register binds AuthService onto a toolkit/pkg/port/grpc.Port via
+// grpcport.WithRegister.
+func (a *AuthService) Register(server *grpc.Server) {
+	authv1.RegisterAuthServiceServer(server, a)
 }
 
-func (srv *Server) Stop(ctx context.Context) error {
-	slog.Info("Stopping gRPC server", "port", srv.port)
-
-	if srv.server != nil {
-		srv.server.GracefulStop()
+// ServerOptions returns the grpc.ServerOption set (tracing interceptor)
+// expected by toolkit/pkg/port/grpc.Port via grpcport.WithServerOptions.
+func ServerOptions() []grpc.ServerOption {
+	return []grpc.ServerOption{
+		grpc.UnaryInterceptor(tracer.UnaryServerInterceptor()),
 	}
-
-	if srv.listener != nil {
-		srv.listener.Close() //nolint:errcheck,gosec //ok
-	}
-
-	slog.Info("gRPC server stopped", "port", srv.port)
-	return nil
-}
-
-func (srv *Server) Type() string {
-	return grpcPortType
-}
-
-// Legacy methods for backward compatibility
-func (srv *Server) StartServer() {
-	slog.Info("gRPC server started")
-
-	listner, err := net.Listen("tcp", fmt.Sprintf(":%s", srv.port))
-	if err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "net listen failure: %v", err)
-		slog.Error(err.Error())
-		return
-	}
-
-	authv1.RegisterAuthServiceServer(srv.server, srv.authService)
-
-	if err := srv.server.Serve(listner); err != nil {
-		err := errors.Wrapf(entities.ErrInternal, "serve failure: %v", err)
-		slog.Error(err.Error())
-		return
-	}
-
-	slog.Info("gRPC server stopped")
-}
-
-func (srv *Server) LegacyStop() {
-	slog.Info("stop gRPC server")
-	srv.server.Stop()
 }

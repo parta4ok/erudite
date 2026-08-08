@@ -158,3 +158,40 @@ func (cfg *Config) GetPublisherInterval() time.Duration {
 func (cfg *Config) GetFlusherInterval() time.Duration {
 	return cfg.viper.GetDuration("kvs.sheduler.flusher.interval")
 }
+
+func (cfg *Config) ServiceName() string {
+	return cfg.GetServiceName()
+}
+
+func (cfg *Config) ServiceVersion() string {
+	return cfg.GetServiceVersion()
+}
+
+func (cfg *Config) LogLevel() string {
+	return cfg.GetLogLevel()
+}
+
+func (cfg *Config) LogAddSource() bool {
+	return cfg.GetLogAddSource()
+}
+
+func (cfg *Config) LogFormat() string {
+	return cfg.GetLogFormat()
+}
+
+func (cfg *Config) TracingEnabled() bool {
+	return cfg.IsTracingEnabled()
+}
+
+func (cfg *Config) TracingEndpoint() string {
+	return cfg.GetOtelEndpoint()
+}
+
+func (cfg *Config) ShutdownTimeout() time.Duration {
+	timeout := cfg.viper.GetDuration("kvs.shutdown_timeout")
+	if timeout == 0 {
+		return 5 * time.Second
+	}
+
+	return timeout
+}

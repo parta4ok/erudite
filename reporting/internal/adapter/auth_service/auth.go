@@ -9,7 +9,7 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 
 	"github.com/parta4ok/kvs/toolkit/pkg/auth/client"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -40,7 +40,7 @@ func (srv *AuthService) GetMentorGroups(ctx context.Context, mentorID string) (
 	[]entities.Student, error) {
 	slog.Info("GetMentorGroups started", slog.String("mentor_id", mentorID))
 
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetMentorGroups")
+	ctx, span, cancel := tracer.Start(ctx, "GetMentorGroups")
 	defer cancel()
 
 	req := &authv1.MentorID{
@@ -50,14 +50,14 @@ func (srv *AuthService) GetMentorGroups(ctx context.Context, mentorID string) (
 	groups, err := srv.client.GetMentorGroups(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetMentorGroups failure: %v", err)
-		span.SetError(err, "GetMentorGroups failure")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
 	if groups.GetError().GetMessage() != "" {
 		err := errors.Wrapf(entities.ErrInternal, "error message: %s", groups.Error.Message)
-		span.SetError(err, "extract error message groups.GetError().GetMessage()")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
 ) (*entities.LinkedMentorAndStudent, error) {
 	slog.Info("GetLinkedUsers started", slog.String("id", id))
 
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetMentorGroups")
+	ctx, span, cancel := tracer.Start(ctx, "GetMentorGroups")
 	defer cancel()
 
 	req := &authv1.LinkedID{
@@ -97,21 +97,21 @@ func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
 	linkedUsers, err := srv.client.GetLinkedUsers(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetLinkedUsers failure: %v", err)
-		span.SetError(err, "GetLinkedUsers failure")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
 	if linkedUsers.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrInternal, "error message: %s", linkedUsers.Error.Message)
-		span.SetError(err, "extract error message linkedUsers.Error.Message")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
 	if linkedUsers.Recipient == nil || linkedUsers.Student == nil {
 		err := errors.Wrap(entities.ErrInternal, "nil users info")
-		span.SetError(err, "nil users info")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
 func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
 	slog.Info("GetGetUserByID started", slog.String("id", userID))
 
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByID")
+	ctx, span, cancel := tracer.Start(ctx, "GetUserByID")
 	defer cancel()
 
 	req := &authv1.UserID{
@@ -152,7 +152,7 @@ func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entiti
 	user, err := srv.client.GetUserByID(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetUserByID failure: %v", err)
-		span.SetError(err, "GetLinkedUsers failure")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entiti
 
 func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
 	slog.Info("GetGroupTitleByID started", slog.String("id", groupID))
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetGroupTitleByID")
+	ctx, span, cancel := tracer.Start(ctx, "GetGroupTitleByID")
 	defer cancel()
 
 	req := &authv1.GroupID{
@@ -178,7 +178,7 @@ func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (
 	group, err := srv.client.GetGroupTitleByID(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetGroupTitleByID failure: %v", err)
-		span.SetError(err, "GetGroupTitleByID failure")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return "", err
 	}
@@ -189,7 +189,7 @@ func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (
 func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
 	slog.Info("Introspect started")
 
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "Introspect")
+	ctx, span, cancel := tracer.Start(ctx, "Introspect")
 	defer cancel()
 
 	req := &authv1.IntrospectRequest{
@@ -199,21 +199,21 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.C
 	resp, err := srv.client.Introspect(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
-		span.SetError(err, "Introspect failure")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
 	if resp.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
-		span.SetError(err, "resp.Error.Message")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}
 
 	if resp.Claims == nil {
 		err := errors.Wrap(entities.ErrForbidden, "nil claims")
-		span.SetError(err, "nil claims")
+		span.SetError(err)
 		slog.Error(err.Error())
 		return nil, err
 	}

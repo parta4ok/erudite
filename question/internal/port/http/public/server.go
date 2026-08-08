@@ -6,19 +6,18 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
 const (
-	serverType = "question public"
+	PortType = "http_public_question"
 
 	basePath                 = "/kvs/v1"
 	topicsPath               = "/topics"
@@ -36,18 +35,10 @@ const (
 )
 
 type Server struct {
-	router       *chi.Mux
-	server       *http.Server
 	service      Service
 	introspector Introspector
 	accessor     Accessor
-	cfg          *ServerCfg
 	sessionLimit int
-}
-
-type ServerCfg struct {
-	Port    string
-	Timeout time.Duration
 }
 
 type ServerOption func(*Server)
@@ -55,12 +46,6 @@ type ServerOption func(*Server)
 func WithService(srv Service) ServerOption {
 	return func(s *Server) {
 		s.service = srv
-	}
-}
-
-func WithConfig(cfg *ServerCfg) ServerOption {
-	return func(s *Server) {
-		s.cfg = cfg
 	}
 }
 
@@ -89,11 +74,7 @@ func (s *Server) setOption(opts ...ServerOption) {
 }
 
 func New(opts ...ServerOption) (*Server, error) {
-	r := chi.NewMux()
-
-	serv := &Server{
-		router: r,
-	}
+	serv := &Server{}
 
 	serv.setOption(opts...)
 
@@ -115,18 +96,6 @@ func New(opts ...ServerOption) (*Server, error) {
 		return nil, err
 	}
 
-	if serv.cfg == nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "config not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
-	if serv.cfg.Port == "" {
-		err := errors.Wrap(entities.ErrInternal, "port not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
 	if serv.sessionLimit == 0 {
 		serv.sessionLimit = defaultDailySessionLimit
 	}
@@ -134,62 +103,28 @@ func New(opts ...ServerOption) (*Server, error) {
 	return serv, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	s.registerRoutes()
-
-	s.server = &http.Server{
-		Addr:              s.cfg.Port,
-		Handler:           s.router,
-		ReadHeaderTimeout: s.cfg.Timeout,
-		WriteTimeout:      s.cfg.Timeout,
-		IdleTimeout:       s.cfg.Timeout,
+func (s *Server) Routes() []httpport.Route {
+	return []httpport.Route{
+		{
+			Method:  http.MethodGet,
+			Pattern: basePath + topicsPath, Handler: s.GetTopics,
+		},
+		{
+			Method:  http.MethodGet,
+			Pattern: basePath + "/{user_id}" + allCompletedSessionsPath,
+			Handler: s.GetAllCompletedUserSessions,
+		},
+		{
+			Method:  http.MethodPost,
+			Pattern: basePath + "/{user_id}" + startSessionPath,
+			Handler: s.StartSession,
+		},
+		{
+			Method:  http.MethodPost,
+			Pattern: basePath + "/{user_id}/{session_id}" + completeSessionPath,
+			Handler: s.CompleteSession,
+		},
 	}
-
-	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("listen and serve", "error", err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	return nil
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-	slog.Info("server will be stopping")
-
-	slog.Info("starting server shutdown process")
-	start := time.Now()
-
-	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error("server shutdown", "error", err, "duration", time.Since(start))
-		return err
-	}
-
-	slog.Info("server stop gracefully", "duration", time.Since(start))
-
-	return nil
-}
-
-func (s *Server) Type() string {
-	return serverType
-}
-
-func (s *Server) registerRoutes() {
-	s.router.Use(
-		middleware.TracingMiddleware,
-		s.timeoutMiddleware,
-		s.introspectMiddleware,
-	)
-
-	s.router.Get(basePath+topicsPath, s.GetTopics)
-	s.router.Get(basePath+"/{user_id}"+allCompletedSessionsPath, s.GetAllCompletedUserSessions)
-
-	s.router.Route(basePath, func(r chi.Router) {
-		r.Post("/{user_id}"+startSessionPath, s.StartSession)
-		r.Post("/{user_id}/{session_id}"+completeSessionPath, s.CompleteSession)
-	})
 }
 
 // Get lists of all existing topics
@@ -208,12 +143,12 @@ func (s *Server) registerRoutes() {
 func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetTopics started")
 	resp.Header().Set("Content-Type", "application/json")
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "GetTopicsHandlerSpan")
+	ctx, span, cancel := tracer.Start(req.Context(), "GetTopicsHandlerSpan")
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightViewTopicList}); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "checkUserRights")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -221,7 +156,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	topics, err := s.service.ShowTopics(ctx)
 	if err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "ShowTopics")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -232,7 +167,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "marshal")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -241,7 +176,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "write response")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -266,12 +201,12 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 //nolint:funlen //ok
 func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("StartSession started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "StartSessionHandlerSpan")
+	ctx, span, cancel := tracer.Start(req.Context(), "StartSessionHandlerSpan")
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightStartSession}); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "checkUserRights")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -288,7 +223,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "userID invalid")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -297,7 +232,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&topicsDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to topicsDTO failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "decode request body")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -306,7 +241,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrap(err, "CreateSession failure")
 		slog.Error(err.Error())
-		span.SetError(err, "CreateSession")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -332,7 +267,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "marshal")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -341,7 +276,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "write response")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -367,12 +302,12 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 //nolint:funlen //ok
 func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("CompleteSession started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(), "CompleteSessionHandlerSpan")
+	ctx, span, cancel := tracer.Start(req.Context(), "CompleteSessionHandlerSpan")
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightCompleteSession}); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "checkUserRights")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -384,7 +319,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if sessionID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "sessionID invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "sessionID invalid")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -394,7 +329,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode request body to userAnswersListDTO failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "decode request body")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -405,7 +340,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			err := errors.Wrapf(entities.ErrInvalidParam, "create user answer failure: %v", err)
 			slog.Error(err.Error())
-			span.SetError(err, "create user answer")
+			span.SetError(err)
 			s.errProcessing(resp, err)
 			return
 		}
@@ -416,7 +351,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrap(err, "CompleteSession failure")
 		slog.Error(err.Error())
-		span.SetError(err, "CompleteSession")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -430,7 +365,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "marshal")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -439,7 +374,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "write response")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -465,13 +400,13 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 // //nolint:funlen //ok
 func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetAllCompletedUserSessions started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(),
+	ctx, span, cancel := tracer.Start(req.Context(),
 		"GetAllCompletedUserSessionsHandlerSpan")
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightViewCompletedSessions}); err != nil {
 		slog.Error(err.Error())
-		span.SetError(err, "checkUserRights")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -483,7 +418,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
 		slog.Error(err.Error())
-		span.SetError(err, "userID invalid")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -492,7 +427,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if err != nil {
 		err := errors.Wrap(err, "GetAllCompletedUserSessions failure")
 		slog.Error(err.Error())
-		span.SetError(err, "GetAllCompletedUserSessions")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -505,7 +440,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 		if err != nil {
 			err = errors.Wrap(err, "extractDataFromCompleteSession failure")
 			slog.Error(err.Error())
-			span.SetError(err, "extractDataFromCompleteSession")
+			span.SetError(err)
 			s.errProcessing(resp, err)
 			return
 		}
@@ -517,7 +452,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "marshal")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -526,7 +461,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "write response")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -562,17 +497,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	resp.Write(errDtoData) //nolint:errcheck,gosec //ok
 }
 
-func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		ctx, cancel := context.WithTimeout(req.Context(), s.cfg.Timeout)
-		defer cancel()
-
-		req = req.WithContext(ctx)
-		next.ServeHTTP(resp, req)
-	})
-}
-
-func (s *Server) introspectMiddleware(next http.Handler) http.Handler {
+func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {

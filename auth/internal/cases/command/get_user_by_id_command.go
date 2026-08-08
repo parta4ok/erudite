@@ -7,7 +7,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +31,7 @@ func NewGetUserByIDCommand(storage common.Storage, userID string) *GetUserByIDCo
 
 func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("GetUserByIDCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "GetUserByIDCommandSpan")
+	ctx, span, cancel := tracer.Start(ctx, "GetUserByIDCommandSpan")
 	defer cancel()
 
 	if command.userID == "" {
@@ -42,7 +42,7 @@ func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandR
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByID")
 		slog.Error(err.Error())
-		span.SetError(err, "GetUserByID")
+		span.SetError(err)
 		return nil, err
 	}
 

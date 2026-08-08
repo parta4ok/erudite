@@ -8,7 +8,7 @@ import (
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 var (
@@ -37,7 +37,7 @@ func NewAddUserCommand(storage common.Storage, hasher common.Hasher,
 //nolint:funlen //ok
 func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResult, error) {
 	slog.Info("AddUserCommand exec started")
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "AddUserCommandExecSpan")
+	ctx, span, cancel := tracer.Start(ctx, "AddUserCommandExecSpan")
 	defer cancel()
 
 	if command.user == nil {
@@ -49,7 +49,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 		if !errors.Is(err, entities.ErrNotFound) {
 			err = errors.Wrap(err, "get user by user id")
 			slog.Error(err.Error())
-			span.SetError(err, "get user by user id")
+			span.SetError(err)
 			return nil, err
 		}
 	}
@@ -58,7 +58,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 		err = errors.Wrapf(entities.ErrAlreadyExists, "user name %s already exists",
 			command.user.Username)
 		slog.Error(err.Error())
-		span.SetError(err, "user name already exists")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	if err != nil {
 		err := errors.Wrap(err, "generate failure")
 		slog.Error(err.Error())
-		span.SetError(err, "generate failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -74,7 +74,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	if err != nil {
 		err := errors.Wrap(err, "hash password failure")
 		slog.Error(err.Error())
-		span.SetError(err, "hash password failure")
+		span.SetError(err)
 		return nil, err
 	}
 
@@ -91,7 +91,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	if err := command.storage.StoreUser(ctx, user); err != nil {
 		err = errors.Wrap(err, "store user failure")
 		slog.Error(err.Error())
-		span.SetError(err, "store user failure")
+		span.SetError(err)
 		return nil, err
 	}
 

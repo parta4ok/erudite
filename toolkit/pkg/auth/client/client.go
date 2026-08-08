@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	authv1 "github.com/parta4ok/kvs/api/grpc/v1"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 type AuthClient struct {
@@ -20,7 +20,7 @@ func New(addr string, opts ...grpc.DialOption) (*AuthClient, error) {
 	if len(opts) == 0 {
 		opts = []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithUnaryInterceptor(middleware.UnaryClientInterceptor()),
+			grpc.WithUnaryInterceptor(tracer.UnaryClientInterceptor()),
 		}
 	}
 

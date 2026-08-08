@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
-	"github.com/parta4ok/kvs/toolkit/pkg/application"
+	"github.com/parta4ok/kvs/toolkit/pkg/port"
 	"github.com/pkg/errors"
 )
 
@@ -15,7 +15,7 @@ var (
 )
 
 var (
-	_ application.Port = (*Sheduler)(nil)
+	_ port.BasePort = (*Sheduler)(nil)
 )
 
 const (

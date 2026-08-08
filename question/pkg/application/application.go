@@ -1,4 +1,4 @@
-package appication
+package application
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/adapter/config"
 	cryptoprocessing "github.com/parta4ok/kvs/question/internal/adapter/generator/crypto_processing"
 	authservice "github.com/parta4ok/kvs/question/internal/adapter/introspector/auth_service"
-	"github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
+	natsbroker "github.com/parta4ok/kvs/question/internal/adapter/message_broker/nats"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage"
 	"github.com/parta4ok/kvs/question/internal/adapter/storage/postgres"
 	"github.com/parta4ok/kvs/question/internal/cases"
@@ -21,21 +21,14 @@ import (
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/cron"
-	"github.com/parta4ok/kvs/toolkit/pkg/logger"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	projectTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/jaeger"
-	otelTracer "github.com/parta4ok/kvs/toolkit/pkg/tracing/otel"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
 
 type App struct {
-	config        *config.Config
-	publicServer  *public.Server
-	privateServer *private.Server
-	tracerPort    *tracing.TracerPort
-	sheduler      *cron.Sheduler
-	tracing       bool
+	cfg *config.Config
 }
 
 func NewApp(cfgPath string) *App {
@@ -46,116 +39,49 @@ func NewApp(cfgPath string) *App {
 	}
 
 	return &App{
-		config: cfg,
+		cfg: cfg,
 	}
 }
 
 func (app *App) Start() {
-	baseLogger := logger.NewBaseLogger(
-		app.config.GetLogLevel(),
-		app.config.GetLogAddSource(),
-		app.config.GetLogFormat(),
-		app.config.GetServiceName(),
-		app.config.GetServiceVersion(),
-	)
-	baseLogger.InitConfiguredLogger()
-	slog.Info("logger configuration completed")
-
-	tracerPort := app.initTracer()
-	app.tracerPort = tracerPort
-
-	storage, sessionStorage, eventStorage := app.initStorage()
+	storageImpl, sessionStorage, eventStorage := app.initStorage()
 	generator := app.initGenerator()
 	authClient := app.initAuthServiceClient()
-	accessor := app.initAccessor()
+	acc := app.initAccessor()
 
-	service := app.initSessionServiceBase(storage, sessionStorage, generator)
+	service := app.initSessionServiceBase(storageImpl, sessionStorage, generator)
 	broker := app.initBroker()
 
 	sheduler := app.initSheduler(eventStorage, broker)
-	app.sheduler = sheduler
 
-	pubicServer := app.initPublicPort(service, authClient, accessor)
-	app.publicServer = pubicServer
+	publicPort := app.initPublicPort(service, authClient, acc)
+	privatePort := app.initPrivatePort(service)
 
-	privateServer := app.initPrivatePort(service)
-	app.privateServer = privateServer
+	baseApp := baseApplication.NewBuilder(app.cfg).
+		WithLogger().
+		WithTracer().
+		WithPort(publicPort).
+		WithPort(privatePort).
+		WithPort(sheduler).
+		Build()
 
-	ports := []baseApplication.Port{
-		app.privateServer,
-		app.publicServer,
-		app.tracerPort,
-		app.sheduler,
+	if err := baseApp.RunAndAwait(context.Background()); err != nil {
+		app.panic(err)
 	}
-
-	baseApp := baseApplication.NewBaseApplication()
-	baseApp.SetTimeout(4 * time.Second)
-	baseApp.SetPorts(ports)
-	baseApp.StartPortsWithGracefulShutdown()
-}
-
-func (app *App) initTracer() *tracing.TracerPort {
-	slog.Info("init tracer started")
-
-	if !app.config.IsTracingEnabled() {
-		slog.Info("tracing disabled")
-		tracerPort := tracing.NewTracePort(&tracing.NoOpTracer{})
-		return tracerPort
-	}
-
-	app.tracing = true
-	systemName := app.config.GetTracingType()
-	serviceName := app.config.TracingSystemName()
-
-	var tracer tracing.Tracer
-	var err error
-
-	switch systemName {
-	case "otel", "opentelemetry":
-		endpoint := app.config.GetOtelEndpoint()
-		tracer, err = otelTracer.NewOtelTracerAdapter(serviceName, endpoint)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "otel tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", "opentelemetry"),
-			slog.String("service", serviceName),
-			slog.String("endpoint", endpoint),
-		)
-	case "jaeger":
-		serviceURL := app.config.GetTracingInfraURL(systemName)
-		tracer, err = projectTracer.NewJaegerTracerAdapter(serviceName, serviceURL)
-		if err != nil {
-			app.panic(errors.Wrapf(err, "jaeger tracer init failure: %v", err))
-		}
-		slog.Info("tracer initialized successfully",
-			slog.String("type", systemName),
-			slog.String("service", serviceName),
-			slog.String("endpoint", serviceURL),
-		)
-	default:
-		app.panic(errors.Wrap(entities.ErrInvalidParam, "unsupported tracing system: "+systemName))
-	}
-
-	tracerPort := tracing.NewTracePort(tracer)
-	return tracerPort
 }
 
 func (app *App) initBroker() cases.MessageBroker {
 	slog.Info("init broker started")
 
-	var broker cases.MessageBroker
-	subject := app.config.GetNatsSubject()
+	subject := app.cfg.GetNatsSubject()
 
 	pub := app.initNatsPub()
-	nats, err := nats.NewPublisher(pub, subject)
+	brokerAdapter, err := natsbroker.NewPublisher(pub, subject)
 	if err != nil {
 		app.panic(err)
 	}
 
-	broker = nats
-
-	return broker
+	return brokerAdapter
 }
 
 func (app *App) initStorage() (cases.Storage, entities.SessionStorage, storage.EventStorage) {
@@ -165,8 +91,8 @@ func (app *App) initStorage() (cases.Storage, entities.SessionStorage, storage.E
 	var sessionStorage entities.SessionStorage
 	var eventStorage storage.EventStorage
 
-	storageType := app.config.GetServiceStorageType()
-	connStr := app.config.GetStorageConnStr(storageType)
+	storageType := app.cfg.GetServiceStorageType()
+	connStr := app.cfg.GetStorageConnStr(storageType)
 	switch storageType {
 	case "postgres":
 		s, err := postgres.NewStorage(connStr)
@@ -186,7 +112,6 @@ func (app *App) initStorage() (cases.Storage, entities.SessionStorage, storage.E
 
 func (app *App) initAccessor() public.Accessor {
 	slog.Info("initAccessor started")
-	var acessor public.Accessor
 
 	a, err := accessor.NewRightAccessor()
 	if err != nil {
@@ -194,24 +119,18 @@ func (app *App) initAccessor() public.Accessor {
 		app.panic(err)
 	}
 
-	acessor = a
-
-	return acessor
+	return a
 }
 
 func (app *App) initGenerator() entities.IDGenerator {
 	slog.Info("init generator started")
-	var gen entities.IDGenerator
-	g := cryptoprocessing.NewUint64Generator()
-	gen = g
-
-	return gen
+	return cryptoprocessing.NewUint64Generator()
 }
 
 func (app *App) initNatsPub() *publisher.Publisher {
 	slog.Info("init nats publisher started")
 
-	natsUrl := app.config.GetNatsURL()
+	natsUrl := app.cfg.GetNatsURL()
 	pub, err := publisher.NewPublisher(natsUrl)
 	if err != nil {
 		app.panic(err)
@@ -221,33 +140,28 @@ func (app *App) initNatsPub() *publisher.Publisher {
 }
 
 func (app *App) initSessionServiceBase(
-	storage cases.Storage,
+	storageImpl cases.Storage,
 	sessionStorage entities.SessionStorage,
-	generator entities.IDGenerator) cases.SessionService {
+	generator entities.IDGenerator,
+) cases.SessionService {
 	slog.Info("init session_service started")
 
-	var sessionService cases.SessionService
+	respondTime := app.cfg.GetTimeToRespond()
 
-	respondTime := app.config.GetTimeToRespond()
-
-	serv, err := cases.NewSessionServiceBase(storage, sessionStorage, generator,
+	serv, err := cases.NewSessionServiceBase(storageImpl, sessionStorage, generator,
 		cases.WithCustomRespondTime(respondTime))
 	if err != nil {
 		err := errors.Wrap(err, "NewSessionServiceBase")
 		app.panic(err)
 	}
 
-	sessionService = serv
-
-	return sessionService
+	return serv
 }
 
 func (app *App) initAuthServiceClient() public.Introspector {
 	slog.Info("init auth service client started")
 
-	var authClient public.Introspector
-
-	addr := app.config.GetAuthConn()
+	addr := app.cfg.GetAuthConn()
 	if addr == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "get auth address failure")
 		app.panic(err)
@@ -259,58 +173,71 @@ func (app *App) initAuthServiceClient() public.Introspector {
 		app.panic(err)
 	}
 
-	authClient = client
-
-	return authClient
+	return client
 }
 
 func (app *App) initPublicPort(
 	sessionServiceBase cases.SessionService,
 	authClient public.Introspector,
-	accessor public.Accessor,
-) *public.Server {
+	acc public.Accessor,
+) *httpport.Port {
 	slog.Info("init public port started")
 
-	port := app.config.GetPublicPort()
-	timeout := app.config.GetPublicTimeout()
-	dailyLimit := app.config.GetSessionLimit()
+	addr := app.cfg.GetPublicPort()
+	timeout := app.cfg.GetPublicTimeout()
+	dailyLimit := app.cfg.GetSessionLimit()
 
 	server, err := public.New(
 		public.WithCustomDailySessionLimit(dailyLimit),
 		public.WithService(sessionServiceBase),
 		public.WithIntrospector(authClient),
-		public.WithConfig(&public.ServerCfg{
-			Port:    port,
-			Timeout: timeout,
-		}),
-		public.WithAccessor(accessor))
+		public.WithAccessor(acc),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new public server init failure")
+		app.panic(err)
+	}
+
+	httpPort, err := httpport.NewPort(
+		httpport.Config{Addr: addr, Timeout: timeout},
+		httpport.WithType(public.PortType),
+		httpport.WithMiddleware(tracer.HTTPServerMiddleware, server.IntrospectMiddleware),
+		httpport.WithRoutes(server.Routes()...),
+	)
 	if err != nil {
 		err := errors.Wrap(err, "new public port init failure")
 		app.panic(err)
 	}
 
-	return server
+	return httpPort
 }
 
-func (app *App) initPrivatePort(sessionServiceBase cases.SessionService) *private.Server {
+func (app *App) initPrivatePort(sessionServiceBase cases.SessionService) *httpport.Port {
 	slog.Info("init private port started")
 
-	port := app.config.GetPrivatePort()
-	timeout := app.config.GetPrivateTimeout()
+	addr := app.cfg.GetPrivatePort()
+	timeout := app.cfg.GetPrivateTimeout()
 
 	server, err := private.New(
 		private.WithService(sessionServiceBase),
-		private.WithConfig(&private.ServerCfg{
-			Port:    port,
-			Timeout: timeout,
-		}),
+	)
+	if err != nil {
+		err := errors.Wrap(err, "new private server init failure")
+		app.panic(err)
+	}
+
+	httpPort, err := httpport.NewPort(
+		httpport.Config{Addr: addr, Timeout: timeout},
+		httpport.WithType(private.PortType),
+		httpport.WithMiddleware(tracer.HTTPServerMiddleware),
+		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {
 		err := errors.Wrap(err, "new private port init failure")
 		app.panic(err)
 	}
 
-	return server
+	return httpPort
 }
 
 func (app *App) initSheduler(
@@ -322,11 +249,11 @@ func (app *App) initSheduler(
 		app.panic(err)
 	}
 
-	if err = sheduler.NewJob(app.config.GetPublisherInterval(),
+	if err = sheduler.NewJob(app.cfg.GetPublisherInterval(),
 		app.publishEvents, eventStorage, broker); err != nil {
 		app.panic(err)
 	}
-	if err = sheduler.NewJob(app.config.GetFlusherInterval(),
+	if err = sheduler.NewJob(app.cfg.GetFlusherInterval(),
 		app.flushEvents, eventStorage); err != nil {
 		app.panic(err)
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/internal/entities/event"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -38,7 +38,7 @@ func NewPublisher(pub *publisher.Publisher, subject string) (*Publisher, error) 
 
 func (p *Publisher) Publish(ctx context.Context, event event.Event) error {
 	slog.Info("Publisher: processing event started", "type", event.Type())
-	ctx, span, cancel := tracing.GlobalTracer().Start(ctx, "NATSPublisherEventSpan")
+	ctx, span, cancel := tracer.Start(ctx, "NATSPublisherEventSpan")
 	defer cancel()
 
 	if err := p.pub.Publish(ctx, p.subject, event.Payload()); err != nil {
@@ -50,7 +50,7 @@ func (p *Publisher) Publish(ctx context.Context, event event.Event) error {
 			err = errors.Wrapf(entities.ErrInvalidParam, "publish failure: %v", err)
 		}
 		slog.Error(err.Error())
-		span.SetError(err, "publish failure")
+		span.SetError(err)
 		return err
 	}
 

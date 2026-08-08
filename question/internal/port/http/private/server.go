@@ -1,38 +1,27 @@
 package private
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracing/middleware"
+	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
 const (
-	serverType = "question private"
+	PortType = "http_private_question"
 
 	basePath                = "/kvs/v1"
 	getPassedStudentsTopics = "/passed_topics"
 )
 
 type Server struct {
-	router  *chi.Mux
-	server  *http.Server
 	service Service
-	cfg     *ServerCfg
-}
-
-type ServerCfg struct {
-	Port    string
-	Timeout time.Duration
 }
 
 type ServerOption func(*Server)
@@ -43,12 +32,6 @@ func WithService(srv Service) ServerOption {
 	}
 }
 
-func WithConfig(cfg *ServerCfg) ServerOption {
-	return func(s *Server) {
-		s.cfg = cfg
-	}
-}
-
 func (s *Server) setOption(opts ...ServerOption) {
 	for _, opt := range opts {
 		opt(s)
@@ -56,11 +39,7 @@ func (s *Server) setOption(opts ...ServerOption) {
 }
 
 func New(opts ...ServerOption) (*Server, error) {
-	r := chi.NewMux()
-
-	serv := &Server{
-		router: r,
-	}
+	serv := &Server{}
 
 	serv.setOption(opts...)
 
@@ -70,80 +49,17 @@ func New(opts ...ServerOption) (*Server, error) {
 		return nil, err
 	}
 
-	if serv.cfg == nil {
-		err := errors.Wrap(entities.ErrInvalidParam, "config not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
-	if serv.cfg.Port == "" {
-		err := errors.Wrap(entities.ErrInternal, "port not set")
-		slog.Error(err.Error())
-		return nil, err
-	}
-
 	return serv, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	s.registerRoutes()
-
-	s.server = &http.Server{
-		Addr:              s.cfg.Port,
-		Handler:           s.router,
-		ReadHeaderTimeout: s.cfg.Timeout,
-		WriteTimeout:      s.cfg.Timeout,
-		IdleTimeout:       s.cfg.Timeout,
+func (s *Server) Routes() []httpport.Route {
+	return []httpport.Route{
+		{
+			Method:  http.MethodPost,
+			Pattern: basePath + getPassedStudentsTopics,
+			Handler: s.GetPassedStudentsTopics,
+		},
 	}
-
-	go func() {
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("listen and serve", "error", err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	return nil
-}
-
-func (s *Server) Stop(ctx context.Context) error {
-	slog.Info("server will be stopping")
-
-	slog.Info("starting server shutdown process")
-	start := time.Now()
-
-	if err := s.server.Shutdown(ctx); err != nil {
-		slog.Error("server shutdown", "error", err, "duration", time.Since(start))
-		return err
-	}
-
-	slog.Info("server stop gracefully", "duration", time.Since(start))
-
-	return nil
-}
-
-func (s *Server) Type() string {
-	return serverType
-}
-
-func (s *Server) registerRoutes() {
-	s.router.Use(
-		middleware.TracingMiddleware,
-		s.timeoutMiddleware,
-	)
-
-	s.router.Post(basePath+getPassedStudentsTopics, s.GetPassedStudentsTopics)
-}
-
-func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		ctx, cancel := context.WithTimeout(req.Context(), s.cfg.Timeout)
-		defer cancel()
-
-		req = req.WithContext(ctx)
-		next.ServeHTTP(resp, req)
-	})
 }
 
 // GetPassedStudentsTopics returns detailed information about all passed topics for
@@ -162,7 +78,7 @@ func (s *Server) timeoutMiddleware(next http.Handler) http.Handler {
 func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Request) {
 	slog.Info("GetPassedStudentsTopics started")
 	resp.Header().Set("Content-Type", "application/json")
-	ctx, span, cancel := tracing.GlobalTracer().Start(req.Context(),
+	ctx, span, cancel := tracer.Start(req.Context(),
 		"GetPassedStudentsTopicsHandlerSpan")
 	defer cancel()
 
@@ -170,7 +86,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	if err := json.NewDecoder(req.Body).Decode(&studentsDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to studentsDTO failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "decode request body")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -179,7 +95,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	if err != nil {
 		err := errors.Wrap(err, "GetPassedStudentsTopics")
 		slog.Error(err.Error())
-		span.SetError(err, "GetPassedStudentsTopics")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -205,7 +121,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "marshal")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
@@ -214,7 +130,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
 		slog.Error(err.Error())
-		span.SetError(err, "write response")
+		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}

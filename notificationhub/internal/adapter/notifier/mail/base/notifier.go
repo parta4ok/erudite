@@ -12,6 +12,7 @@ import (
 
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -86,6 +87,9 @@ func (m *MailNotifier) Next() cases.Notifier {
 }
 
 func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error {
+	ctx, span, cancel := tracer.Start(ctx, "MailNotifySpan")
+	defer cancel()
+
 	slog.Info("Notify for mail notifier started")
 
 	email := m.checkMailInContacts(message.GetRecipient().Contacts)
@@ -104,6 +108,7 @@ func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "failed to create email body: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err)
 		if next := m.Next(); next != nil {
 			return next.Notify(ctx, message)
 		}
@@ -120,6 +125,7 @@ func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "failed to send email: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err)
 		if next := m.Next(); next != nil {
 			return next.Notify(ctx, message)
 		}

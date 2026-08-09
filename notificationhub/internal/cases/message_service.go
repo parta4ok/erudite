@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -23,15 +24,20 @@ func NewMessageService(notifier Notifier) (*MessageService, error) {
 }
 
 func (ms *MessageService) SendMessage(ctx context.Context, message entities.Event) error {
+	ctx, span, cancel := tracer.Start(ctx, "SendMessageSpan")
+	defer cancel()
+
 	if message == nil {
 		err := errors.Wrap(entities.ErrInvalidParam, "message is nil")
 		slog.Error(err.Error())
+		span.SetError(err)
 		return err
 	}
 
 	if err := ms.notifier.Notify(ctx, message); err != nil {
 		err = errors.Wrap(err, "failed to notify recipient")
 		slog.Error(err.Error())
+		span.SetError(err)
 		return err
 	}
 

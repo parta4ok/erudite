@@ -21,7 +21,6 @@ import (
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
 	natsport "github.com/parta4ok/kvs/toolkit/pkg/port/nats"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
@@ -106,7 +105,7 @@ func (app *App) initPublicPort(
 	httpPort, err := httpport.NewPort(
 		httpport.Config{Addr: addr, Timeout: timeout},
 		httpport.WithType(public.PortType),
-		httpport.WithMiddleware(tracer.HTTPServerMiddleware, server.IntrospectMiddleware),
+		httpport.WithMiddleware(server.IntrospectMiddleware),
 		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {

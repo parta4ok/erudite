@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -83,24 +82,12 @@ func (cfg *Config) GetNatsSubject() string {
 	return cfg.viper.GetString("nats.subject")
 }
 
-func (cfg *Config) GetTracingType() string {
-	return cfg.viper.GetString("tracing.system")
-}
-
-func (cfg *Config) TracingSystemName() string {
-	return cfg.viper.GetString("tracing.servicename")
-}
-
 func (cfg *Config) IsTracingEnabled() bool {
-	return cfg.viper.GetBool("tracing.enabled")
-}
-
-func (cfg *Config) GetTracingInfraURL(tracingSystemName string) string {
-	return cfg.viper.GetString(fmt.Sprintf("%s.address", tracingSystemName))
+	return cfg.viper.GetBool("tracing.switch_on")
 }
 
 func (cfg *Config) GetOtelEndpoint() string {
-	return cfg.viper.GetString("otel.endpoint")
+	return cfg.viper.GetString("tracing.jaeger")
 }
 
 func (cfg *Config) ServiceName() string {

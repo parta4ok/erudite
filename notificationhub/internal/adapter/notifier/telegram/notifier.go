@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/parta4ok/kvs/notificationhub/internal/cases"
 	"github.com/parta4ok/kvs/notificationhub/internal/entities"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 )
 
 var (
@@ -43,6 +44,9 @@ func NewTelegramNotifier(next cases.Notifier, token string) (*TelegramNotifier, 
 }
 
 func (tg *TelegramNotifier) Notify(ctx context.Context, message entities.Event) error {
+	ctx, span, cancel := tracer.Start(ctx, "TelegramNotifySpan")
+	defer cancel()
+
 	slog.Info("Notify for telegram notifier started")
 
 	recipientID := tg.checkTelegramInContacts(message.GetRecipient().Contacts)
@@ -75,6 +79,7 @@ func (tg *TelegramNotifier) Notify(ctx context.Context, message entities.Event) 
 
 	_, err = tg.bot.Send(document)
 	if err != nil {
+		span.SetError(err)
 		slog.Warn("Recipient telegram send document failure:" + err.Error())
 		if nextNotifier := tg.Next(); nextNotifier != nil {
 			return nextNotifier.Notify(ctx, message)

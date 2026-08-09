@@ -23,7 +23,6 @@ import (
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	grpcport "github.com/parta4ok/kvs/toolkit/pkg/port/grpc"
 	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
-	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
@@ -194,7 +193,6 @@ func (app *App) initPublicHTTPPort(factory port.CommandFactory,
 	httpPort, err := httpport.NewPort(
 		httpport.Config{Addr: addr, Timeout: timeout},
 		httpport.WithType(public.PortType),
-		httpport.WithMiddleware(tracer.HTTPServerMiddleware),
 		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {

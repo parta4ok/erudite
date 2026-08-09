@@ -9,6 +9,7 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 	natsDTO "github.com/parta4ok/kvs/toolkit/pkg/broker/nats"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 
 	"github.com/pkg/errors"
 )
@@ -28,6 +29,9 @@ func NewPublisher(pub *publisher.Publisher) (*Publisher, error) {
 }
 
 func (p *Publisher) ReportEvent(ctx context.Context, event entities.Event) error {
+	ctx, span, cancel := tracer.Start(ctx, "NATSReportEventSpan")
+	defer cancel()
+
 	slog.Info("Publisher: SessionFinishedEvent started")
 
 	eventDTO := natsDTO.ReportEventDTO{
@@ -41,6 +45,7 @@ func (p *Publisher) ReportEvent(ctx context.Context, event entities.Event) error
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "failed to marshal payload: %v", err)
 		slog.Error(err.Error())
+		span.SetError(err)
 		return err
 	}
 
@@ -53,6 +58,7 @@ func (p *Publisher) ReportEvent(ctx context.Context, event entities.Event) error
 			err = errors.Wrapf(entities.ErrInvalidParam, "publish failure: %v", err)
 		}
 		slog.Error(err.Error())
+		span.SetError(err)
 		return err
 	}
 

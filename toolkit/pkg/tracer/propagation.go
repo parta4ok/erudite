@@ -17,6 +17,8 @@ func HTTPServerMiddleware(next http.Handler) http.Handler {
 			req.Context(),
 			propagation.HeaderCarrier(req.Header),
 		)
+		ctx, _, cancel := Start(ctx, req.Method+" "+req.URL.Path)
+		defer cancel()
 		next.ServeHTTP(resp, req.WithContext(ctx))
 	})
 }

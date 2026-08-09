@@ -117,3 +117,7 @@ func Start(ctx context.Context, spanName string) (context.Context, *Span, func()
 	ctx, otelSpan := otel.Tracer(instrumentationName).Start(ctx, spanName)
 	return ctx, &Span{otelSpan: otelSpan}, func() { otelSpan.End() }
 }
+
+func Detach(ctx context.Context) context.Context {
+	return trace.ContextWithSpanContext(context.Background(), trace.SpanContextFromContext(ctx))
+}

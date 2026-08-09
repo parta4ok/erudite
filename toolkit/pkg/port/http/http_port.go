@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi"
 	toolkitport "github.com/parta4ok/kvs/toolkit/pkg/port"
+	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
 )
 
@@ -70,6 +71,7 @@ func NewPort(cfg Config, opts ...Option) (*Port, error) {
 
 func (p *Port) Start(_ context.Context) error {
 	p.router = chi.NewMux()
+	p.router.Use(tracer.HTTPServerMiddleware)
 	p.router.Use(p.middlewares...)
 	p.router.Use(p.timeoutMiddleware)
 

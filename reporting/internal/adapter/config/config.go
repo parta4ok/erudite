@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -97,32 +96,12 @@ func (cfg *Config) GetWorkersLimit() int {
 	return cfg.viper.GetInt("reporting.workers_limit")
 }
 
-func (cfg *Config) GetTracingType() string {
-	return cfg.viper.GetString("tracing.system")
-}
-
-func (cfg *Config) TracingSystemName() string {
-	return cfg.viper.GetString("tracing.servicename")
-}
-
 func (cfg *Config) IsTracingEnabled() bool {
-	return cfg.viper.GetBool("tracing.enabled")
-}
-
-func (cfg *Config) GetTracingInfraURL(tracingSystemName string) string {
-	return cfg.viper.GetString(fmt.Sprintf("%s.address", tracingSystemName))
-}
-
-func (cfg *Config) GetTracingInfraProbability(tracingSystemName string) string {
-	return cfg.viper.GetString(fmt.Sprintf("%s.probability", tracingSystemName))
+	return cfg.viper.GetBool("tracing.switch_on")
 }
 
 func (cfg *Config) GetOtelEndpoint() string {
-	return cfg.viper.GetString("otel.endpoint")
-}
-
-func (cfg *Config) GetOtelInsecure() bool {
-	return cfg.viper.GetBool("otel.insecure")
+	return cfg.viper.GetString("tracing.jaeger")
 }
 
 func (cfg *Config) GetAsyncTimeout() time.Duration {

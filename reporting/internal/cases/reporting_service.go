@@ -143,11 +143,12 @@ func (service *ReportingService) Stop() error {
 //nolint:funlen //ok
 func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, mentorID string,
 ) error {
-	_, span, cancel := tracer.Start(ctx, "GetPassedTopicsByGroups")
+	ctx, span, cancel := tracer.Start(ctx, "GetPassedTopicsByGroups")
 	defer cancel()
+	detachedCtx := tracer.Detach(ctx)
 
 	fn := func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
+		ctx, cancel := context.WithTimeout(detachedCtx, service.asyncTimeout)
 		defer cancel()
 
 		students, err := service.authClient.GetMentorGroups(ctx, mentorID)
@@ -206,11 +207,12 @@ func (service *ReportingService) DeliverySessionResult(
 	ctx context.Context,
 	session *entities.SessionResult,
 ) error {
-	_, span, cancel := tracer.Start(ctx, "DeliverySessionResult")
+	ctx, span, cancel := tracer.Start(ctx, "DeliverySessionResult")
 	defer cancel()
+	detachedCtx := tracer.Detach(ctx)
 
 	fn := func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), service.asyncTimeout)
+		ctx, cancel := context.WithTimeout(detachedCtx, service.asyncTimeout)
 		defer cancel()
 
 		linkedUsers, err := service.authClient.GetLinkedUsers(ctx, session.UserID)

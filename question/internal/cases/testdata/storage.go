@@ -65,19 +65,19 @@ func (mr *MockStorageMockRecorder) GetPassedUserTopics(ctx, studentds interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPassedUserTopics", reflect.TypeOf((*MockStorage)(nil).GetPassedUserTopics), ctx, studentds)
 }
 
-// GetQuesions mocks base method.
-func (m *MockStorage) GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error) {
+// GetQuestions mocks base method.
+func (m *MockStorage) GetQuestions(ctx context.Context, topics []string) ([]entities.Question, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetQuesions", ctx, topics)
+	ret := m.ctrl.Call(m, "GetQuestions", ctx, topics)
 	ret0, _ := ret[0].([]entities.Question)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetQuesions indicates an expected call of GetQuesions.
-func (mr *MockStorageMockRecorder) GetQuesions(ctx, topics interface{}) *gomock.Call {
+// GetQuestions indicates an expected call of GetQuestions.
+func (mr *MockStorageMockRecorder) GetQuestions(ctx, topics interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuesions", reflect.TypeOf((*MockStorage)(nil).GetQuesions), ctx, topics)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuestions", reflect.TypeOf((*MockStorage)(nil).GetQuestions), ctx, topics)
 }
 
 // GetSessionBySessionID mocks base method.

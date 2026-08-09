@@ -132,11 +132,11 @@ func (cfg *Config) GetOtelEndpoint() string {
 }
 
 func (cfg *Config) GetPublisherInterval() time.Duration {
-	return cfg.viper.GetDuration("kvs.sheduler.publisher.interval")
+	return cfg.viper.GetDuration("kvs.scheduler.publisher.interval")
 }
 
 func (cfg *Config) GetFlusherInterval() time.Duration {
-	return cfg.viper.GetDuration("kvs.sheduler.flusher.interval")
+	return cfg.viper.GetDuration("kvs.scheduler.flusher.interval")
 }
 
 func (cfg *Config) ServiceName() string {

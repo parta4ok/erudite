@@ -89,7 +89,7 @@ type SessionResult struct {
 	Grade       string
 }
 
-func (s *Session) GetSesionID() string {
+func (s *Session) GetSessionID() string {
 	return s.sessionID
 }
 

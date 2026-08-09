@@ -51,7 +51,7 @@ func (app *App) Start() {
 	service := app.initSessionServiceBase(storageImpl, sessionStorage, generator)
 	broker := app.initBroker()
 
-	sheduler := app.initSheduler(eventStorage, broker)
+	scheduler := app.initScheduler(eventStorage, broker)
 
 	publicPort := app.initPublicPort(service, authClient, acc)
 	privatePort := app.initPrivatePort(service)
@@ -61,7 +61,7 @@ func (app *App) Start() {
 		WithTracer().
 		WithPort(publicPort).
 		WithPort(privatePort).
-		WithPort(sheduler).
+		WithPort(scheduler).
 		Build()
 
 	if err := baseApp.RunAndAwait(context.Background()); err != nil {
@@ -238,25 +238,25 @@ func (app *App) initPrivatePort(sessionServiceBase cases.SessionService) *httppo
 	return httpPort
 }
 
-func (app *App) initSheduler(
+func (app *App) initScheduler(
 	eventStorage storage.EventStorage,
 	broker cases.MessageBroker,
-) *cron.Sheduler {
-	sheduler, err := cron.NewSheduler()
+) *cron.Scheduler {
+	scheduler, err := cron.NewScheduler()
 	if err != nil {
 		app.panic(err)
 	}
 
-	if err = sheduler.NewJob(app.cfg.GetPublisherInterval(),
+	if err = scheduler.NewJob(app.cfg.GetPublisherInterval(),
 		app.publishEvents, eventStorage, broker); err != nil {
 		app.panic(err)
 	}
-	if err = sheduler.NewJob(app.cfg.GetFlusherInterval(),
+	if err = scheduler.NewJob(app.cfg.GetFlusherInterval(),
 		app.flushEvents, eventStorage); err != nil {
 		app.panic(err)
 	}
 
-	return sheduler
+	return scheduler
 }
 
 func (app *App) panic(err error, args ...any) {

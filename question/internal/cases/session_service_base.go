@@ -105,11 +105,11 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 		return "", nil, err
 	}
 
-	questions, err := srv.storage.GetQuesions(ctx, topics)
+	questions, err := srv.storage.GetQuestions(ctx, topics)
 	if err != nil {
 		slog.Error(err.Error())
 		span.SetError(err)
-		return "", nil, errors.Wrap(err, "GetQuesions")
+		return "", nil, errors.Wrap(err, "GetQuestions")
 	}
 
 	questionsMap := make(map[string]entities.Question, len(questions))
@@ -132,7 +132,7 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 	}
 
 	slog.Info("CreateService completed")
-	return session.GetSesionID(), questionsMap, nil
+	return session.GetSessionID(), questionsMap, nil
 }
 
 func (srv *SessionServiceBase) CompleteSession(

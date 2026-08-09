@@ -19,7 +19,7 @@ kvs:
     session:
         time_to_respond: 1m
         day_session_limit: 1
-    sheduler:
+    scheduler:
         publisher:
             interval: 2s
         flusher:

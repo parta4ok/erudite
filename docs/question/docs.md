@@ -161,7 +161,7 @@ classDiagram
 
             +ChangeState(state SessionState)
             +GetQuestions() ([]Question, error)
-            +GetSesionID() string
+            +GetSessionID() string
             +GetSessionDurationLimit() (time.Duration, error)
             +GetSessionResult() (*SessionResult, error)
             +GetStartedAt() (time.Time, error)
@@ -279,7 +279,7 @@ classDiagram
         class Storage {
             <<interface>>
 	        +GetTopics(ctx context.Context) ([]string, error)
-	        +GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error)
+	        +GetQuestions(ctx context.Context, topics []string) ([]entities.Question, error)
 	        +StoreSession(ctx context.Context, session *entities.Session) error
 	        +GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session, error)
 	        +GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error)
@@ -332,7 +332,7 @@ classDiagram
 			-questionFactory *entities.QuestionFactory
 
 			+GetAllCompletedUserSessions(ctx context.Context, userID string) ([]*entities.Session, error)
-			+GetQuesions(ctx context.Context, topics []string) ([]entities.Question, error)
+			+GetQuestions(ctx context.Context, topics []string) ([]entities.Question, error)
 			+GetSessionBySessionID(ctx context.Context, sessionID string) (*entities.Session, error)
 			+GetTopics(ctx context.Context) ([]string, error)
 			+IsDailySessionLimitReached(ctx context.Context, userID string, topics []string) (bool, error)
@@ -445,7 +445,7 @@ sequenceDiagram
     deactivate PG
     Session -->> SS: false
     deactivate Session
-    SS ->> PG: GetQuesions(topics)
+    SS ->> PG: GetQuestions(topics)
     PG -->> SS: Questions
     SS ->> SS: generate QuestionsMap
     SS ->> Session: SetQuestions(QuestionsMap)

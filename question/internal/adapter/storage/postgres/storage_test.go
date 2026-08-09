@@ -56,7 +56,7 @@ func TestStorage_GetQuestions(t *testing.T) {
 	defer db.Close()
 
 	testTopics := []string{"Базы данных"}
-	questions, err := db.GetQuesions(context.TODO(), testTopics)
+	questions, err := db.GetQuestions(context.TODO(), testTopics)
 	require.NoError(t, err)
 
 	require.Equal(t, limit, len(questions))
@@ -87,11 +87,11 @@ func TestStorage_GetSession(t *testing.T) {
 	err = db.StoreSession(ctx, session)
 	require.NoError(t, err)
 
-	restoredInitSession, err := db.GetSessionBySessionID(ctx, session.GetSesionID())
+	restoredInitSession, err := db.GetSessionBySessionID(ctx, session.GetSessionID())
 	require.Equal(t, restoredInitSession.GetStatus(), entities.InitState)
 	compareSession(t, session, restoredInitSession)
 
-	questions, err := db.GetQuesions(context.TODO(), testTopics)
+	questions, err := db.GetQuestions(context.TODO(), testTopics)
 	require.NoError(t, err)
 
 	questionsMap := make(map[string]entities.Question, len(questions))
@@ -106,7 +106,7 @@ func TestStorage_GetSession(t *testing.T) {
 	err = db.StoreSession(ctx, session)
 	require.NoError(t, err)
 
-	restoredActiveSession, err := db.GetSessionBySessionID(ctx, session.GetSesionID())
+	restoredActiveSession, err := db.GetSessionBySessionID(ctx, session.GetSessionID())
 	require.Equal(t, restoredActiveSession.GetStatus(), entities.ActiveState)
 	compareSession(t, session, restoredActiveSession)
 
@@ -124,7 +124,7 @@ func TestStorage_GetSession(t *testing.T) {
 	err = db.StoreSession(ctx, restoredActiveSession)
 	require.NoError(t, err)
 
-	restoredCompletedSession, err := db.GetSessionBySessionID(ctx, session.GetSesionID())
+	restoredCompletedSession, err := db.GetSessionBySessionID(ctx, session.GetSessionID())
 	require.NoError(t, err)
 	compareSession(t, restoredActiveSession, restoredCompletedSession)
 }
@@ -148,7 +148,7 @@ func compareSession(t *testing.T, originalSession, recoveredSession *entities.Se
 		require.Contains(t, oErr.Error(), rErr.Error())
 	}
 
-	require.Equal(t, originalSession.GetSesionID(), recoveredSession.GetSesionID())
+	require.Equal(t, originalSession.GetSessionID(), recoveredSession.GetSessionID())
 	ol, oErr := originalSession.GetSessionDurationLimit()
 	rl, rErr := originalSession.GetSessionDurationLimit()
 	require.Equal(t, ol, rl)
@@ -199,7 +199,7 @@ func TestStorage_IsDailySessionLimitReached(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, forbidden)
 
-	questions, err := db.GetQuesions(ctx, topics)
+	questions, err := db.GetQuestions(ctx, topics)
 	require.NoError(t, err)
 
 	questionsMap := make(map[string]entities.Question, len(questions))
@@ -246,7 +246,7 @@ func TestStorage_GetAllCompletedUserSessions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer t.Cleanup(ctrl.Finish)
 
-	questions, err := db.GetQuesions(ctx, topics)
+	questions, err := db.GetQuestions(ctx, topics)
 	require.NoError(t, err)
 	require.NotEmpty(t, questions)
 
@@ -281,8 +281,8 @@ func TestStorage_GetAllCompletedUserSessions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, sessions, 2)
 
-	require.True(t, sessions[0].GetSesionID() == sessionNew.GetSesionID(), "newest session first")
-	require.True(t, sessions[1].GetSesionID() == sessionOld.GetSesionID(), "oldest session second")
+	require.True(t, sessions[0].GetSessionID() == sessionNew.GetSessionID(), "newest session first")
+	require.True(t, sessions[1].GetSessionID() == sessionOld.GetSessionID(), "oldest session second")
 
 	require.Equal(t, sessionNew.GetTopics(), sessions[0].GetTopics())
 	require.Equal(t, sessionOld.GetTopics(), sessions[1].GetTopics())
@@ -320,7 +320,7 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	session1, err := entities.NewSession(student1ID, []string{"Базы данных"}, generator, db)
 	require.NoError(t, err)
 
-	questions1, err := db.GetQuesions(ctx, []string{"Базы данных"})
+	questions1, err := db.GetQuestions(ctx, []string{"Базы данных"})
 	require.NoError(t, err)
 	require.NotEmpty(t, questions1)
 
@@ -351,7 +351,7 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	session2, err := entities.NewSession(student2ID, []string{"Базы данных", "Базовые типы в Go"}, generator, db)
 	require.NoError(t, err)
 
-	questions2, err := db.GetQuesions(ctx, []string{"Базы данных", "Базовые типы в Go"})
+	questions2, err := db.GetQuestions(ctx, []string{"Базы данных", "Базовые типы в Go"})
 	require.NoError(t, err)
 	require.NotEmpty(t, questions2)
 
@@ -381,7 +381,7 @@ func TestStorage_GetPassedUserTopics_WithStudentGroup(t *testing.T) {
 	session3, err := entities.NewSession(student2ID, []string{"Составные типы в Go"}, generator, db)
 	require.NoError(t, err)
 
-	questions3, err := db.GetQuesions(ctx, []string{"Составные типы в Go"})
+	questions3, err := db.GetQuestions(ctx, []string{"Составные типы в Go"})
 	require.NoError(t, err)
 	require.NotEmpty(t, questions3)
 

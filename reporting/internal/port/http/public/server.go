@@ -144,9 +144,9 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
-	stausCode := http.StatusInternalServerError
+	statusCode := http.StatusInternalServerError
 	errDTO := dto.ErrorDTO{
-		StatusCode: stausCode,
+		StatusCode: statusCode,
 		ErrMsg:     err.Error(),
 	}
 

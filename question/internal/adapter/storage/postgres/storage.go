@@ -126,10 +126,10 @@ func (s *Storage) GetTopics(ctx context.Context) ([]string, error) {
 }
 
 //nolint:funlen //ok
-func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
+func (s *Storage) GetQuestions(ctx context.Context, topics []string) (
 	[]entities.Question, error) {
-	slog.Info("GetQuesions started")
-	ctx, span, cancel := tracer.Start(ctx, "GetQuesionsPostgresSpan")
+	slog.Info("GetQuestions started")
+	ctx, span, cancel := tracer.Start(ctx, "GetQuestionsPostgresSpan")
 	defer cancel()
 
 	if err := s.checkTopics(ctx, topics); err != nil {
@@ -168,7 +168,7 @@ func (s *Storage) GetQuesions(ctx context.Context, topics []string) (
 		return nil, err
 	}
 
-	slog.Info("GetQuesions completed")
+	slog.Info("GetQuestions completed")
 	return questions, nil
 }
 
@@ -179,7 +179,7 @@ func (s *Storage) StoreSession(ctx context.Context, session *entities.Session) e
 	defer cancel()
 
 	userID := session.GetUserID()
-	sessionID := session.GetSesionID()
+	sessionID := session.GetSessionID()
 	sessionStatus := session.GetStatus()
 	topics := session.GetTopics()
 

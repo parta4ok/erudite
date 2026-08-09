@@ -74,7 +74,7 @@ func TestSession_WithSessionID(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, session)
-	require.Equal(t, sessionID, session.GetSesionID())
+	require.Equal(t, sessionID, session.GetSessionID())
 }
 
 func TestSession_WithNilState(t *testing.T) {
@@ -111,7 +111,7 @@ func TestNewSessionWithCustomState(t *testing.T) {
 
 	require.NotNil(t, session)
 	require.Equal(t, userID, session.GetUserID())
-	require.Equal(t, sessionID, session.GetSesionID())
+	require.Equal(t, sessionID, session.GetSessionID())
 	require.Equal(t, topics, session.GetTopics())
 }
 

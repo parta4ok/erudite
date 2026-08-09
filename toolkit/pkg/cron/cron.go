@@ -11,54 +11,54 @@ import (
 )
 
 var (
-	ErrSheduler = errors.New("sheduler error")
+	ErrScheduler = errors.New("scheduler error")
 )
 
 var (
-	_ port.BasePort = (*Sheduler)(nil)
+	_ port.BasePort = (*Scheduler)(nil)
 )
 
 const (
 	croneJobType = "cron_job"
 )
 
-type Sheduler struct {
+type Scheduler struct {
 	shdlr gocron.Scheduler
 }
 
-func NewSheduler() (*Sheduler, error) {
-	sheduler, err := gocron.NewScheduler()
+func NewScheduler() (*Scheduler, error) {
+	scheduler, err := gocron.NewScheduler()
 	if err != nil {
-		return nil, errors.Wrapf(ErrSheduler, "new sheduler failure: %v", err)
+		return nil, errors.Wrapf(ErrScheduler, "new scheduler failure: %v", err)
 	}
-	return &Sheduler{
-		shdlr: sheduler,
+	return &Scheduler{
+		shdlr: scheduler,
 	}, nil
 }
 
-func (s *Sheduler) NewJob(interval time.Duration, job any, args ...any) error {
+func (s *Scheduler) NewJob(interval time.Duration, job any, args ...any) error {
 	slog.Info("NewJob started")
 	_, err := s.shdlr.NewJob(gocron.DurationJob(interval), gocron.NewTask(job, args...))
 	if err != nil {
 		slog.Error("new job creation failed", "error", err)
-		return errors.Wrapf(ErrSheduler, "new job creation failed: %v", err)
+		return errors.Wrapf(ErrScheduler, "new job creation failed: %v", err)
 	}
 
 	slog.Info("NewJob successfully completed")
 	return nil
 }
 
-func (s *Sheduler) Start(ctx context.Context) error {
-	slog.Info("Sheduler started")
+func (s *Scheduler) Start(ctx context.Context) error {
+	slog.Info("Scheduler started")
 	s.shdlr.Start()
 
 	<-ctx.Done()
-	slog.Info("Sheduler completed")
+	slog.Info("Scheduler completed")
 	return nil
 }
 
-func (s *Sheduler) Stop(ctx context.Context) error {
-	slog.Info("Sheduler stop started")
+func (s *Scheduler) Stop(ctx context.Context) error {
+	slog.Info("Scheduler stop started")
 	done := make(chan error, 1)
 
 	go func() {
@@ -69,7 +69,7 @@ func (s *Sheduler) Stop(ctx context.Context) error {
 	case err := <-done:
 		if err != nil {
 			slog.Error("shudown failure", "error", err)
-			return errors.Wrapf(ErrSheduler, "shutdown with err: %v", err)
+			return errors.Wrapf(ErrScheduler, "shutdown with err: %v", err)
 		}
 		return nil
 	case <-ctx.Done():
@@ -78,6 +78,6 @@ func (s *Sheduler) Stop(ctx context.Context) error {
 	}
 }
 
-func (s *Sheduler) Type() string {
+func (s *Scheduler) Type() string {
 	return croneJobType
 }

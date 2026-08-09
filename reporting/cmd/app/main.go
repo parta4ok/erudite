@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	appication "github.com/parta4ok/kvs/reporting/pkg/application"
+	"github.com/parta4ok/kvs/reporting/pkg/application"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 		panic("config path is not set")
 	}
 
-	app := appication.NewApp(configPath)
+	app := application.NewApp(configPath)
 
 	app.Start()
 }

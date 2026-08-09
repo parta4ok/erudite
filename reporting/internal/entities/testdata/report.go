@@ -61,3 +61,15 @@ func (mr *MockReportMockRecorder) Kind() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Kind", reflect.TypeOf((*MockReport)(nil).Kind))
 }
+
+// SetMessageType mocks base method.
+func (m *MockReport) SetMessageType() {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetMessageType")
+}
+
+// SetMessageType indicates an expected call of SetMessageType.
+func (mr *MockReportMockRecorder) SetMessageType() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMessageType", reflect.TypeOf((*MockReport)(nil).SetMessageType))
+}

@@ -90,6 +90,34 @@ func (mr *MockCommandFactoryMockRecorder) NewDynamicRegisterCommand(userID, prov
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDynamicRegisterCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewDynamicRegisterCommand), userID, provider)
 }
 
+// NewGetAllGroupsCommand mocks base method.
+func (m *MockCommandFactory) NewGetAllGroupsCommand() entities.Command {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewGetAllGroupsCommand")
+	ret0, _ := ret[0].(entities.Command)
+	return ret0
+}
+
+// NewGetAllGroupsCommand indicates an expected call of NewGetAllGroupsCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetAllGroupsCommand() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetAllGroupsCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetAllGroupsCommand))
+}
+
+// NewGetAllUsersCommand mocks base method.
+func (m *MockCommandFactory) NewGetAllUsersCommand() entities.Command {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NewGetAllUsersCommand")
+	ret0, _ := ret[0].(entities.Command)
+	return ret0
+}
+
+// NewGetAllUsersCommand indicates an expected call of NewGetAllUsersCommand.
+func (mr *MockCommandFactoryMockRecorder) NewGetAllUsersCommand() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewGetAllUsersCommand", reflect.TypeOf((*MockCommandFactory)(nil).NewGetAllUsersCommand))
+}
+
 // NewGetGroupTitleByIDCommand mocks base method.
 func (m *MockCommandFactory) NewGetGroupTitleByIDCommand(groupID string) entities.Command {
 	m.ctrl.T.Helper()

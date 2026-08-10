@@ -518,3 +518,107 @@ func TestStorage_GetGroupTitleByID_NotFound(t *testing.T) {
 	require.ErrorIs(t, err, entities.ErrNotFound)
 	require.Equal(t, "", resTitle)
 }
+
+func TestStorage_GetAllUsers(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user1 := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "all_users_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "All Users Test One",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "all-users-1@test.com"},
+	}
+
+	user2 := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "all_users_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "All Users Test Two",
+		Rights:       []string{"mentor"},
+		Contacts:     map[string]string{"email": "all-users-2@test.com"},
+	}
+
+	err := db.StoreUser(ctx, user1)
+	require.NoError(t, err)
+
+	err = db.StoreUser(ctx, user2)
+	require.NoError(t, err)
+
+	users, err := db.GetAllUsers(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, users)
+
+	userIDs := make(map[string]bool)
+	for _, user := range users {
+		userIDs[user.ID] = true
+	}
+	require.True(t, userIDs[user1.ID])
+	require.True(t, userIDs[user2.ID])
+}
+
+func TestStorage_GetAllGroups(t *testing.T) {
+	t.Parallel()
+
+	db := makeDB(t)
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	mentorID := uuid.NewString()
+	mentor := &entities.User{
+		ID:           mentorID,
+		Username:     "all_groups_mentor_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "All Groups Test Mentor",
+		Rights:       []string{"mentor"},
+		Contacts:     map[string]string{"email": "all-groups-mentor@test.com"},
+	}
+
+	err := db.StoreUser(ctx, mentor)
+	require.NoError(t, err)
+
+	groupID := uuid.NewString()
+	groupTitle := "AllGroups_" + uuid.NewString()
+
+	err = db.AddGroup(ctx, groupID, groupTitle, mentorID)
+	require.NoError(t, err)
+
+	student := &entities.User{
+		ID:           uuid.NewString(),
+		Username:     "all_groups_student_" + uuid.NewString(),
+		PasswordHash: uuid.NewString(),
+		FullName:     "All Groups Test Student",
+		Rights:       []string{"student"},
+		Contacts:     map[string]string{"email": "all-groups-student@test.com"},
+		GroupID:      groupID,
+	}
+
+	err = db.StoreUser(ctx, student)
+	require.NoError(t, err)
+
+	groups, err := db.GetAllGroups(ctx)
+	require.NoError(t, err)
+	require.NotEmpty(t, groups)
+
+	var createdGroup *entities.Group
+	for _, group := range groups {
+		if group.GetID() == groupID {
+			createdGroup = group
+		}
+	}
+
+	require.NotNil(t, createdGroup)
+	require.Equal(t, groupTitle, createdGroup.GetName())
+	require.Equal(t, mentorID, createdGroup.GetLinkedID())
+	require.Len(t, createdGroup.GetStudents(), 1)
+	require.Equal(t, student.ID, createdGroup.GetStudents()[0].GetID())
+}

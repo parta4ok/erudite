@@ -17,6 +17,8 @@ type Storage interface {
 	AddGroup(ctx context.Context, gid, title, mentorID string) error
 	GetMentorGroups(ctx context.Context, mentorID string) ([]*entities.Group, error)
 	GetGroupTitleByID(ctx context.Context, groupID string) (string, error)
+	GetAllUsers(ctx context.Context) ([]*entities.User, error)
+	GetAllGroups(ctx context.Context) ([]*entities.Group, error)
 	StoreDynamicRegistrations(ctx context.Context, reg *entities.DynamicRegistrationParameters) error
 }
 

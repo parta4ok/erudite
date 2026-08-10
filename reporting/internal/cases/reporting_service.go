@@ -168,8 +168,8 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 			return errors.Wrap(err, "get passed topics by students ids with question client failure")
 		}
 
-		for _, student := range students {
-			student.PassedTopics = passedTopics[student.ID]
+		for i := range students {
+			students[i].PassedTopics = passedTopics[students[i].ID]
 		}
 
 		recipient, err := service.authClient.GetUserByID(ctx, mentorID)

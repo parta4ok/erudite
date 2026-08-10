@@ -49,6 +49,36 @@ func (mr *MockStorageMockRecorder) AddGroup(ctx, gid, title, mentorID interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddGroup", reflect.TypeOf((*MockStorage)(nil).AddGroup), ctx, gid, title, mentorID)
 }
 
+// GetAllGroups mocks base method.
+func (m *MockStorage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllGroups", ctx)
+	ret0, _ := ret[0].([]*entities.Group)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllGroups indicates an expected call of GetAllGroups.
+func (mr *MockStorageMockRecorder) GetAllGroups(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllGroups", reflect.TypeOf((*MockStorage)(nil).GetAllGroups), ctx)
+}
+
+// GetAllUsers mocks base method.
+func (m *MockStorage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllUsers", ctx)
+	ret0, _ := ret[0].([]*entities.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllUsers indicates an expected call of GetAllUsers.
+func (mr *MockStorageMockRecorder) GetAllUsers(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllUsers", reflect.TypeOf((*MockStorage)(nil).GetAllUsers), ctx)
+}
+
 // GetGroupTitleByID mocks base method.
 func (m *MockStorage) GetGroupTitleByID(ctx context.Context, groupID string) (string, error) {
 	m.ctrl.T.Helper()

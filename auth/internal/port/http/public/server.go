@@ -26,6 +26,8 @@ const (
 	addGroupPath            = "/add-group"
 	getMentorGroupsPath     = "/mentor-groups"
 	dynamicregistrationPath = "/dynamic-registration"
+	listUsersPath           = "/users"
+	listGroupsPath          = "/groups"
 
 	right_admin  = "admin"
 	right_mentor = "mentor"
@@ -107,6 +109,14 @@ func (s *Server) Routes() []httpport.Route {
 		{
 			Method:  http.MethodPost,
 			Pattern: basePath + dynamicregistrationPath, Handler: s.DynamicRegistration,
+		},
+		{
+			Method:  http.MethodGet,
+			Pattern: basePath + listUsersPath, Handler: s.GetAllUsers,
+		},
+		{
+			Method:  http.MethodGet,
+			Pattern: basePath + listGroupsPath, Handler: s.GetAllGroups,
 		},
 	}
 }
@@ -606,6 +616,178 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 		groupDTO := dto.GroupDTO{
 			ID:       group.GetID(),
 			Name:     group.GetName(),
+			Students: make([]dto.StudentDTO, 0),
+		}
+
+		for _, student := range group.GetStudents() {
+			studentDTO := dto.StudentDTO{
+				ID:       student.GetID(),
+				Name:     student.GetName(),
+				Fullname: student.GetFullname(),
+			}
+
+			groupDTO.Students = append(groupDTO.Students, studentDTO)
+		}
+
+		groupDTOs = append(groupDTOs, groupDTO)
+	}
+
+	data, err := json.Marshal(groupDTOs)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// Get all users
+//
+// @Summary      Get all users
+// @Description  Get list of all registered users. Requires admin rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Success      200 {array} dto.UserDTO "List of all users"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/users [get]
+//
+//nolint:funlen //ok
+func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("GetAllUsers started")
+
+	ctx, span, cancel := tracer.Start(req.Context(), "GetAllUsersHandlerSpan")
+	defer cancel()
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	res, err := s.factory.NewGetAllUsersCommand().Exec(ctx)
+	if err != nil {
+		err := errors.Wrap(err, "get all users command exec failure")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	users, ok := res.Payload.([]*entities.User)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	userDTOs := make([]dto.UserDTO, 0, len(users))
+	for _, user := range users {
+		userDTOs = append(userDTOs, dto.UserDTO{
+			ID:       user.ID,
+			Username: user.Username,
+			FullName: user.FullName,
+			Rights:   user.Rights,
+			Contacts: user.Contacts,
+			GroupID:  user.GroupID,
+		})
+	}
+
+	data, err := json.Marshal(userDTOs)
+	if err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	resp.WriteHeader(http.StatusOK)
+	if _, err = resp.Write(data); err != nil {
+		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+}
+
+// Get all groups
+//
+// @Summary      Get all groups
+// @Description  Get list of all groups with linked mentor and students. Requires admin rights.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Security     ApiKeyAuth
+// @Param        Authorization header string true "Bearer {token}"
+// @Success      200 {array} dto.GroupDTO "List of all groups"
+// @Failure      401 {object} dto.ErrorDTO "Unauthorized"
+// @Failure      403 {object} dto.ErrorDTO "Forbidden"
+// @Failure      500 {object} dto.ErrorDTO "Internal server error"
+// @Router       /auth/v1/groups [get]
+//
+//nolint:funlen,dupl //ok
+func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
+	slog.Info("GetAllGroups started")
+
+	ctx, span, cancel := tracer.Start(req.Context(), "GetAllGroupsHandlerSpan")
+	defer cancel()
+
+	resp.Header().Set("Content-Type", "application/json")
+
+	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
+		err := errors.Wrap(err, "getValidatedAuthContext")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	res, err := s.factory.NewGetAllGroupsCommand().Exec(ctx)
+	if err != nil {
+		err := errors.Wrap(err, "get all groups command exec failure")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	groups, ok := res.Payload.([]*entities.Group)
+	if !ok {
+		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
+		slog.Error(err.Error())
+		span.SetError(err)
+		s.errProcessing(resp, err)
+		return
+	}
+
+	groupDTOs := make([]dto.GroupDTO, 0, len(groups))
+	for _, group := range groups {
+		groupDTO := dto.GroupDTO{
+			ID:       group.GetID(),
+			Name:     group.GetName(),
+			LinkedID: group.GetLinkedID(),
 			Students: make([]dto.StudentDTO, 0),
 		}
 

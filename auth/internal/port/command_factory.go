@@ -17,4 +17,6 @@ type CommandFactory interface {
 	NewGetUserByIDCommand(userID string) entities.Command
 	NewGetGroupTitleByIDCommand(groupID string) entities.Command
 	NewDynamicRegisterCommand(userID, provider string) entities.Command
+	NewGetAllUsersCommand() entities.Command
+	NewGetAllGroupsCommand() entities.Command
 }

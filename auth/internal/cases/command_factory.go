@@ -125,3 +125,11 @@ func (cf *CommandFactory) NewDynamicRegisterCommand(userID, provider string) ent
 	return command.NewDynamicRegisterCommand(cf.storage, cf.idGenerator, cf.messageBroker,
 		userID, provider)
 }
+
+func (cf *CommandFactory) NewGetAllUsersCommand() entities.Command {
+	return command.NewGetAllUsersCommand(cf.storage)
+}
+
+func (cf *CommandFactory) NewGetAllGroupsCommand() entities.Command {
+	return command.NewGetAllGroupsCommand(cf.storage)
+}

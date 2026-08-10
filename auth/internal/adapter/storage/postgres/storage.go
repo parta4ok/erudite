@@ -146,6 +146,85 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	}, nil
 }
 
+//nolint:funlen //ok
+func (s *Storage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
+	slog.Info("GetAllUsers started")
+	ctx, span, cancel := tracer.Start(ctx, "GetAllUsersPostgresSpan")
+	defer cancel()
+
+	query := `SELECT uid, name, password_hash, rights, contacts, group_id, fullname FROM auth.users`
+
+	rows, err := s.db.Query(ctx, query)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "query users failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	users := make([]*entities.User, 0)
+	for rows.Next() {
+		var (
+			id           string
+			username     string
+			passwordHash string
+			rights       []string
+			contactsRaw  []byte
+			groupIDRaw   interface{}
+			fullname     string
+		)
+
+		if err := rows.Scan(
+			&id,
+			&username,
+			&passwordHash,
+			&rights,
+			&contactsRaw,
+			&groupIDRaw,
+			&fullname,
+		); err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "scan user failure: %v", err)
+			slog.Error(err.Error())
+			span.SetError(err)
+			return nil, err
+		}
+
+		var contacts map[string]string
+		if err := json.Unmarshal(contactsRaw, &contacts); err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "unmarshal contacts failure: %v", err)
+			slog.Error(err.Error())
+			span.SetError(err)
+			return nil, err
+		}
+
+		var groupID string
+		if groupIDRaw != nil {
+			groupID, _ = groupIDRaw.(string)
+		}
+
+		users = append(users, &entities.User{
+			ID:           id,
+			Username:     username,
+			PasswordHash: passwordHash,
+			FullName:     fullname,
+			Rights:       rights,
+			Contacts:     contacts,
+			GroupID:      groupID,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "rows iteration failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+
+	slog.Info("GetAllUsers completed")
+	return users, nil
+}
+
 //nolint:funlen //use spaces for visual division of block code
 func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	slog.Info("StoreUser started")
@@ -560,6 +639,104 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 	}
 
 	slog.Info("GetMentorsGroups completed")
+	return groups, nil
+}
+
+//nolint:funlen,dupl //ok
+func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
+	slog.Info("GetAllGroups started")
+	ctx, span, cancel := tracer.Start(ctx, "GetAllGroupsPostgresSpan")
+	defer cancel()
+
+	query := `SELECT gid, title, linked_id FROM auth.groups`
+
+	rows, err := s.db.Query(ctx, query)
+	if err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "query groups failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	groups := make([]*entities.Group, 0)
+	gids := make([]string, 0)
+	for rows.Next() {
+		var (
+			gid      string
+			title    string
+			linkedID string
+		)
+		if err := rows.Scan(&gid, &title, &linkedID); err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "scan group failure: %v", err)
+			slog.Error(err.Error())
+			span.SetError(err)
+			return nil, err
+		}
+		group := entities.NewGroup(gid, title)
+		group.SetLinkedID(linkedID)
+		groups = append(groups, group)
+		gids = append(gids, gid)
+	}
+
+	if err := rows.Err(); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "rows iteration failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+
+	if len(gids) == 0 {
+		slog.Info("GetAllGroups completed with no groups")
+		return groups, nil
+	}
+
+	queryStudents := `SELECT uid, name, fullname, group_id FROM auth.users WHERE group_id = ANY($1)`
+	rowsStudents, err := s.db.Query(ctx, queryStudents, gids)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Info("GetAllGroups completed with no students")
+			return groups, nil
+		}
+		err = errors.Wrapf(entities.ErrInternal, "query students failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+	defer rowsStudents.Close()
+
+	studentsMap := make(map[string][]*entities.Student)
+	for rowsStudents.Next() {
+		var (
+			studentID   string
+			studentName string
+			studentFull string
+			studentGID  string
+		)
+		if err := rowsStudents.Scan(&studentID, &studentName, &studentFull, &studentGID); err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "scan student failure: %v", err)
+			slog.Error(err.Error())
+			span.SetError(err)
+			return nil, err
+		}
+		student := entities.NewStudent(studentID, studentName, studentFull)
+		studentsMap[studentGID] = append(studentsMap[studentGID], student)
+	}
+
+	if err := rowsStudents.Err(); err != nil {
+		err = errors.Wrapf(entities.ErrInternal, "rowsStudents iteration failure: %v", err)
+		slog.Error(err.Error())
+		span.SetError(err)
+		return nil, err
+	}
+
+	for _, group := range groups {
+		if students, ok := studentsMap[group.GetID()]; ok {
+			group.AddStudents(students)
+		}
+	}
+
+	slog.Info("GetAllGroups completed")
 	return groups, nil
 }
 

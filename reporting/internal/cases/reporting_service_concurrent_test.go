@@ -465,7 +465,7 @@ func setupConcurrencyMocks(
 	authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, mentorID string) ([]entities.Student, error) {
 			time.Sleep(taskDuration)
-			return students, nil
+			return append([]entities.Student{}, students...), nil
 		}).Times(totalTasks)
 
 	passedTopics := map[string][]entities.Topic{
@@ -512,8 +512,10 @@ func setupRaceConditionMocks(
 			Group:    entities.Group{ID: "group2", Title: "Group 2"},
 		},
 	}
-	authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).
-		Return(students, nil).Times(numGoroutines)
+	authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, mentorID string) ([]entities.Student, error) {
+			return append([]entities.Student{}, students...), nil
+		}).Times(numGoroutines)
 
 	passedTopics := map[string][]entities.Topic{
 		"student1": {{ID: "topic1", Title: "Topic 1"}},
@@ -561,7 +563,7 @@ func setupGracefulShutdownMocks(
 			tasksInProgress.Add(1)
 			time.Sleep(taskDuration)
 			tasksCompleted.Add(1)
-			return students, nil
+			return append([]entities.Student{}, students...), nil
 		}).AnyTimes()
 
 	passedTopics := map[string][]entities.Topic{
@@ -608,8 +610,10 @@ func setupErrorHandlingMocks(
 				Group:    entities.Group{ID: "group1", Title: "Group 1"},
 			},
 		}
-		authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).
-			Return(students, nil).Times(numTasks)
+		authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, mentorID string) ([]entities.Student, error) {
+				return append([]entities.Student{}, students...), nil
+			}).Times(numTasks)
 		questionClient.EXPECT().GetPassedStudentsTopics(gomock.Any(), gomock.Any()).
 			Return(nil, errors.New("question service error")).Times(numTasks)
 	case "broker":
@@ -621,8 +625,10 @@ func setupErrorHandlingMocks(
 				Group:    entities.Group{ID: "group1", Title: "Group 1"},
 			},
 		}
-		authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).
-			Return(students, nil).Times(numTasks)
+		authClient.EXPECT().GetMentorGroups(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, mentorID string) ([]entities.Student, error) {
+				return append([]entities.Student{}, students...), nil
+			}).Times(numTasks)
 		user := &entities.User{ID: "mentor1", Name: "Test Mentor", Contacts: map[string]string{"email": "test@test.com"}}
 		authClient.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).
 			Return(user, nil).Times(numTasks)

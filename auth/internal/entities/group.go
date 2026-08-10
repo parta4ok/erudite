@@ -9,6 +9,7 @@ type Student struct {
 type Group struct {
 	id       string
 	name     string
+	linkedID string
 	students []*Student
 }
 
@@ -43,6 +44,10 @@ func (g *Group) AddStudents(students []*Student) {
 	g.students = students
 }
 
+func (g *Group) SetLinkedID(linkedID string) {
+	g.linkedID = linkedID
+}
+
 func (g *Group) GetID() string {
 	return g.id
 }
@@ -53,4 +58,8 @@ func (g *Group) GetStudents() []*Student {
 
 func (g *Group) GetName() string {
 	return g.name
+}
+
+func (g *Group) GetLinkedID() string {
+	return g.linkedID
 }

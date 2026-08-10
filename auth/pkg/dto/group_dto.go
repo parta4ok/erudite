@@ -9,5 +9,6 @@ type StudentDTO struct {
 type GroupDTO struct {
 	ID       string       `json:"id"`
 	Name     string       `json:"name"`
+	LinkedID string       `json:"linked_id,omitempty"`
 	Students []StudentDTO `json:"students"`
 }

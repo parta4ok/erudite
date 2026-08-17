@@ -97,8 +97,8 @@ func (cf *CommandFactory) NewDeleteUserCommand(userID string) entities.Command {
 	return command.NewDeleteUserCommand(cf.storage, userID)
 }
 
-func (cf *CommandFactory) NewUpdateUserCommand(user *entities.User) entities.Command {
-	return command.NewUpdateUserCommand(cf.storage, cf.hasher, user)
+func (cf *CommandFactory) NewUpdateUserCommand(userUpdate *entities.UserUpdate) entities.Command {
+	return command.NewUpdateUserCommand(cf.storage, cf.hasher, userUpdate)
 }
 
 func (cf *CommandFactory) NewGetLinkedUsersCommand(userID string) entities.Command {

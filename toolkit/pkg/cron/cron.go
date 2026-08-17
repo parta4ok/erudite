@@ -40,7 +40,7 @@ func (s *Scheduler) NewJob(interval time.Duration, job any, args ...any) error {
 	slog.Info("NewJob started")
 	_, err := s.shdlr.NewJob(gocron.DurationJob(interval), gocron.NewTask(job, args...))
 	if err != nil {
-		slog.Error("new job creation failed", "error", err)
+		slog.Error("new job creation failed", "error", err.Error())
 		return errors.Wrapf(ErrScheduler, "new job creation failed: %v", err)
 	}
 
@@ -68,12 +68,12 @@ func (s *Scheduler) Stop(ctx context.Context) error {
 	select {
 	case err := <-done:
 		if err != nil {
-			slog.Error("shudown failure", "error", err)
+			slog.Error("shudown failure", "error", err.Error())
 			return errors.Wrapf(ErrScheduler, "shutdown with err: %v", err)
 		}
 		return nil
 	case <-ctx.Done():
-		slog.Error("shudown by context", "error", ctx.Err())
+		slog.Error("shudown by context", "error", ctx.Err().Error())
 		return ctx.Err()
 	}
 }

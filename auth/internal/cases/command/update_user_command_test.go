@@ -24,7 +24,7 @@ func TestUpdateUserCommand_Exec(t *testing.T) {
 		changedPass       bool
 		hashStageSettings func(ctx context.Context, t *testing.T, hasher *testdata.MockHasher, pass string, hash string, err error)
 		hashStageErr      error
-		updateSerrings    func(ctx context.Context, t *testing.T, storage *testdata.MockStorage, user *entities.User, err error)
+		updateSerrings    func(ctx context.Context, t *testing.T, storage *testdata.MockStorage, user *entities.UserUpdate, err error)
 		updateErr         error
 	}
 	tests := []struct {
@@ -85,17 +85,17 @@ func TestUpdateUserCommand_Exec(t *testing.T) {
 			ctx := context.TODO()
 			storage := testdata.NewMockStorage(ctrl)
 			hasher := testdata.NewMockHasher(ctrl)
-			updatedUser := &entities.User{
+			updatedUser := &entities.UserUpdate{
 				ID:      uuid.NewString(),
-				GroupID: uuid.NewString(),
+				GroupID: ptr(uuid.NewString()),
 			}
 
 			if tc.fields.changedPass {
-				updatedUser.PasswordHash = uuid.NewString()
+				updatedUser.PasswordHash = ptr(uuid.NewString())
 			}
 
 			if tc.fields.hashStageSettings != nil {
-				tc.fields.hashStageSettings(ctx, it, hasher, updatedUser.PasswordHash, uuid.NewString(), tc.fields.hashStageErr)
+				tc.fields.hashStageSettings(ctx, it, hasher, *updatedUser.PasswordHash, uuid.NewString(), tc.fields.hashStageErr)
 			}
 
 			if tc.fields.updateSerrings != nil {
@@ -123,8 +123,12 @@ func setHashStage(ctx context.Context, t *testing.T, hasher *testdata.MockHasher
 	hasher.EXPECT().Hash(ctx, pass).Return(hash, err)
 }
 
-func setUpdate(ctx context.Context, t *testing.T, storage *testdata.MockStorage, user *entities.User, err error) {
+func setUpdate(ctx context.Context, t *testing.T, storage *testdata.MockStorage, user *entities.UserUpdate, err error) {
 	t.Helper()
 
 	storage.EXPECT().UpdateUser(ctx, user).Return(err)
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

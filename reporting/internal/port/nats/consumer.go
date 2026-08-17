@@ -30,12 +30,11 @@ func NewConsumer(service port.Service) (*Consumer, error) {
 	return &Consumer{service: service}, nil
 }
 
-// HandleMessage is passed to toolkit/pkg/port/nats.Port as the fetch handler.
 func (c *Consumer) HandleMessage(msg *nats.Msg) {
 	slog.Info("Received message", slog.String("subject", msg.Subject))
 
 	if err := c.processEvent(msg); err != nil {
-		slog.Error("Failed to process event", "error", err)
+		slog.Error("Failed to process event", "error", err.Error())
 	}
 }
 
@@ -43,7 +42,7 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 	var eventDTO natsDTO.EventDTO
 	if err := json.Unmarshal(msg.Data, &eventDTO); err != nil {
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 		}
 		return errors.Wrapf(entities.ErrInternal, "failed to unmarshal session event: %v", err)
 	}
@@ -53,7 +52,7 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 		var sessionResultDTO natsDTO.SessionResultDTO
 		if err := json.Unmarshal(eventDTO.Payload, &sessionResultDTO); err != nil {
 			if ackErr := msg.Ack(); ackErr != nil {
-				slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+				slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 			}
 			return errors.Wrap(entities.ErrInternal, "failed to cast session event")
 		}
@@ -72,17 +71,17 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 			Resume:     sessionResultDTO.Grade,
 		}); err != nil {
 			if nakErr := msg.Nak(); nakErr != nil {
-				slog.Error("Failed to nak buiseness message", "error", nakErr)
+				slog.Error("Failed to nak buiseness message", "error", nakErr.Error())
 			}
 			return errors.Wrap(err, "DeliverySessionResult failure")
 		}
 
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge processed message", "error", ackErr)
+			slog.Error("Failed to acknowledge processed message", "error", ackErr.Error())
 		}
 	default:
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 		}
 	}
 

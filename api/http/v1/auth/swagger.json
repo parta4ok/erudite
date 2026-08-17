@@ -764,6 +764,9 @@
                         "type": "string"
                     }
                 },
+                "fullname": {
+                    "type": "string"
+                },
                 "group_id": {
                     "type": "string"
                 },

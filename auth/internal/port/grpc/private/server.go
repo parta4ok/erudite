@@ -30,7 +30,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	token := req.Token
 	if token == "" {
 		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
-		slog.Error(err.Error())
+		slog.Error("jwt token is empty", "error", err.Error())
 		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
@@ -41,7 +41,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	res, err := a.factory.NewIntrospectedCommand(token).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "introspect command exec failure")
-		slog.Error(err.Error())
+		slog.Error("introspect command exec failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
@@ -52,7 +52,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	if res != nil {
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
-			slog.Error(err.Error())
+			slog.Error("introspect command exec failure", "error", err.Error())
 			span.SetError(err)
 			return &authv1.IntrospectResponse{
 				Claims: nil,
@@ -64,7 +64,7 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 	userClaims, ok := res.Payload.(*entities.UserClaims)
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert claims failure")
-		slog.Error(err.Error())
+		slog.Error("assert claims failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.IntrospectResponse{
 			Claims: nil,
@@ -96,7 +96,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	userID := req.LinkedID
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is empty")
-		slog.Error(err.Error())
+		slog.Error("user id is empty", "error", err.Error())
 		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
@@ -108,7 +108,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	res, err := a.factory.NewGetLinkedUsersCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get user command exec failure")
-		slog.Error(err.Error())
+		slog.Error("get user command exec failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
@@ -120,7 +120,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	if res != nil {
 		if !res.Success {
 			err := errors.Wrap(entities.ErrInvalidJWT, "get user command exec failure")
-			slog.Error(err.Error())
+			slog.Error("get user command exec failure", "error", err.Error())
 			span.SetError(err)
 			return &authv1.LinkedUsersResponse{
 				Recipient: nil,
@@ -133,7 +133,7 @@ func (a *AuthService) GetLinkedUsers(ctx context.Context, req *authv1.LinkedID,
 	userData, ok := res.Payload.(*entities.LinkedUsers)
 	if !ok {
 		err := errors.Wrap(entities.ErrInvalidJWT, "assert linked users data failure")
-		slog.Error(err.Error())
+		slog.Error("assert linked users data failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.LinkedUsersResponse{
 			Recipient: nil,
@@ -176,7 +176,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 
 	if req.GetMentorID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "mentorID is invalid")
-		slog.Error(err.Error())
+		slog.Error("mentorID is invalid", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
@@ -187,7 +187,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	res, err := a.factory.NewGetMentorGroupsCommand(req.GetMentorID()).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "GetMentorGroupsCommand execution failed")
-		slog.Error(err.Error())
+		slog.Error("GetMentorGroupsCommand execution failed", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
@@ -198,7 +198,7 @@ func (a *AuthService) GetMentorGroups(ctx context.Context, req *authv1.MentorID,
 	groups, ok := res.Payload.([]*entities.Group)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
-		slog.Error(err.Error())
+		slog.Error("cast command result failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupsResponse{
 			Groups: nil,
@@ -239,7 +239,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 
 	if req.GetUserID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "user id is invalid")
-		slog.Error(err.Error())
+		slog.Error("user id is invalid", "error", err.Error())
 		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
@@ -250,7 +250,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 	res, err := a.factory.NewGetUserByIDCommand(req.GetUserID()).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "GetUserByIDCommand execution failed")
-		slog.Error(err.Error())
+		slog.Error("GetUserByIDCommand execution failed", "error", err.Error())
 		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
@@ -261,7 +261,7 @@ func (a *AuthService) GetUserByID(ctx context.Context, req *authv1.UserID,
 	user, ok := res.Payload.(*entities.User)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
-		slog.Error(err.Error())
+		slog.Error("cast command result failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.UserInfoResponse{
 			User:  nil,
@@ -293,7 +293,7 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 
 	if req.GetGroupID() == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "group id is invalid")
-		slog.Error(err.Error())
+		slog.Error("group id is invalid", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,
@@ -304,7 +304,7 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 	res, err := a.factory.NewGetGroupTitleByIDCommand(req.GetGroupID()).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "GetGroupTitleByIDCommand execution failed")
-		slog.Error(err.Error())
+		slog.Error("GetGroupTitleByIDCommand execution failed", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,
@@ -315,7 +315,7 @@ func (a *AuthService) GetGroupTitleByID(ctx context.Context, req *authv1.GroupID
 	title, ok := res.Payload.(string)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "cast command result failure")
-		slog.Error(err.Error())
+		slog.Error("cast command result failure", "error", err.Error())
 		span.SetError(err)
 		return &authv1.GroupResponse{
 			Group: nil,

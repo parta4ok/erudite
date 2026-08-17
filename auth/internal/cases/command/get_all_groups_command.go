@@ -1,3 +1,4 @@
+//nolint:dupl //other command
 package command
 
 import (
@@ -32,7 +33,7 @@ func (command *GetAllGroupsCommand) Exec(ctx context.Context) (*entities.Command
 	groups, err := command.storage.GetAllGroups(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "get all groups")
-		slog.Error(err.Error())
+		slog.Error("get all groups", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

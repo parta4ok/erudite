@@ -51,14 +51,14 @@ func (srv *AuthService) GetMentorGroups(ctx context.Context, mentorID string) (
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetMentorGroups failure: %v", err)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("GetMentorGroups failure", "error", err.Error())
 		return nil, err
 	}
 
 	if groups.GetError().GetMessage() != "" {
 		err := errors.Wrapf(entities.ErrInternal, "error message: %s", groups.Error.Message)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("error message", "error", err.Error())
 		return nil, err
 	}
 
@@ -98,21 +98,21 @@ func (srv *AuthService) GetLinkedUsers(ctx context.Context, id string,
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetLinkedUsers failure: %v", err)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("GetLinkedUsers failure", "error", err.Error())
 		return nil, err
 	}
 
 	if linkedUsers.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrInternal, "error message: %s", linkedUsers.Error.Message)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("error message", "error", err.Error())
 		return nil, err
 	}
 
 	if linkedUsers.Recipient == nil || linkedUsers.Student == nil {
 		err := errors.Wrap(entities.ErrInternal, "nil users info")
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("nil users info", "error", err.Error())
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (srv *AuthService) GetUserByID(ctx context.Context, userID string) (*entiti
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetUserByID failure: %v", err)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("GetUserByID failure", "error", err.Error())
 		return nil, err
 	}
 
@@ -179,7 +179,7 @@ func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "GetGroupTitleByID failure: %v", err)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("GetGroupTitleByID failure", "error", err.Error())
 		return "", err
 	}
 
@@ -200,21 +200,21 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.C
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("introspect failure", "error", err.Error())
 		return nil, err
 	}
 
 	if resp.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("error message", "error", err.Error())
 		return nil, err
 	}
 
 	if resp.Claims == nil {
 		err := errors.Wrap(entities.ErrForbidden, "nil claims")
 		span.SetError(err)
-		slog.Error(err.Error())
+		slog.Error("nil claims", "error", err.Error())
 		return nil, err
 	}
 

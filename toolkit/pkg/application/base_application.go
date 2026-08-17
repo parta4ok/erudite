@@ -91,7 +91,7 @@ func (app *BaseApplication) RunAndAwait(ctx context.Context) error {
 	var runErr error
 	select {
 	case err := <-errChan:
-		slog.Error("port failed, terminating service", "error", err)
+		slog.Error("port failed, terminating service", "error", err.Error())
 		runErr = err
 	case sig := <-sigChan:
 		slog.Info("shutdown signal received", "signal", sig.String())
@@ -114,10 +114,10 @@ func (app *BaseApplication) stopAll() {
 	for _, p := range app.ports {
 		wg.Go(func() {
 			if err := p.Stop(shutdownCtx); err != nil {
-				slog.Error("port stop failed", "error", err)
+				slog.Error("port stop failed", "error", err.Error())
 			}
 		})
 	}
-	
+
 	wg.Wait()
 }

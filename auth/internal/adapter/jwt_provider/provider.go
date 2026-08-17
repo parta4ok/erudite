@@ -75,7 +75,7 @@ func (p *Provider) Generate(user *entities.User) (string, error) {
 	tokenStr, err := token.SignedString(p.secret)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "signed of jwt failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("signed of jwt failure", "error", err.Error())
 		return "", err
 	}
 
@@ -91,7 +91,7 @@ func (p *Provider) Introspect(tokenString string) (*entities.UserClaims, error) 
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				err := errors.Wrapf(entities.ErrInvalidJWT, "unexpected signing method: %v",
 					token.Header["alg"])
-				slog.Error(err.Error())
+				slog.Error("unexpected signing method", "error", err.Error())
 				return nil, err
 			}
 			return p.secret, nil
@@ -99,20 +99,20 @@ func (p *Provider) Introspect(tokenString string) (*entities.UserClaims, error) 
 
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "jwt parse failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("jwt parse failure", "error", err.Error())
 		return nil, err
 	}
 
 	if !token.Valid {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "jwt is invalid")
-		slog.Error(err.Error())
+		slog.Error("jwt is invalid", "error", err.Error())
 		return nil, err
 	}
 
 	claims, ok := token.Claims.(*UserClaimsDTO)
 	if !ok {
 		err = errors.Wrapf(entities.ErrInvalidJWT, "extract claims failure")
-		slog.Error(err.Error())
+		slog.Error("extract claims failure", "error", err.Error())
 		return nil, err
 	}
 

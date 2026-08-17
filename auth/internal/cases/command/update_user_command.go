@@ -19,16 +19,16 @@ type UpdateUserCommand struct {
 	storage common.Storage
 	hasher  common.Hasher
 
-	user *entities.User
+	userUpdate *entities.UserUpdate
 }
 
-func NewUpdateUserCommand(storage common.Storage, hasher common.Hasher, user *entities.User,
+func NewUpdateUserCommand(storage common.Storage, hasher common.Hasher, user *entities.UserUpdate,
 ) *UpdateUserCommand {
 	return &UpdateUserCommand{
 		storage: storage,
 		hasher:  hasher,
 
-		user: user,
+		userUpdate: user,
 	}
 }
 
@@ -37,28 +37,28 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 	ctx, span, cancel := tracer.Start(ctx, "UpdateUserCommandExecSpan")
 	defer cancel()
 
-	if command.user == nil {
-		return nil, errors.Wrap(entities.ErrInvalidParam, "user data is empty")
+	if command.userUpdate == nil {
+		return nil, errors.Wrap(entities.ErrInvalidParam, "user update data is empty")
 	}
 
-	if command.user.PasswordHash != "" {
-		hash, err := command.hasher.Hash(ctx, command.user.PasswordHash)
+	if command.userUpdate.PasswordHash != nil {
+		hash, err := command.hasher.Hash(ctx, *command.userUpdate.PasswordHash)
 		if err != nil {
 			err := errors.Wrap(err, "hash password failure")
-			slog.Error(err.Error())
+			slog.Error("hash password failure", "error", err.Error())
 			span.SetError(err)
 			return nil, err
 		}
-		command.user.PasswordHash = hash
+		*command.userUpdate.PasswordHash = hash
 	}
 
-	if err := command.storage.UpdateUser(ctx, command.user); err != nil {
+	if err := command.storage.UpdateUser(ctx, command.userUpdate); err != nil {
 		err = errors.Wrap(err, "update user failure")
-		slog.Error(err.Error())
+		slog.Error("update user failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
 
 	slog.Info("UpdateUserCommand exec completed")
-	return &entities.CommandResult{Success: true, Message: command.user.ID}, nil
+	return &entities.CommandResult{Success: true, Message: command.userUpdate.ID}, nil
 }

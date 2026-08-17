@@ -260,7 +260,7 @@ func (app *App) initScheduler(
 }
 
 func (app *App) panic(err error, args ...any) {
-	slog.Error(err.Error(), args...)
+	slog.Error("application panic", append([]any{"error", err.Error()}, args...)...)
 	os.Exit(1)
 }
 
@@ -272,13 +272,13 @@ func (app *App) publishEvents(eventStorage storage.EventStorage, broker cases.Me
 
 	unpublishedEvents, err := eventStorage.GetUnpublishedEvents(ctx)
 	if err != nil {
-		slog.Warn("get unpublished events", "error", err)
+		slog.Warn("get unpublished events", "error", err.Error())
 	}
 
 	for _, event := range unpublishedEvents {
 		fn := func(ctx context.Context) error {
 			if err := broker.Publish(ctx, event); err != nil {
-				slog.Warn("publish event", "error", err)
+				slog.Warn("publish event", "error", err.Error())
 				return err
 			}
 
@@ -286,7 +286,7 @@ func (app *App) publishEvents(eventStorage storage.EventStorage, broker cases.Me
 		}
 
 		if err := eventStorage.MarkEventAsPublished(ctx, event.Num(), fn); err != nil {
-			slog.Warn("mark event as published", "error", err)
+			slog.Warn("mark event as published", "error", err.Error())
 		}
 	}
 
@@ -300,7 +300,7 @@ func (app *App) flushEvents(eventStorage storage.EventStorage) {
 	defer cancel()
 
 	if err := eventStorage.FlushPublishedEvents(ctx); err != nil {
-		slog.Warn("flush published events", "error", err)
+		slog.Warn("flush published events", "error", err.Error())
 	}
 	slog.Info("cron flushEvents finished")
 }

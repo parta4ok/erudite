@@ -45,14 +45,14 @@ func (command *AddGroupCommand) Exec(ctx context.Context) (*entities.CommandResu
 	gid, err := command.generator.Generate(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "generate failure")
-		slog.Error(err.Error())
+		slog.Error("generate failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
 
 	if err := command.storage.AddGroup(ctx, gid, command.title, command.linkedID); err != nil {
 		err := errors.Wrap(err, "add group failure")
-		slog.Error(err.Error())
+		slog.Error("add group failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

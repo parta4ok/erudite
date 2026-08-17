@@ -82,7 +82,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 	req.Header.Set("Content-Type", "application/json")
 
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
-	
+
 	resp, err := client.c.Do(req)
 	if err != nil {
 		slog.Error("client.do failure", "error", err.Error())

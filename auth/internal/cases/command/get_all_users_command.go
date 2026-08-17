@@ -1,3 +1,4 @@
+//nolint:dupl //other command
 package command
 
 import (

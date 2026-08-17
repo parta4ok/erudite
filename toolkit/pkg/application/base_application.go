@@ -118,6 +118,6 @@ func (app *BaseApplication) stopAll() {
 			}
 		})
 	}
-	
+
 	wg.Wait()
 }

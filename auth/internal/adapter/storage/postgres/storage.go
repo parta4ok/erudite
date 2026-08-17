@@ -114,18 +114,18 @@ func (s *Storage) processRow(row pgx.Row) (*entities.User, error) {
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrap(entities.ErrNotFound, "user not found")
-			slog.Error(err.Error())
+			slog.Error("user not found", "error", err)
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "get user failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("get user failure", "error", err)
 		return nil, err
 	}
 
 	var contacts map[string]string
 	if err := json.Unmarshal(contactsRaw, &contacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal contacts failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("unmarshal contacts failure", "error", err)
 		return nil, err
 	}
 
@@ -157,7 +157,7 @@ func (s *Storage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
 	rows, err := s.db.Query(ctx, query)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "query users failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("query users failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *Storage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
 			&fullname,
 		); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "scan user failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("scan user failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -193,7 +193,7 @@ func (s *Storage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
 		var contacts map[string]string
 		if err := json.Unmarshal(contactsRaw, &contacts); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "unmarshal contacts failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("unmarshal contacts failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func (s *Storage) GetAllUsers(ctx context.Context) ([]*entities.User, error) {
 
 	if err := rows.Err(); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "rows iteration failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("rows iteration failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	contactsRaw, err := json.Marshal(user.Contacts)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("marshal failure", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -250,7 +250,7 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
-		slog.Error(err.Error())
+		slog.Error("transaction failure with err", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -264,14 +264,14 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 	if err == nil {
 		err = errors.Wrapf(entities.ErrAlreadyExists, "uid = '%s' or name = '%s' already exists",
 			user.ID, user.Username)
-		slog.Error(err.Error())
+		slog.Error("uid = '%s' or name = '%s' already exists", "error", err)
 		span.SetError(err)
 		return err
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
 		err = errors.Wrapf(entities.ErrInternal, "transaction failure with err: %v", err)
-		slog.Error(err.Error())
+		slog.Error("transaction failure with err", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -288,14 +288,14 @@ func (s *Storage) StoreUser(ctx context.Context, user *entities.User) error {
 
 	if _, err = tx.Exec(ctx, query, params...); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "save user failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("save user failure", "error", err)
 		span.SetError(err)
 		return err
 	}
 
 	if err = tx.Commit(ctx); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "commit failure with err: %v", err)
-		slog.Error(err.Error())
+		slog.Error("commit failure with err", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -315,7 +315,7 @@ func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 	tag, err := s.db.Exec(ctx, query, args...)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "exec delete query failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("exec delete query failure", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -331,7 +331,8 @@ func (s *Storage) RemoveUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
+//nolint:funlen //ok
+func (s *Storage) UpdateUser(ctx context.Context, user *entities.UserUpdate) error {
 	slog.Info("User update started")
 	ctx, span, cancel := tracer.Start(ctx, "UpdateUserPostgresSpan")
 	defer cancel()
@@ -349,28 +350,35 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 	`
 	args := make([]interface{}, 7)
 
-	if user.Username != "" {
-		args[0] = user.Username
+	if val, ok := getUpdatedValue(user.Username); ok {
+		args[0] = val
 	}
 
-	if user.PasswordHash != "" {
-		args[1] = user.PasswordHash
+	if val, ok := getUpdatedValue(user.PasswordHash); ok {
+		args[1] = val
 	}
 
-	if len(user.Rights) != 0 {
-		args[2] = user.Rights
+	if val, ok := getUpdatedValue(user.Rights); ok {
+		args[2] = val
 	}
 
-	if len(user.Contacts) != 0 {
-		args[3] = user.Contacts
+	if val, ok := getUpdatedValue(user.Contacts); ok {
+		contactsRaw, err := json.Marshal(val)
+		if err != nil {
+			err = errors.Wrapf(entities.ErrInternal, "marshal contacts failure: %v", err)
+			slog.Error("marshal contacts failure", "error", err)
+			span.SetError(err)
+			return err
+		}
+		args[3] = contactsRaw
 	}
 
-	if user.GroupID != "" {
-		args[4] = user.GroupID
+	if val, ok := getUpdatedValue(user.GroupID); ok && val != "" {
+		args[4] = val
 	}
 
-	if user.FullName != "" {
-		args[5] = user.FullName
+	if val, ok := getUpdatedValue(user.FullName); ok {
+		args[5] = val
 	}
 
 	args[6] = user.ID
@@ -378,19 +386,28 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.User) error {
 	tag, err := s.db.Exec(ctx, query, args...)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "update user failure with err: %v", err)
-		slog.Error(err.Error())
+		slog.Error("update user failure with err", "error", err)
 		span.SetError(err)
 		return err
 	}
 
 	if tag.RowsAffected() == 0 {
 		err = errors.Wrap(entities.ErrNotFound, "user with requested id not found")
-		slog.Error(err.Error())
+		slog.Error("user with requested id not found", "error", err)
 		span.SetError(err)
 		return err
 	}
 
 	return nil
+}
+
+func getUpdatedValue[T any](arg *T) (T, bool) {
+	if arg == nil {
+		var defaultVal T
+		return defaultVal, false
+	}
+
+	return *arg, true
 }
 
 //nolint:funlen //ok
@@ -453,12 +470,12 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = errors.Wrapf(entities.ErrNotFound, "student with id '%s' not found", userID)
-			slog.Error(err.Error())
+			slog.Error("student with id '%s' not found", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "get linked users failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("get linked users failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -466,7 +483,7 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 	var studentContacts map[string]string
 	if err := json.Unmarshal(studentContactsRaw, &studentContacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal student contacts failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("unmarshal student contacts failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -474,7 +491,7 @@ func (s *Storage) GetLinkedUsers(ctx context.Context, userID string,
 	var mentorContacts map[string]string
 	if err := json.Unmarshal(mentorContactsRaw, &mentorContacts); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "unmarshal mentor contacts failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("unmarshal mentor contacts failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -527,7 +544,7 @@ func (s *Storage) AddGroup(ctx context.Context, gid, title, mentorID string) err
 	_, err := s.db.Exec(ctx, query, params...)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "insert group failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("insert group failure", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -554,7 +571,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "query groups failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("query groups failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -569,7 +586,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 		)
 		if err := rows.Scan(&gid, &title); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "scan group failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("scan group failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -580,7 +597,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 
 	if err := rows.Err(); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "rows iteration failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("rows iteration failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -601,7 +618,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 			return groups, nil
 		}
 		err = errors.Wrapf(entities.ErrInternal, "query students failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("query students failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -617,7 +634,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 		)
 		if err := rowsStudents.Scan(&studentID, &studentName, &studentFull, &studentGID); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "scan student failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("scan student failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -627,7 +644,7 @@ func (s *Storage) GetMentorGroups(ctx context.Context, mentorID string) (
 
 	if err := rowsStudents.Err(); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "rowsStudents iteration failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("rowsStudents iteration failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -653,7 +670,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 	rows, err := s.db.Query(ctx, query)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "query groups failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("query groups failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -669,7 +686,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 		)
 		if err := rows.Scan(&gid, &title, &linkedID); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "scan group failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("scan group failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -681,7 +698,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 
 	if err := rows.Err(); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "rows iteration failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("rows iteration failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -699,7 +716,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 			return groups, nil
 		}
 		err = errors.Wrapf(entities.ErrInternal, "query students failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("query students failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -715,7 +732,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 		)
 		if err := rowsStudents.Scan(&studentID, &studentName, &studentFull, &studentGID); err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "scan student failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("scan student failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -725,7 +742,7 @@ func (s *Storage) GetAllGroups(ctx context.Context) ([]*entities.Group, error) {
 
 	if err := rowsStudents.Err(); err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "rowsStudents iteration failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("rowsStudents iteration failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}

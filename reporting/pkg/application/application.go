@@ -214,6 +214,6 @@ func (app *App) initReportingService(
 }
 
 func (app *App) panic(err error, args ...any) {
-	slog.Error(err.Error(), args...)
+	slog.Error("application panic", append([]any{"error", err}, args...)...)
 	os.Exit(1)
 }

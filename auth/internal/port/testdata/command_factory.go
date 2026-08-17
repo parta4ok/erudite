@@ -203,7 +203,7 @@ func (mr *MockCommandFactoryMockRecorder) NewSignInCommand(userName, password in
 }
 
 // NewUpdateUserCommand mocks base method.
-func (m *MockCommandFactory) NewUpdateUserCommand(user *entities.User) entities.Command {
+func (m *MockCommandFactory) NewUpdateUserCommand(user *entities.UserUpdate) entities.Command {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewUpdateUserCommand", user)
 	ret0, _ := ret[0].(entities.Command)

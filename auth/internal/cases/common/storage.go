@@ -12,7 +12,7 @@ type Storage interface {
 	GetUserByUsername(ctx context.Context, userName string) (*entities.User, error)
 	GetLinkedUsers(ctx context.Context, userID string) (*entities.LinkedUsers, error)
 	StoreUser(ctx context.Context, user *entities.User) error
-	UpdateUser(ctx context.Context, user *entities.User) error
+	UpdateUser(ctx context.Context, user *entities.UserUpdate) error
 	RemoveUser(ctx context.Context, userID string) error
 	AddGroup(ctx context.Context, gid, title, mentorID string) error
 	GetMentorGroups(ctx context.Context, mentorID string) ([]*entities.Group, error)
@@ -21,6 +21,3 @@ type Storage interface {
 	GetAllGroups(ctx context.Context) ([]*entities.Group, error)
 	StoreDynamicRegistrations(ctx context.Context, reg *entities.DynamicRegistrationParameters) error
 }
-
-
-type Simple struct {}

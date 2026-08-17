@@ -44,7 +44,7 @@ func (p *Publisher) ReportEvent(ctx context.Context, event entities.Event) error
 	message, err := json.Marshal(eventDTO)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "failed to marshal payload: %v", err)
-		slog.Error(err.Error())
+		slog.Error("failed to marshal payload", "error", err)
 		span.SetError(err)
 		return err
 	}
@@ -57,7 +57,7 @@ func (p *Publisher) ReportEvent(ctx context.Context, event entities.Event) error
 		if errors.Is(err, publisher.ErrInvalidParam) {
 			err = errors.Wrapf(entities.ErrInvalidParam, "publish failure: %v", err)
 		}
-		slog.Error(err.Error())
+		slog.Error("publish failure", "error", err)
 		span.SetError(err)
 		return err
 	}

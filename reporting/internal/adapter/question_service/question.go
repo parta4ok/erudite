@@ -44,12 +44,12 @@ func (q *QuestionClient) GetPassedStudentsTopics(ctx context.Context, students [
 	if err != nil {
 		if errors.Is(err, client.ErrBadRequest) {
 			err = errors.Wrapf(entities.ErrInvalidParam, "GetPassedStudentsTopics failure: %v", err)
-			slog.Error(err.Error())
+			slog.Error("GetPassedStudentsTopics failure", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
 		err = errors.Wrapf(entities.ErrInternal, "GetPassedStudentsTopics failure: %v", err)
-		slog.Error(err.Error())
+		slog.Error("GetPassedStudentsTopics failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}

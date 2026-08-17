@@ -10,7 +10,7 @@ type CommandFactory interface {
 	NewSignInCommand(userName string, password string) entities.Command
 	NewAddUserCommand(user *entities.User) entities.Command
 	NewDeleteUserCommand(userID string) entities.Command
-	NewUpdateUserCommand(user *entities.User) entities.Command
+	NewUpdateUserCommand(user *entities.UserUpdate) entities.Command
 	NewGetLinkedUsersCommand(userID string) entities.Command
 	NewAddGroupCommand(title string, linkedID string) entities.Command
 	NewGetMentorGroupsCommand(mentorID string) entities.Command

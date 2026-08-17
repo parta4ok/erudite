@@ -89,7 +89,7 @@ func TestNewCommandFactory(t *testing.T) {
 			if tc.deps.idGenerator {
 				opts = append(opts, cases.WithIDGenerator(testdata.NewMockIDGenerator(ctrl)))
 			}
-			if tc.deps.messgeBroker{
+			if tc.deps.messgeBroker {
 				opts = append(opts, cases.WithMessageBroker(testdata.NewMockMessageBroker(ctrl)))
 			}
 
@@ -203,7 +203,7 @@ func TestCommandFactory_NewUpdateUserCommand(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, factory)
 
-	cmd := factory.NewUpdateUserCommand(&entities.User{ID: uuid.NewString()})
+	cmd := factory.NewUpdateUserCommand(&entities.UserUpdate{ID: uuid.NewString()})
 	require.NotNil(t, cmd)
 }
 

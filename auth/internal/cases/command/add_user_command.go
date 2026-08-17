@@ -48,7 +48,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	if err != nil {
 		if !errors.Is(err, entities.ErrNotFound) {
 			err = errors.Wrap(err, "get user by user id")
-			slog.Error(err.Error())
+			slog.Error("get user by user id", "error", err)
 			span.SetError(err)
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	if err == nil {
 		err = errors.Wrapf(entities.ErrAlreadyExists, "user name %s already exists",
 			command.user.Username)
-		slog.Error(err.Error())
+		slog.Error("user name %s already exists", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	userID, err := command.generator.Generate(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "generate failure")
-		slog.Error(err.Error())
+		slog.Error("generate failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 	hash, err := command.hasher.Hash(ctx, command.user.PasswordHash)
 	if err != nil {
 		err := errors.Wrap(err, "hash password failure")
-		slog.Error(err.Error())
+		slog.Error("hash password failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (command *AddUserCommand) Exec(ctx context.Context) (*entities.CommandResul
 
 	if err := command.storage.StoreUser(ctx, user); err != nil {
 		err = errors.Wrap(err, "store user failure")
-		slog.Error(err.Error())
+		slog.Error("store user failure", "error", err)
 		span.SetError(err)
 		return nil, err
 	}

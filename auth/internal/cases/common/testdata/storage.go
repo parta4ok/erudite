@@ -197,7 +197,7 @@ func (mr *MockStorageMockRecorder) StoreUser(ctx, user interface{}) *gomock.Call
 }
 
 // UpdateUser mocks base method.
-func (m *MockStorage) UpdateUser(ctx context.Context, user *entities.User) error {
+func (m *MockStorage) UpdateUser(ctx context.Context, user *entities.UserUpdate) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUser", ctx, user)
 	ret0, _ := ret[0].(error)

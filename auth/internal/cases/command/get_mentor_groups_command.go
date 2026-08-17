@@ -40,7 +40,7 @@ func (command *GetMentorGroupsCommand) Exec(ctx context.Context) (*entities.Comm
 	groups, err := command.storage.GetMentorGroups(ctx, command.mentorID)
 	if err != nil {
 		err = errors.Wrap(err, "get mentor groups")
-		slog.Error(err.Error())
+		slog.Error("get mentor groups", "error", err)
 		span.SetError(err)
 		return nil, err
 	}

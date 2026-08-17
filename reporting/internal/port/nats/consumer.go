@@ -30,7 +30,6 @@ func NewConsumer(service port.Service) (*Consumer, error) {
 	return &Consumer{service: service}, nil
 }
 
-// HandleMessage is passed to toolkit/pkg/port/nats.Port as the fetch handler.
 func (c *Consumer) HandleMessage(msg *nats.Msg) {
 	slog.Info("Received message", slog.String("subject", msg.Subject))
 

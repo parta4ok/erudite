@@ -123,7 +123,7 @@ func (p *Port) Start(ctx context.Context) error {
 			if ctx.Err() != nil {
 				return nil //nolint:nilerr //ok - ctx already cancelled, this is a graceful stop
 			}
-			slog.Error("nats fetch failure", "type", p.portType, "error", err)
+			slog.Error("nats fetch failure", "type", p.portType, "error", err.Error())
 			continue
 		}
 
@@ -136,7 +136,7 @@ func (p *Port) Start(ctx context.Context) error {
 func (p *Port) Stop(_ context.Context) error {
 	if p.subscription != nil {
 		if err := p.subscription.Unsubscribe(); err != nil {
-			slog.Error("nats unsubscribe failure", "type", p.portType, "error", err)
+			slog.Error("nats unsubscribe failure", "type", p.portType, "error", err.Error())
 		}
 	}
 

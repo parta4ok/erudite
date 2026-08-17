@@ -29,14 +29,14 @@ func (ms *MessageService) SendMessage(ctx context.Context, message entities.Even
 
 	if message == nil {
 		err := errors.Wrap(entities.ErrInvalidParam, "message is nil")
-		slog.Error("message is nil", "error", err)
+		slog.Error("message is nil", "error", err.Error())
 		span.SetError(err)
 		return err
 	}
 
 	if err := ms.notifier.Notify(ctx, message); err != nil {
 		err = errors.Wrap(err, "failed to notify recipient")
-		slog.Error("failed to notify recipient", "error", err)
+		slog.Error("failed to notify recipient", "error", err.Error())
 		span.SetError(err)
 		return err
 	}

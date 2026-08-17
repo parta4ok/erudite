@@ -80,19 +80,19 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.service == nil {
 		err := errors.Wrap(entities.ErrInternal, "service not set")
-		slog.Error("service not set", "error", err)
+		slog.Error("service not set", "error", err.Error())
 		return nil, err
 	}
 
 	if serv.introspector == nil {
 		err := errors.Wrap(entities.ErrInternal, "introspector not set")
-		slog.Error("introspector not set", "error", err)
+		slog.Error("introspector not set", "error", err.Error())
 		return nil, err
 	}
 
 	if serv.accessor == nil {
 		err := errors.Wrap(entities.ErrInternal, "accessor not set")
-		slog.Error("accessor not set", "error", err)
+		slog.Error("accessor not set", "error", err.Error())
 		return nil, err
 	}
 
@@ -147,7 +147,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightViewTopicList}); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -155,7 +155,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 
 	topics, err := s.service.ShowTopics(ctx)
 	if err != nil {
-		slog.Error("ShowTopics failure", "error", err)
+		slog.Error("ShowTopics failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -166,7 +166,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(topicsDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -175,7 +175,7 @@ func (s *Server) GetTopics(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -205,7 +205,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightStartSession}); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -222,7 +222,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
-		slog.Error("userID invalid", "error", err)
+		slog.Error("userID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -231,7 +231,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	var topicsDTO dto.TopicsDTO
 	if err := json.NewDecoder(req.Body).Decode(&topicsDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to topicsDTO failure: %v", err)
-		slog.Error("decode req body to topicsDTO failure", "error", err)
+		slog.Error("decode req body to topicsDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -240,7 +240,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	sessionID, questions, err := s.service.CreateSession(ctx, userID, topicsDTO.Topics, limit)
 	if err != nil {
 		err := errors.Wrap(err, "CreateSession failure")
-		slog.Error("CreateSession failure", "error", err)
+		slog.Error("CreateSession failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -266,7 +266,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(sessionDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -275,7 +275,7 @@ func (s *Server) StartSession(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusCreated)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -306,7 +306,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightCompleteSession}); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -318,7 +318,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 
 	if sessionID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "sessionID invalid")
-		slog.Error("sessionID invalid", "error", err)
+		slog.Error("sessionID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -328,7 +328,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&userAnswersListDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode request body to userAnswersListDTO failure: %v", err)
-		slog.Error("decode request body to userAnswersListDTO failure", "error", err)
+		slog.Error("decode request body to userAnswersListDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -339,7 +339,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 		userAnswer, err := entities.NewUserAnswer(answerDTO.QuestionID, answerDTO.Answers)
 		if err != nil {
 			err := errors.Wrapf(entities.ErrInvalidParam, "create user answer failure: %v", err)
-			slog.Error("create user answer failure", "error", err)
+			slog.Error("create user answer failure", "error", err.Error())
 			span.SetError(err)
 			s.errProcessing(resp, err)
 			return
@@ -350,7 +350,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	sessionResult, err := s.service.CompleteSession(ctx, sessionID, userAnswers)
 	if err != nil {
 		err := errors.Wrap(err, "CompleteSession failure")
-		slog.Error("CompleteSession failure", "error", err)
+		slog.Error("CompleteSession failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -364,7 +364,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(resultDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -373,7 +373,7 @@ func (s *Server) CompleteSession(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -405,7 +405,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	defer cancel()
 
 	if err := s.checkUserRights(ctx, []string{rightViewCompletedSessions}); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -417,7 +417,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
-		slog.Error("userID invalid", "error", err)
+		slog.Error("userID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -426,7 +426,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	sessions, err := s.service.GetAllCompletedUserSessions(ctx, userID)
 	if err != nil {
 		err := errors.Wrap(err, "GetAllCompletedUserSessions failure")
-		slog.Error("GetAllCompletedUserSessions failure", "error", err)
+		slog.Error("GetAllCompletedUserSessions failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -439,7 +439,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 		sessionInfo, err := s.extractDataFromCompleteSession(*session)
 		if err != nil {
 			err = errors.Wrap(err, "extractDataFromCompleteSession failure")
-			slog.Error("extractDataFromCompleteSession failure", "error", err)
+			slog.Error("extractDataFromCompleteSession failure", "error", err.Error())
 			span.SetError(err)
 			s.errProcessing(resp, err)
 			return
@@ -451,7 +451,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	data, err := json.Marshal(sessionsListDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -460,7 +460,7 @@ func (s *Server) GetAllCompletedUserSessions(resp http.ResponseWriter, req *http
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -488,7 +488,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	errDtoData, err := json.Marshal(&errDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -502,7 +502,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {
 			err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
-			slog.Error("authoriztion header not set", "error", err)
+			slog.Error("authoriztion header not set", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}
@@ -511,7 +511,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		authorizationData := strings.Split(authHeader, prefix)
 		if len(authorizationData) != 2 {
 			err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
-			slog.Error("authoriztion header invalid", "error", err)
+			slog.Error("authoriztion header invalid", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}
@@ -521,7 +521,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		claims, err := s.introspector.Introspect(req.Context(), jwt)
 		if err != nil {
 			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
-			slog.Error("introspection failure", "error", err)
+			slog.Error("introspection failure", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}

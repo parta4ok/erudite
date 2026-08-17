@@ -243,6 +243,6 @@ func (app *App) initNatsPub() *publisher.Publisher {
 }
 
 func (app *App) panic(err error, args ...any) {
-	slog.Error("application panic", append([]any{"error", err}, args...)...)
+	slog.Error("application panic", append([]any{"error", err.Error()}, args...)...)
 	os.Exit(1)
 }

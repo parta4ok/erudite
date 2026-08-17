@@ -45,7 +45,7 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.service == nil {
 		err := errors.Wrap(entities.ErrInternal, "service not set")
-		slog.Error("service not set", "error", err)
+		slog.Error("service not set", "error", err.Error())
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	var studentsDTO dto.StudentsIDsDTO
 	if err := json.NewDecoder(req.Body).Decode(&studentsDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam, "decode req body to studentsDTO failure: %v", err)
-		slog.Error("decode req body to studentsDTO failure", "error", err)
+		slog.Error("decode req body to studentsDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -94,7 +94,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	passedTopicsForStudent, err := s.service.GetPassedStudentsTopics(ctx, studentsDTO.Students)
 	if err != nil {
 		err := errors.Wrap(err, "GetPassedStudentsTopics")
-		slog.Error("GetPassedStudentsTopics", "error", err)
+		slog.Error("GetPassedStudentsTopics", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -120,7 +120,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	data, err := json.Marshal(passedTopicsDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -129,7 +129,7 @@ func (s *Server) GetPassedStudentsTopics(resp http.ResponseWriter, req *http.Req
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -155,7 +155,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	errDtoData, err := json.Marshal(&errDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}

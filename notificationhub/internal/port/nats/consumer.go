@@ -34,7 +34,7 @@ func (c *Consumer) HandleMessage(msg *nats.Msg) {
 	slog.Info("Received message", slog.String("subject", msg.Subject))
 
 	if err := c.processEvent(msg); err != nil {
-		slog.Error("Failed to process event", "error", err)
+		slog.Error("Failed to process event", "error", err.Error())
 	}
 }
 
@@ -44,7 +44,7 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 	var reportEventDTO natsDTO.ReportEventDTO
 	if err := json.Unmarshal(msg.Data, &reportEventDTO); err != nil {
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 		}
 		return errors.Wrapf(entities.ErrInternal, "failed to unmarshal session event: %v", err)
 	}
@@ -55,9 +55,9 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 	)
 	if err != nil {
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 		}
-		slog.Error("new user", "error", err)
+		slog.Error("new user", "error", err.Error())
 		return err
 	}
 
@@ -69,22 +69,22 @@ func (c *Consumer) processEvent(msg *nats.Msg) error {
 	)
 	if err != nil {
 		if ackErr := msg.Ack(); ackErr != nil {
-			slog.Error("Failed to acknowledge malformed message", "error", ackErr)
+			slog.Error("Failed to acknowledge malformed message", "error", ackErr.Error())
 		}
-		slog.Error("new normal event", "error", err)
+		slog.Error("new normal event", "error", err.Error())
 		return err
 	}
 
 	if err := c.service.SendMessage(ctx, event); err != nil {
 		if nakErr := msg.Nak(); nakErr != nil {
-			slog.Error("Failed to nak buiseness message", "error", nakErr)
+			slog.Error("Failed to nak buiseness message", "error", nakErr.Error())
 		}
-		slog.Error("send message", "error", err)
+		slog.Error("send message", "error", err.Error())
 		return err
 	}
 
 	if ackErr := msg.Ack(); ackErr != nil {
-		slog.Error("Failed to acknowledge processed message", "error", ackErr)
+		slog.Error("Failed to acknowledge processed message", "error", ackErr.Error())
 	}
 
 	return nil

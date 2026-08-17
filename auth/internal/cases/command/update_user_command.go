@@ -45,7 +45,7 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 		hash, err := command.hasher.Hash(ctx, *command.userUpdate.PasswordHash)
 		if err != nil {
 			err := errors.Wrap(err, "hash password failure")
-			slog.Error("hash password failure", "error", err)
+			slog.Error("hash password failure", "error", err.Error())
 			span.SetError(err)
 			return nil, err
 		}
@@ -54,7 +54,7 @@ func (command *UpdateUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 
 	if err := command.storage.UpdateUser(ctx, command.userUpdate); err != nil {
 		err = errors.Wrap(err, "update user failure")
-		slog.Error("update user failure", "error", err)
+		slog.Error("update user failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

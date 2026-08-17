@@ -39,7 +39,7 @@ func (command *DeleteUserCommand) Exec(ctx context.Context) (*entities.CommandRe
 
 	if err := command.storage.RemoveUser(ctx, command.userID); err != nil {
 		err = errors.Wrap(err, "RemoveUser failure")
-		slog.Error("RemoveUser failure", "error", err)
+		slog.Error("RemoveUser failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

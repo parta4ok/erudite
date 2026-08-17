@@ -115,6 +115,6 @@ func (app *App) initConsumerPort(service port.MessageService) *natsport.Port {
 }
 
 func (app *App) panic(err error, args ...any) {
-	slog.Error("application panic", append([]any{"error", err}, args...)...)
+	slog.Error("application panic", append([]any{"error", err.Error()}, args...)...)
 	os.Exit(1)
 }

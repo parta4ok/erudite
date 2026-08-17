@@ -42,7 +42,7 @@ func (command *GetGroupTitleByIDCommand) Exec(ctx context.Context) (
 	groupID, err := command.storage.GetGroupTitleByID(ctx, command.groupID)
 	if err != nil {
 		err = errors.Wrap(err, "GetGroupTitleByID")
-		slog.Error("GetGroupTitleByID", "error", err)
+		slog.Error("GetGroupTitleByID", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

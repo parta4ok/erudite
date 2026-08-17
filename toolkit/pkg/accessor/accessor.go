@@ -30,7 +30,7 @@ func (accessor *RightAccessor) HasPermission(ctx context.Context, rights []strin
 	claims, ok := claimsRaw.(*Claims)
 	if !ok {
 		err := errors.Wrap(ErrAssertion, "assert data from context to claims failure")
-		slog.Error("assert data from context to claims failure", "error", err)
+		slog.Error("assert data from context to claims failure", "error", err.Error())
 		return false, err
 	}
 

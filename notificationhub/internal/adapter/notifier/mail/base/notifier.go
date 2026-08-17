@@ -107,7 +107,7 @@ func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error
 	body, err := m.createEmailWithAttachment(message, email.String())
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "failed to create email body: %v", err)
-		slog.Error("failed to create email body", "error", err)
+		slog.Error("failed to create email body", "error", err.Error())
 		span.SetError(err)
 		if next := m.Next(); next != nil {
 			return next.Notify(ctx, message)
@@ -124,7 +124,7 @@ func (m *MailNotifier) Notify(ctx context.Context, message entities.Event) error
 	)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "failed to send email: %v", err)
-		slog.Error("failed to send email", "error", err)
+		slog.Error("failed to send email", "error", err.Error())
 		span.SetError(err)
 		if next := m.Next(); next != nil {
 			return next.Notify(ctx, message)
@@ -185,7 +185,7 @@ func (m *MailNotifier) createEmailWithAttachment(message entities.Event, recipie
 
 func (m *MailNotifier) processErr(failureArg string) (*MailNotifier, error) {
 	err := errors.Wrapf(entities.ErrInvalidParam, "%s is invalid", failureArg)
-	slog.Error("%s is invalid", "error", err)
+	slog.Error("%s is invalid", "error", err.Error())
 	return nil, err
 }
 

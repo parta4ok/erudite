@@ -51,7 +51,7 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	user, err := command.storage.GetUserByUsername(ctx, command.userName)
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByUsername")
-		slog.Error("GetUserByUsername", "error", err)
+		slog.Error("GetUserByUsername", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -59,14 +59,14 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	isHash, err := command.hasher.IsHash(ctx, command.password, user.PasswordHash)
 	if err != nil {
 		err = errors.Wrap(err, "IsHash failire")
-		slog.Error("IsHash failire", "error", err)
+		slog.Error("IsHash failire", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
 
 	if !isHash {
 		err = errors.Wrapf(entities.ErrInvalidPassword, "approvePassword failire: %v", err)
-		slog.Error("approvePassword failire", "error", err)
+		slog.Error("approvePassword failire", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (command *SignInCommand) Exec(ctx context.Context) (*entities.CommandResult
 	jwt, err := command.jwtProvider.Generate(user)
 	if err != nil {
 		err = errors.Wrap(err, "Generate JWT failure")
-		slog.Error("Generate JWT failure", "error", err)
+		slog.Error("Generate JWT failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

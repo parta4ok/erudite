@@ -49,7 +49,7 @@ func (p *Publisher) Publish(ctx context.Context, event event.Event) error {
 		if errors.Is(err, publisher.ErrInvalidParam) {
 			err = errors.Wrapf(entities.ErrInvalidParam, "publish failure: %v", err)
 		}
-		slog.Error("publish failure", "error", err)
+		slog.Error("publish failure", "error", err.Error())
 		span.SetError(err)
 		return err
 	}

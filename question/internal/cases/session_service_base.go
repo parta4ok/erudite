@@ -70,7 +70,7 @@ func (srv *SessionServiceBase) ShowTopics(ctx context.Context) ([]string, error)
 
 	topics, err := srv.storage.GetTopics(ctx)
 	if err != nil {
-		slog.Error("GetTopics", "error", err)
+		slog.Error("GetTopics", "error", err.Error())
 		span.SetError(err)
 		return nil, errors.Wrap(err, "GetTopics")
 	}
@@ -87,14 +87,14 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 
 	session, err := entities.NewSession(userID, topics, srv.generator, srv.sessionStorage)
 	if err != nil {
-		slog.Error("NewSession", "error", err)
+		slog.Error("NewSession", "error", err.Error())
 		span.SetError(err)
 		return "", nil, errors.Wrap(err, "NewSession")
 	}
 
 	forbidded, err := session.IsDailySessionLimitReached(ctx, userID, topics, dailyLimit)
 	if err != nil {
-		slog.Error("IsDailySessionLimitReached", "error", err)
+		slog.Error("IsDailySessionLimitReached", "error", err.Error())
 		span.SetError(err)
 		return "", nil, errors.Wrap(err, "IsDailySessionLimitReached")
 	}
@@ -107,7 +107,7 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 
 	questions, err := srv.storage.GetQuestions(ctx, topics)
 	if err != nil {
-		slog.Error("GetQuestions", "error", err)
+		slog.Error("GetQuestions", "error", err.Error())
 		span.SetError(err)
 		return "", nil, errors.Wrap(err, "GetQuestions")
 	}
@@ -121,12 +121,12 @@ func (srv *SessionServiceBase) CreateSession(ctx context.Context, userID string,
 		questionsMap,
 		time.Duration(len(questions))*srv.respondTime,
 	); err != nil {
-		slog.Error("SetQuestions", "error", err)
+		slog.Error("SetQuestions", "error", err.Error())
 		return "", nil, errors.Wrap(err, "SetQuestions")
 	}
 
 	if err := srv.storage.StoreSession(ctx, session); err != nil {
-		slog.Error("SetQuestions", "error", err)
+		slog.Error("SetQuestions", "error", err.Error())
 		span.SetError(err)
 		return "", nil, errors.Wrap(err, "StoreSession")
 	}
@@ -145,26 +145,26 @@ func (srv *SessionServiceBase) CompleteSession(
 
 	session, err := srv.storage.GetSessionBySessionID(ctx, sessionID)
 	if err != nil {
-		slog.Error("GetSessionBySessionID", "error", err)
+		slog.Error("GetSessionBySessionID", "error", err.Error())
 		span.SetError(err)
 		return nil, errors.Wrap(err, "GetSessionBySessionID")
 	}
 
 	if err := session.SetUserAnswer(answers); err != nil {
-		slog.Error("GetSessionBySessionID", "error", err)
+		slog.Error("GetSessionBySessionID", "error", err.Error())
 		span.SetError(err)
 		return nil, errors.Wrap(err, "SetUserAnswer")
 	}
 
 	sessionResult, err := session.GetSessionResult()
 	if err != nil {
-		slog.Error("GetSessionResult", "error", err)
+		slog.Error("GetSessionResult", "error", err.Error())
 		span.SetError(err)
 		return nil, errors.Wrap(err, "GetSessionResult")
 	}
 
 	if err = srv.storage.StoreSession(ctx, session); err != nil {
-		slog.Error("GetSessionResult", "error", err)
+		slog.Error("GetSessionResult", "error", err.Error())
 		span.SetError(err)
 		return nil, errors.Wrap(err, "StoreSession")
 	}
@@ -183,7 +183,7 @@ func (srv *SessionServiceBase) GetAllCompletedUserSessions(ctx context.Context, 
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID not set")
-		slog.Error("userID not set", "error", err)
+		slog.Error("userID not set", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (srv *SessionServiceBase) GetAllCompletedUserSessions(ctx context.Context, 
 	sessions, err := srv.storage.GetAllCompletedUserSessions(ctx, userID)
 	if err != nil {
 		err = errors.Wrap(err, "get all completed user sessions failure")
-		slog.Error("get all completed user sessions failure", "error", err)
+		slog.Error("get all completed user sessions failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (srv *SessionServiceBase) GetPassedStudentsTopics(ctx context.Context, stud
 	passedTopics, err := srv.storage.GetPassedUserTopics(ctx, students)
 	if err != nil {
 		err = errors.Wrap(err, "GetPassedUserTopics failure")
-		slog.Error("GetPassedUserTopics failure", "error", err)
+		slog.Error("GetPassedUserTopics failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

@@ -29,7 +29,7 @@ func (h *Hasher) Hash(_ context.Context, pass string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(pass), 10)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "generate hash from pass failure: %v", err)
-		slog.Error("generate hash from pass failure", "error", err)
+		slog.Error("generate hash from pass failure", "error", err.Error())
 		return "", err
 	}
 

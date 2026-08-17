@@ -66,19 +66,19 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.service == nil {
 		err := errors.Wrap(entities.ErrInternal, "service not set")
-		slog.Error("service not set", "error", err)
+		slog.Error("service not set", "error", err.Error())
 		return nil, err
 	}
 
 	if serv.introspector == nil {
 		err := errors.Wrap(entities.ErrInternal, "introspector not set")
-		slog.Error("introspector not set", "error", err)
+		slog.Error("introspector not set", "error", err.Error())
 		return nil, err
 	}
 
 	if serv.accessor == nil {
 		err := errors.Wrap(entities.ErrInternal, "accessor not set")
-		slog.Error("accessor not set", "error", err)
+		slog.Error("accessor not set", "error", err.Error())
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 	resp.Header().Set("Content-Type", "application/json")
 
 	if err := s.checkUserRights(ctx, []string{rightGetReport}); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -127,14 +127,14 @@ func (s *Server) GetPassedTopics(resp http.ResponseWriter, req *http.Request) {
 
 	if mentorID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "mentor id invalid")
-		slog.Error("mentor id invalid", "error", err)
+		slog.Error("mentor id invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
 	}
 
 	if err := s.service.GetPassedTopicsByGroups(ctx, mentorID); err != nil {
-		slog.Error("GetPassedTopicsByGroups failure", "error", err)
+		slog.Error("GetPassedTopicsByGroups failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -162,7 +162,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	errDtoData, err := json.Marshal(&errDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -176,7 +176,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {
 			err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
-			slog.Error("authoriztion header not set", "error", err)
+			slog.Error("authoriztion header not set", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}
@@ -185,7 +185,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		authorizationData := strings.Split(authHeader, prefix)
 		if len(authorizationData) != 2 {
 			err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
-			slog.Error("authoriztion header invalid", "error", err)
+			slog.Error("authoriztion header invalid", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}
@@ -195,7 +195,7 @@ func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
 		claims, err := s.introspector.Introspect(req.Context(), jwt)
 		if err != nil {
 			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
-			slog.Error("introspection failure", "error", err)
+			slog.Error("introspection failure", "error", err.Error())
 			s.errProcessing(resp, err)
 			return
 		}

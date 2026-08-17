@@ -45,7 +45,7 @@ func main() {
 	case "up":
 		slog.Info("Running migrations UP")
 		if err := runner.RunMigrations(ctx); err != nil {
-			slog.Error("Failed to run migrations", "error", err)
+			slog.Error("Failed to run migrations", "error", err.Error())
 			return
 		}
 		slog.Info("Migrations completed successfully")
@@ -53,7 +53,7 @@ func main() {
 	case "down":
 		slog.Info("Running migrations DOWN (rollback)")
 		if err := runner.RollbackMigrations(ctx); err != nil {
-			slog.Error("Failed to rollback migrations", "error", err)
+			slog.Error("Failed to rollback migrations", "error", err.Error())
 			return
 		}
 		slog.Info("Migrations rolled back successfully")
@@ -61,7 +61,7 @@ func main() {
 	case "status":
 		slog.Info("Checking migration status")
 		if err := checkMigrationStatus(ctx, js); err != nil {
-			slog.Error("Failed to check migration status", "error", err)
+			slog.Error("Failed to check migration status", "error", err.Error())
 			return
 		}
 
@@ -193,7 +193,7 @@ func checkMigrationStatus(_ context.Context, js nats.JetStreamContext) error {
 
 		info, err := js.StreamInfo(streamName)
 		if err != nil {
-			slog.Error("Failed to get stream info", "stream", streamName, "error", err)
+			slog.Error("Failed to get stream info", "stream", streamName, "error", err.Error())
 			continue
 		}
 

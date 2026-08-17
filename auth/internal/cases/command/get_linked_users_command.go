@@ -41,7 +41,7 @@ func (command *GetLinkedUsersCommand) Exec(ctx context.Context) (*entities.Comma
 	linkedUsers, err := command.storage.GetLinkedUsers(ctx, command.userID)
 	if err != nil {
 		err = errors.Wrap(err, "get linked users failure")
-		slog.Error("get linked users failure", "error", err)
+		slog.Error("get linked users failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

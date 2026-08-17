@@ -44,7 +44,7 @@ func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandRe
 	userClaims, err := command.jwtProvider.Introspect(command.jwt)
 	if err != nil {
 		err = errors.Wrap(err, "Introspect")
-		slog.Error("Introspect", "error", err)
+		slog.Error("Introspect", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandRe
 	user, err := command.storage.GetUserByID(ctx, userClaims.Subject)
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByID")
-		slog.Error("GetUserByID", "error", err)
+		slog.Error("GetUserByID", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandRe
 	for _, reqRight := range userClaims.Rights {
 		if !slices.Contains(user.Rights, reqRight) {
 			err := errors.Wrapf(entities.ErrForbidden, "not enough rights")
-			slog.Error("not enough rights", "error", err)
+			slog.Error("not enough rights", "error", err.Error())
 			span.SetError(err)
 			return nil, err
 		}

@@ -41,7 +41,7 @@ func (command *GetUserByIDCommand) Exec(ctx context.Context) (*entities.CommandR
 	user, err := command.storage.GetUserByID(ctx, command.userID)
 	if err != nil {
 		err = errors.Wrap(err, "GetUserByID")
-		slog.Error("GetUserByID", "error", err)
+		slog.Error("GetUserByID", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

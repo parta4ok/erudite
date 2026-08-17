@@ -67,13 +67,13 @@ func New(opts ...ServerOption) (*Server, error) {
 
 	if serv.factory == nil {
 		err := errors.Wrap(entities.ErrInternal, "factory not set")
-		slog.Error("factory not set", "error", err)
+		slog.Error("factory not set", "error", err.Error())
 		return nil, err
 	}
 
 	if serv.accessor == nil {
 		err := errors.Wrap(entities.ErrInternal, "accessor not set")
-		slog.Error("accessor not set", "error", err)
+		slog.Error("accessor not set", "error", err.Error())
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode req body to signinRequestDTO failure: %v", err)
-		slog.Error("decode req body to signinRequestDTO failure", "error", err)
+		slog.Error("decode req body to signinRequestDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -155,7 +155,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 	res, err := s.factory.NewSignInCommand(requestDTO.Login, requestDTO.Password).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "signin command executing failure")
-		slog.Error("signin command executing failure", "error", err)
+		slog.Error("signin command executing failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -163,7 +163,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 
 	if res == nil {
 		err := errors.Wrap(entities.ErrInternal, "signin command executing completed with nil result")
-		slog.Error("signin command executing completed with nil result", "error", err)
+		slog.Error("signin command executing completed with nil result", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -171,7 +171,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 
 	if !res.Success {
 		err := errors.Wrap(entities.ErrInternal, "signin command executing completed with bad status")
-		slog.Error("signin command executing completed with bad status", "error", err)
+		slog.Error("signin command executing completed with bad status", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -182,7 +182,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(signinDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal token failure: %v", err)
-		slog.Error("marshal token failure", "error", err)
+		slog.Error("marshal token failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -191,7 +191,7 @@ func (s *Server) Signin(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusCreated)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -226,7 +226,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -236,7 +236,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode req body to requestDTO failure: %v", err)
-		slog.Error("decode req body to requestDTO failure", "error", err)
+		slog.Error("decode req body to requestDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -251,7 +251,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	)
 	if err != nil {
 		err := errors.Wrap(err, "create base user user failure")
-		slog.Error("create base user user failure", "error", err)
+		slog.Error("create base user user failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -260,7 +260,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	addUserResult, err := s.factory.NewAddUserCommand(user).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "add user command failure")
-		slog.Error("add user command failure", "error", err)
+		slog.Error("add user command failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -268,7 +268,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 
 	if !addUserResult.Success {
 		err := errors.Wrap(entities.ErrInternal, "add user failure")
-		slog.Error("add user failure", "error", err)
+		slog.Error("add user failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -281,7 +281,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(responseDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -290,7 +290,7 @@ func (s *Server) AddUser(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusCreated)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -325,7 +325,7 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -335,7 +335,7 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
-		slog.Error("userID invalid", "error", err)
+		slog.Error("userID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -344,7 +344,7 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 	deleteUserResult, err := s.factory.NewDeleteUserCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "delete user command failure")
-		slog.Error("delete user command failure", "error", err)
+		slog.Error("delete user command failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -352,7 +352,7 @@ func (s *Server) DeleteUser(resp http.ResponseWriter, req *http.Request) {
 
 	if !deleteUserResult.Success {
 		err := errors.Wrap(entities.ErrInternal, "delete user failure")
-		slog.Error("delete user failure", "error", err)
+		slog.Error("delete user failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -390,7 +390,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -400,7 +400,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
-		slog.Error("userID invalid", "error", err)
+		slog.Error("userID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -409,7 +409,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 	var updateUserDTO dto.UpdateUserDTO
 	if err := json.NewDecoder(req.Body).Decode(&updateUserDTO); err != nil {
 		err := errors.Wrap(entities.ErrInvalidParam, "invalid request body")
-		slog.Error("invalid request body", "error", err)
+		slog.Error("invalid request body", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -428,7 +428,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 	updateUserResult, err := s.factory.NewUpdateUserCommand(updateUser).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "update user command exec failure")
-		slog.Error("update user command exec failure", "error", err)
+		slog.Error("update user command exec failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -436,7 +436,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 
 	if !updateUserResult.Success {
 		err := errors.Wrap(entities.ErrInternal, "update user failure")
-		slog.Error("update user failure", "error", err)
+		slog.Error("update user failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -449,7 +449,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(responseDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -458,7 +458,7 @@ func (s *Server) UpdateUser(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -493,7 +493,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -503,7 +503,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode req body to requestDTO failure: %v", err)
-		slog.Error("decode req body to requestDTO failure", "error", err)
+		slog.Error("decode req body to requestDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -512,7 +512,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	res, err := s.factory.NewAddGroupCommand(requestDTO.Title, requestDTO.LinkedID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "add group command exec failure")
-		slog.Error("add group command exec failure", "error", err)
+		slog.Error("add group command exec failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -520,7 +520,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 
 	if !res.Success {
 		err := errors.Wrap(entities.ErrInternal, "add group failure")
-		slog.Error("add group failure", "error", err)
+		slog.Error("add group failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -533,7 +533,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(responseDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -542,7 +542,7 @@ func (s *Server) AddGroup(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusCreated)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -578,7 +578,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_mentor}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -588,7 +588,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 
 	if userID == "" {
 		err := errors.Wrap(entities.ErrInvalidParam, "userID invalid")
-		slog.Error("userID invalid", "error", err)
+		slog.Error("userID invalid", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -597,7 +597,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 	res, err := s.factory.NewGetMentorGroupsCommand(userID).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get mentor groups command exec failure")
-		slog.Error("get mentor groups command exec failure", "error", err)
+		slog.Error("get mentor groups command exec failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -606,7 +606,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 	groups, ok := res.Payload.([]*entities.Group)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
-		slog.Error("result assertion failure", "error", err)
+		slog.Error("result assertion failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -636,7 +636,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(groupDTOs)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -645,7 +645,7 @@ func (s *Server) GetMentorGroups(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -678,7 +678,7 @@ func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -687,7 +687,7 @@ func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
 	res, err := s.factory.NewGetAllUsersCommand().Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get all users command exec failure")
-		slog.Error("get all users command exec failure", "error", err)
+		slog.Error("get all users command exec failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -696,7 +696,7 @@ func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
 	users, ok := res.Payload.([]*entities.User)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
-		slog.Error("result assertion failure", "error", err)
+		slog.Error("result assertion failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -717,7 +717,7 @@ func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(userDTOs)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -726,7 +726,7 @@ func (s *Server) GetAllUsers(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -759,7 +759,7 @@ func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
 
 	if err := s.getValidatedAuthContext(resp, req, []string{right_admin}); err != nil {
 		err := errors.Wrap(err, "getValidatedAuthContext")
-		slog.Error("getValidatedAuthContext", "error", err)
+		slog.Error("getValidatedAuthContext", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -768,7 +768,7 @@ func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
 	res, err := s.factory.NewGetAllGroupsCommand().Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "get all groups command exec failure")
-		slog.Error("get all groups command exec failure", "error", err)
+		slog.Error("get all groups command exec failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -777,7 +777,7 @@ func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
 	groups, ok := res.Payload.([]*entities.Group)
 	if !ok {
 		err := errors.Wrap(entities.ErrInternal, "result assertion failure")
-		slog.Error("result assertion failure", "error", err)
+		slog.Error("result assertion failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -808,7 +808,7 @@ func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
 	data, err := json.Marshal(groupDTOs)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal response failure: %v", err)
-		slog.Error("marshal response failure", "error", err)
+		slog.Error("marshal response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -817,7 +817,7 @@ func (s *Server) GetAllGroups(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 	if _, err = resp.Write(data); err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "write data to response failure: %v", err)
-		slog.Error("write data to response failure", "error", err)
+		slog.Error("write data to response failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -845,7 +845,7 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 	errDtoData, err := json.Marshal(&errDTO)
 	if err != nil {
 		err := errors.Wrapf(entities.ErrInternal, "marshal failure: %v", err)
-		slog.Error("marshal failure", "error", err)
+		slog.Error("marshal failure", "error", err.Error())
 		http.Error(resp, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -873,7 +873,7 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	authHeader := req.Header.Get("Authorization")
 	if authHeader == "" {
 		err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
-		slog.Error("authoriztion header not set", "error", err)
+		slog.Error("authoriztion header not set", "error", err.Error())
 		return err
 	}
 
@@ -881,7 +881,7 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	authorizationData := strings.Split(authHeader, prefix)
 	if len(authorizationData) != 2 {
 		err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
-		slog.Error("authoriztion header invalid", "error", err)
+		slog.Error("authoriztion header invalid", "error", err.Error())
 		return err
 	}
 
@@ -889,20 +889,20 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	introspectResult, err := s.factory.NewIntrospectedCommand(jwt).Exec(req.Context())
 	if err != nil {
 		err := errors.Wrap(err, "inrospection failure")
-		slog.Error("inrospection failure", "error", err)
+		slog.Error("inrospection failure", "error", err.Error())
 		return err
 	}
 
 	if !introspectResult.Success {
 		err := errors.Wrap(entities.ErrForbidden, "operation forbidden")
-		slog.Error("operation forbidden", "error", err)
+		slog.Error("operation forbidden", "error", err.Error())
 		return err
 	}
 
 	claims, ok := introspectResult.Payload.(*entities.UserClaims)
 	if !ok {
 		err := errors.Wrap(entities.ErrForbidden, "assertion of user claims failure")
-		slog.Error("assertion of user claims failure", "error", err)
+		slog.Error("assertion of user claims failure", "error", err.Error())
 		return err
 	}
 
@@ -915,7 +915,7 @@ func (s *Server) getValidatedAuthContext(resp http.ResponseWriter, req *http.Req
 	})
 
 	if err := s.checkUserRights(ctx, rights); err != nil {
-		slog.Error("checkUserRights failure", "error", err)
+		slog.Error("checkUserRights failure", "error", err.Error())
 		s.errProcessing(resp, err)
 		return err
 	}
@@ -949,7 +949,7 @@ func (s *Server) DynamicRegistration(resp http.ResponseWriter, req *http.Request
 	if err := json.NewDecoder(req.Body).Decode(&requestDTO); err != nil {
 		err := errors.Wrapf(entities.ErrInvalidParam,
 			"decode req body to DynamicRegistrationDTO failure: %v", err)
-		slog.Error("decode req body to DynamicRegistrationDTO failure", "error", err)
+		slog.Error("decode req body to DynamicRegistrationDTO failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -958,7 +958,7 @@ func (s *Server) DynamicRegistration(resp http.ResponseWriter, req *http.Request
 	res, err := s.factory.NewDynamicRegisterCommand(requestDTO.UserID, requestDTO.Provider).Exec(ctx)
 	if err != nil {
 		err := errors.Wrap(err, "dynamic register command executing failure")
-		slog.Error("dynamic register command executing failure", "error", err)
+		slog.Error("dynamic register command executing failure", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -967,7 +967,7 @@ func (s *Server) DynamicRegistration(resp http.ResponseWriter, req *http.Request
 	if res == nil {
 		err := errors.Wrap(entities.ErrInternal,
 			"dynamic register command executing completed with nil result")
-		slog.Error("dynamic register command executing completed with nil result", "error", err)
+		slog.Error("dynamic register command executing completed with nil result", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return
@@ -976,7 +976,7 @@ func (s *Server) DynamicRegistration(resp http.ResponseWriter, req *http.Request
 	if !res.Success {
 		err := errors.Wrap(entities.ErrInternal,
 			"Dynamic register command executing completed with bad status")
-		slog.Error("dynamic register command executing completed with bad status", "error", err)
+		slog.Error("dynamic register command executing completed with bad status", "error", err.Error())
 		span.SetError(err)
 		s.errProcessing(resp, err)
 		return

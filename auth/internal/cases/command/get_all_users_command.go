@@ -32,7 +32,7 @@ func (command *GetAllUsersCommand) Exec(ctx context.Context) (*entities.CommandR
 	users, err := command.storage.GetAllUsers(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "get all users")
-		slog.Error("get all users", "error", err)
+		slog.Error("get all users", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

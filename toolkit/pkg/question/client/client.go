@@ -54,7 +54,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 
 	urlRaw, err := url.Parse(client.basePath + apiVersion + passedTopicsPath)
 	if err != nil {
-		slog.Error("url parse", "error", err)
+		slog.Error("url parse", "error", err.Error())
 		return nil, errors.Wrapf(ErrInternal, "url parse failure: %v", err)
 	}
 
@@ -64,7 +64,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 
 	data, err := json.Marshal(studentsIDs)
 	if err != nil {
-		slog.Error("json marshal", "error", err)
+		slog.Error("json marshal", "error", err.Error())
 		return nil, errors.Wrapf(ErrInternal, "marshal failure: %v", err)
 	}
 
@@ -75,7 +75,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 		bytes.NewReader(data),
 	)
 	if err != nil {
-		slog.Error("NewRequestWithContext", "error", err, slog.String("url", urlRaw.String()))
+		slog.Error("NewRequestWithContext", "error", err.Error(), slog.String("url", urlRaw.String()))
 		return nil, errors.Wrapf(ErrInternal, "new request failure: %v", err)
 	}
 	slog.Info("request data", slog.String("method", req.Method), slog.String("url", req.URL.String()))
@@ -85,7 +85,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 	
 	resp, err := client.c.Do(req)
 	if err != nil {
-		slog.Error("client.do failure", "error", err)
+		slog.Error("client.do failure", "error", err.Error())
 		return nil, errors.Wrapf(ErrInternal, "client.do failure: %v", err)
 	}
 
@@ -101,7 +101,7 @@ func (client *Client) GetPassedStudentsTopics(ctx context.Context, students []st
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&studentsTopics); err != nil {
-		slog.Info("json.NewDecoder", "error", err)
+		slog.Info("json.NewDecoder", "error", err.Error())
 		return nil, errors.Wrapf(ErrInternal, "decode body failure: %v", err)
 	}
 

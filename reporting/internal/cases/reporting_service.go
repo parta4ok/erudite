@@ -105,7 +105,7 @@ func NewReportingService(
 
 func (service *ReportingService) errorHandlerStart() {
 	for err := range service.errChan {
-		slog.Error("error message", "error", err)
+		slog.Error("error message", "error", err.Error())
 	}
 }
 
@@ -153,7 +153,7 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 
 		students, err := service.authClient.GetMentorGroups(ctx, mentorID)
 		if err != nil {
-			slog.Error("GetMentorGroups", "error", err)
+			slog.Error("GetMentorGroups", "error", err.Error())
 			return errors.Wrap(err, "get mentor group with auth client failure")
 		}
 
@@ -164,7 +164,8 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 
 		passedTopics, err := service.questionClient.GetPassedStudentsTopics(ctx, studentsIDs)
 		if err != nil {
-			slog.Error("get passed topics by students ids with question client failure", "error", err)
+			slog.Error("get passed topics by students ids with question client failure",
+				"error", err.Error())
 			return errors.Wrap(err, "get passed topics by students ids with question client failure")
 		}
 
@@ -174,14 +175,14 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 
 		recipient, err := service.authClient.GetUserByID(ctx, mentorID)
 		if err != nil {
-			slog.Error("get user by id with auth client failure", "error", err)
+			slog.Error("get user by id with auth client failure", "error", err.Error())
 			return errors.Wrap(err, "get user by id with auth client failure")
 		}
 
 		var report entities.Report
 		passedTopicsReport, err := entities.NewPassedTopicsReport(students)
 		if err != nil {
-			slog.Error("creating new report about passed topics by groups", "error", err)
+			slog.Error("creating new report about passed topics by groups", "error", err.Error())
 			return errors.Wrap(err, "creating new report about passed topics by groups")
 		}
 
@@ -195,7 +196,7 @@ func (service *ReportingService) GetPassedTopicsByGroups(ctx context.Context, me
 	case <-service.stopChan:
 		err := ErrReportingServiceStopped
 		span.SetError(err)
-		slog.Error("GetPassedTopicsByGroups", "error", err)
+		slog.Error("GetPassedTopicsByGroups", "error", err.Error())
 		return errors.Wrap(err, "GetPassedTopicsByGroups")
 	}
 
@@ -217,13 +218,13 @@ func (service *ReportingService) DeliverySessionResult(
 
 		linkedUsers, err := service.authClient.GetLinkedUsers(ctx, session.UserID)
 		if err != nil {
-			slog.Error("get linked users with auth client failure", "error", err)
+			slog.Error("get linked users with auth client failure", "error", err.Error())
 			return errors.Wrap(err, "get linked users with auth client failure")
 		}
 
 		groupTitile, err := service.authClient.GetGroupTitleByID(ctx, linkedUsers.Student.GroupID)
 		if err != nil {
-			slog.Error("get group title by group id", "error", err)
+			slog.Error("get group title by group id", "error", err.Error())
 			return errors.Wrap(err, "get group title by group id")
 		}
 
@@ -243,12 +244,12 @@ func (service *ReportingService) DeliverySessionResult(
 			session.Resume,
 		)
 		if err != nil {
-			slog.Error("creature new session result failure", "error", err)
+			slog.Error("creature new session result failure", "error", err.Error())
 			return errors.Wrap(err, "creature new session result failure")
 		}
 		if sessionResultReport == nil {
 			err := entities.ErrInternal
-			slog.Error("sessionResultReport creature was failed", "error", err)
+			slog.Error("sessionResultReport creature was failed", "error", err.Error())
 			return errors.Wrap(err, "sessionResultReport creature was failed")
 		}
 
@@ -262,7 +263,7 @@ func (service *ReportingService) DeliverySessionResult(
 	case <-service.stopChan:
 		err := ErrReportingServiceStopped
 		span.SetError(err)
-		slog.Error("DeliverySessionResult", "error", err)
+		slog.Error("DeliverySessionResult", "error", err.Error())
 		return errors.Wrap(err, "DeliverySessionResult")
 	}
 
@@ -277,18 +278,18 @@ func (service *ReportingService) eventProcessing(
 
 	message, err := service.representer.CovertToFormat(service.format, report)
 	if err != nil {
-		slog.Error(fmt.Sprintf("convert to format %s was failed", service.format), "error", err)
+		slog.Error(fmt.Sprintf("convert to format %s was failed", service.format), "error", err.Error())
 		return errors.Wrapf(err, "convert to format %s was failed", service.format)
 	}
 
 	concreteEvent, err := entities.NewBaseEvent(report.Kind(), service.format, message, recipient)
 	if err != nil {
-		slog.Error("new base event creature was failed", "error", err)
+		slog.Error("new base event creature was failed", "error", err.Error())
 		return errors.Wrap(err, "new base event creature was failed")
 	}
 
 	if err = service.broker.ReportEvent(ctx, concreteEvent); err != nil {
-		slog.Error("sending report event was failed", "error", err)
+		slog.Error("sending report event was failed", "error", err.Error())
 		return errors.Wrap(err, "sending report event was failed")
 	}
 

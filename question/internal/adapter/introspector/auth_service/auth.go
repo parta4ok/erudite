@@ -47,21 +47,21 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.C
 	resp, err := srv.client.Introspect(ctx, req)
 	if err != nil {
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
-		slog.Error("introspect failure", "error", err)
+		slog.Error("introspect failure", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
 
 	if resp.Error.Message != "" {
 		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
-		slog.Error("error message", "error", err)
+		slog.Error("error message", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}
 
 	if resp.Claims == nil {
 		err := errors.Wrap(entities.ErrForbidden, "nil claims")
-		slog.Error("nil claims", "error", err)
+		slog.Error("nil claims", "error", err.Error())
 		span.SetError(err)
 		return nil, err
 	}

@@ -1,176 +1,133 @@
 # Erudite — Study & Self-Testing Platform
 
-**Erudite** — это open-source платформа для самопроверки и персонального обучения студентов, поддерживающая сценарии генерации тестов, отслеживания прогресса и анализа пробелов в знаниях.
+Backend-платформа для самопроверки и персонального обучения студентов: генерация тестовых сессий по темам, проверка ответов, уведомления и отчётность для менторов.
 
-## 🚀 Quick Start
+## Архитектура
 
-### Backend Services
+Четыре независимых Go-сервиса, взаимодействующих синхронно (REST/gRPC) и асинхронно (NATS):
 
-```bash
-# Start all backend services
-task services:run
-```
+- **Auth** — аутентификация (JWT), пользователи, группы, права доступа
+- **Question** — темы, вопросы, тестовые сессии, генерация результата
+- **Reporting** — формирование отчётов для менторов по завершённым сессиям
+- **NotificationHub** — доставка уведомлений (email, Telegram)
 
-### Frontend Application
-
-The frontend has its own separate setup and Docker configuration:
-
-```bash
-cd frontend/web-app
-make start
-# Or manually:
-npm install
-npm run dev
-```
-
-For Docker deployment:
-
-```bash
-cd frontend/web-app
-docker-compose up --build
-```
-
-Access the application at:
-
-- **Frontend**: http://localhost:3000
-- **Auth API**: http://localhost:8090
-- **Question API**: http://localhost:8080
-- **Reporting API**: http://localhost:8082
-
-### Default Login
-
-- **Email**: `admin@kvs.ru`
-- **Password**: `password123`
-
----
-
-## Задачи
-
-- Внедрение в процесс обучения с целью минимизации временных затрат на проверку базовых знаний студента
-
-## 🏗️ Architecture
-
-### Backend Services (Go)
-
-- **Auth Service** - Authentication and user management
-- **Question Service** - Session and topic management
-- **Reporting Service** - Analytics and progress tracking
-- **NotificationHub** - Email and Telegram notifications
-
-### Frontend (React + TypeScript)
-
-- **Separate Docker Setup** - Independent docker-compose.yml in `frontend/web-app/`
-- **Modern Stack** - React 18, TypeScript, Vite, React Query
-- **Admin Panel** - User and group management
-- **Session Management** - Topic selection and question answering (planned)
-
-> **Note**: Frontend runs independently from backend services and has its own Docker configuration to avoid conflicts.
-
-- **Web Application** - Modern React-based UI
-- **Admin Panel** - User and group management
-- **Student Dashboard** - Learning sessions and progress
-
-## Обобзенный сценарий тестирования для студента
+### Сценарий прохождения теста
 
 ```mermaid
 sequenceDiagram
     actor S as Student
-    participant A as Auth Service
-    participant Q as Question Service
-    participant N as NotificationHub Service
+    participant A as Auth
+    participant Q as Question
+    participant NATS as NATS
+    participant R as Reporting
+    participant N as NotificationHub
     actor M as Mentor
 
     S ->> A: login
-    activate A
     A -->> S: jwt
-    deactivate A
 
     S ->> Q: GetTopics(jwt)
-    activate Q
     Q ->> A: introspect(jwt)
-    activate A
     A -->> Q: user claims
-    deactivate A
-    ALT user has not enough rights
-        Q -->> S: forbidden
-    END
-    Q -->>S: existings topics
-    deactivate Q
-
-    S ->>S: select topic/topics from existings topics
+    Q -->> S: available topics
 
     S ->> Q: StartSession(jwt, topics)
-    activate Q
     Q ->> A: introspect(jwt)
-    activate A
     A -->> Q: user claims
-    deactivate A
-    ALT user has not enough rights
-        Q -->> S: forbidden
-    END
-    Q -->> S: QuestionsSession (questions from selected topics)
-    deactivate Q
-    S ->> S: select and set questions answers
+    Q -->> S: session (questions)
 
-    S ->> Q: answers(jwt)
-    activate Q
-    Q ->> Q: generate session result
-    Q ->> N: session result
-    activate N
+    S ->> Q: CompleteSession(answers)
+    Q ->> Q: grade session
     Q -->> S: session result
-    deactivate Q
+    Q ->> NATS: publish sessions.result (async)
 
-    N ->> A: get recipient (studentID)
-    activate A
-    A -->> N: recipient id, recipient contacts
-    deactivate A
-    Loop notifiers
-        N ->> M: try to send session result by concrete notifier like telegram, email, etc
+    NATS ->> R: sessions.result
+    activate R
+    R ->> A: get mentor/group by student (gRPC)
+    A -->> R: mentor, group
+    R ->> R: build report
+    R ->> NATS: publish report.* (async)
+    deactivate R
 
-    END
+    NATS ->> N: report.*
+    activate N
+    N ->> M: deliver via notifier chain (email, telegram, ...)
     deactivate N
 ```
+
+Question ничего не знает о Reporting и NotificationHub напрямую — оба подписаны на события в NATS и обрабатывают их независимо.
 
 ## Возможности
 
 - Автоматическая генерация тестовых сессий по выбранным темам
-- Поддержка разных типов вопросов: одиночный выбор; множественный выбор; true/false
-- Ограничение времени на выполнение сессии
-- Расчет оценки и настройка порога успешной сдачи сессии
-- Создание/удаление пользователей, наделение пользователей правами
+- Типы вопросов: одиночный выбор, множественный выбор, true/false
+- Ограничение времени на выполнение сессии, порог успешной сдачи
+- Управление пользователями и группами: создание/удаление пользователей, назначение прав
+- Отчёты для менторов по пройденным темам студентов
+- Уведомления о результатах сессии через цепочку нотификаторов (email, Telegram)
+- Распределённая трассировка запросов (OpenTelemetry + Jaeger)
+
+## Права доступа
+
+- Права выдаются пользователю явно при создании и хранятся как произвольный набор строк
+- На уровне соглашения выделяются 3 роли: администратор, ментор, студент
+- Администратор — единственный, кто может создавать, удалять и изменять пользователей, создавать группы
+- Ментор — получает отчёты по студентам своей группы
+- Базовые права (просмотр тем, запуск и завершение сессии) доступны всем аутентифицированным пользователям
 
 ## Контракты
 
-- Open API/gRPC спецификации сервисов можно найти в папке API в корне проекта: './api'
+OpenAPI/gRPC-спецификации сервисов — в [`./api`](./api).
 
-## Особенности
+## Стек
 
-- Используйте миграции для создания новых топиков и вопросов, аналогично, для создания первоначального администратора и/или других пользователей
-- Реализована простая система аутентификации и авторизации
-- Внедрены роли (набор прав на выполнение определенных операций)
-- Существует всего 3 роли: Администратор, Ментор, Студент
-- Только Администратор имеет право на создание и удаление новых пользователей
-- Администратор и Ментор имеют права на получение данных по всем завершенным сессиям
-- Все типы пользователей имеют права на просмотр топико, запуск сессий и их завершение
-- Код покрыт юнит-тестами, L1-тестами (используется контейнер с БД), L2-тестами (все контейнеры задействуются)
+- Go 1.25
+- PostgreSQL 16
+- NATS (JetStream) — асинхронный обмен событиями между сервисами
+- REST (chi) и gRPC — синхронное межсервисное взаимодействие
+- OpenTelemetry + Jaeger — распределённая трассировка
+- golangci-lint 2
+- Docker / docker-compose
+- GitHub Actions — CI
+- Task — автоматизация команд разработки
 
-## Стек и технологии
+## Тестирование
 
-- Основной язык - Go ver 1.24
-- База данных - PostgreSQL ver 16
-- Линтер - golangci-lint ver 2
-- Контейнеризация - Docker
-- Межсетевое взаимодействие - REST API, gRPC
-- CI - Github Actions
-- Автоматизация - Task
+- Unit-тесты — без внешних зависимостей
+- L1 — с поднятым контейнером БД (`task l1_test`)
+- L2 — с полным стендом сервисов и инфраструктуры (`task l2_test`)
+
+## Быстрый старт
+
+```bash
+task services:run
+```
+
+Поднимутся все backend-сервисы, PostgreSQL, NATS и Jaeger, применятся миграции.
+
+- Auth API: http://localhost:8090
+- Question API: http://localhost:8080
+- Reporting API: http://localhost:8070
+- Jaeger UI: http://localhost:16686
+
+### Учётная запись администратора по умолчанию
+
+- Логин: `admin@kvs.ru`
+- Пароль: `password123`
+
+> Frontend разрабатывается в отдельном репозитории и не входит в этот проект.
 
 ## Планы
 
-- Внедрение сервиса оповещения для менторов с использованием телеграм
-- Расширение observability, в т.ч добавление распределенных трассировок, мониторинга метрик
-- Расширение контрактов для возможности быстрого добавления вопросов и тем
-- Адаптация базового сценария использования сервиса в телеграм
+- CQRS для Reporting: локальная read-модель вместо синхронных запросов к Question (в разработке)
+- Мониторинг метрик
+- Расширение контрактов для быстрого добавления вопросов и тем
+- Взаимодействие со студентом через Telegram-бота
 
-# Контакты
+## Лицензия
 
-## e-mail: parta4ok@google.com
+[MIT](./LICENSE)
+
+## Контакты
+
+parta4ok@google.com

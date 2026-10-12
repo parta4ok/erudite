@@ -350,19 +350,19 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.UserUpdate) err
 	`
 	args := make([]interface{}, 7)
 
-	if val, ok := getUpdatedValue(user.Username); ok {
+	if val, ok := s.getUpdatedValue(user.Username); ok {
 		args[0] = val
 	}
 
-	if val, ok := getUpdatedValue(user.PasswordHash); ok {
+	if val, ok := s.getUpdatedValue(user.PasswordHash); ok {
 		args[1] = val
 	}
 
-	if val, ok := getUpdatedValue(user.Rights); ok {
+	if val, ok := s.getUpdatedValue(user.Rights); ok {
 		args[2] = val
 	}
 
-	if val, ok := getUpdatedValue(user.Contacts); ok {
+	if val, ok := s.getUpdatedValue(user.Contacts); ok {
 		contactsRaw, err := json.Marshal(val)
 		if err != nil {
 			err = errors.Wrapf(entities.ErrInternal, "marshal contacts failure: %v", err)
@@ -373,11 +373,11 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.UserUpdate) err
 		args[3] = contactsRaw
 	}
 
-	if val, ok := getUpdatedValue(user.GroupID); ok && val != "" {
+	if val, ok := s.getUpdatedValue(user.GroupID); ok && val != "" {
 		args[4] = val
 	}
 
-	if val, ok := getUpdatedValue(user.FullName); ok {
+	if val, ok := s.getUpdatedValue(user.FullName); ok {
 		args[5] = val
 	}
 
@@ -401,7 +401,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.UserUpdate) err
 	return nil
 }
 
-func getUpdatedValue[T any](arg *T) (T, bool) {
+func (s *Storage) getUpdatedValue [T any](arg *T) (T, bool) {
 	if arg == nil {
 		var defaultVal T
 		return defaultVal, false

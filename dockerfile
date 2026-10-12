@@ -1,8 +1,8 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 WORKDIR /common
 
-RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+RUN go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 COPY ./.golangci.yml ./
 
 COPY go.mod go.sum ./

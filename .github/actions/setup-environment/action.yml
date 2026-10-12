@@ -4,7 +4,7 @@ inputs:
   go-version:
     description: 'Go version'
     required: false
-    default: '1.25'
+    default: '1.27'
   mail-password:
     description: 'Mail password secret'
     required: true

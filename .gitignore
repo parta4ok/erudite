@@ -1,0 +1,16 @@
+.vscode
+.env
+.DS*
+.zed
+.idea
+coverage.html
+coverage.out
+.envrc
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
+.beads/issues.jsonl

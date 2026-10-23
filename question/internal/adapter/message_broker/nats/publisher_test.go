@@ -48,6 +48,8 @@ func TestPublisher_Publish(t *testing.T) {
 	require.NoError(t, err)
 	defer sub.Unsubscribe()
 
+	require.NoError(t, nc.Flush())
+
 	sessionResultDTO := natsDTO.SessionResultDTO{
 		UserID:      uuid.NewString(),
 		Topics:      []string{uuid.NewString(), uuid.NewString()},

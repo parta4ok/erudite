@@ -24,7 +24,6 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 		GetUserByIDErr      error
 		IntrospectSettings  func(t *testing.T, p *testdata.MockJWTProvider, jwt string, claims *entities.UserClaims, err error)
 		IntrospectErr       error
-		RightsProblem       bool
 	}
 
 	tests := []struct {
@@ -57,10 +56,7 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 			stage: stage{
 				IntrospectSettings:  setIntrospect,
 				GetUserByIDSettings: setGetUserByID,
-				RightsProblem:       true,
 			},
-			wantErr: true,
-			resErr:  entities.ErrForbidden,
 		},
 	}
 
@@ -82,15 +78,18 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 				ID:       "1",
 				Username: "user",
 				Rights:   []string{"test", "view_result"},
+				GroupID:  "42",
 			}
 			jwt := "simpletext"
 
+			// права в токене отличаются от прав в БД:
+			// результат должен собираться из пользователя, а не из токена
 			claims := &entities.UserClaims{
 				Username: "user",
 				Issuer:   "erudite",
 				Audience: []string{"students"},
 				Subject:  "1",
-				Rights:   []string{"test", "view_result"},
+				Rights:   []string{"stale_right"},
 			}
 
 			if tc.stage.GetUserByIDSettings != nil {
@@ -98,9 +97,6 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 			}
 
 			if tc.stage.IntrospectSettings != nil {
-				if tc.stage.RightsProblem {
-					user.Rights = []string{"another_right"}
-				}
 				tc.stage.IntrospectSettings(it, jwtProvider, jwt, claims, tc.stage.IntrospectErr)
 			}
 
@@ -113,8 +109,19 @@ func TestIntrospectCommand_Exec(t *testing.T) {
 				require.Nil(it, res)
 				return
 			}
+
 			require.NoError(it, err)
-			require.Equal(it, &entities.CommandResult{Success: true}, res)
+			require.Equal(it, &entities.CommandResult{
+				Success: true,
+				Payload: &entities.UserClaims{
+					Username: user.Username,
+					Issuer:   claims.Issuer,
+					Audience: claims.Audience,
+					Subject:  user.ID,
+					Rights:   user.Rights,
+					GroupID:  user.GroupID,
+				},
+			}, res)
 		})
 	}
 }

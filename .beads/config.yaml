@@ -75,7 +75,3 @@ sync:
     remote: "git+https://github.com/parta4ok/study_platform.git"
 repos:
     primary: "."
-    additional:
-        - "y"
-export:
-    auto: true

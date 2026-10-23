@@ -6,4 +6,5 @@ type UserClaims struct {
 	Audience []string
 	Subject  string
 	Rights   []string
+	GroupID  string
 }

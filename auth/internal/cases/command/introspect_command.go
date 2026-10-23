@@ -3,7 +3,6 @@ package command
 import (
 	"context"
 	"log/slog"
-	"slices"
 
 	"github.com/parta4ok/kvs/auth/internal/cases/common"
 	"github.com/parta4ok/kvs/auth/internal/entities"
@@ -57,18 +56,16 @@ func (command *IntrospectCommand) Exec(ctx context.Context) (*entities.CommandRe
 		return nil, err
 	}
 
-	for _, reqRight := range userClaims.Rights {
-		if !slices.Contains(user.Rights, reqRight) {
-			err := errors.Wrapf(entities.ErrForbidden, "not enough rights")
-			slog.Error("not enough rights", "error", err.Error())
-			span.SetError(err)
-			return nil, err
-		}
-	}
-
 	slog.Info("IntrospectCommand exec completed")
 	return &entities.CommandResult{
 		Success: true,
-		Payload: userClaims,
+		Payload: &entities.UserClaims{
+			Subject:  user.ID,
+			Username: user.Username,
+			Rights:   user.Rights,
+			GroupID:  user.GroupID,
+			Issuer:   userClaims.Issuer,
+			Audience: userClaims.Audience,
+		},
 	}, nil
 }

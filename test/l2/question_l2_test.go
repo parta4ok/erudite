@@ -68,7 +68,7 @@ func Test_Topics_Unauthorized(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
+	require.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
 
 func TestCreateSession(t *testing.T) {

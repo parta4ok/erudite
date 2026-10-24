@@ -21,6 +21,7 @@ import (
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
 	"github.com/parta4ok/kvs/toolkit/pkg/cron"
+	"github.com/parta4ok/kvs/toolkit/pkg/middleware"
 	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
 
 	"github.com/pkg/errors"
@@ -157,7 +158,7 @@ func (app *App) initSessionServiceBase(
 	return serv
 }
 
-func (app *App) initAuthServiceClient() public.Introspector {
+func (app *App) initAuthServiceClient() middleware.Introspector {
 	slog.Info("init auth service client started")
 
 	addr := app.cfg.GetAuthConn()
@@ -177,7 +178,7 @@ func (app *App) initAuthServiceClient() public.Introspector {
 
 func (app *App) initPublicPort(
 	sessionServiceBase cases.SessionService,
-	authClient public.Introspector,
+	authClient middleware.Introspector,
 	acc public.Accessor,
 ) *httpport.Port {
 	slog.Info("init public port started")
@@ -189,7 +190,6 @@ func (app *App) initPublicPort(
 	server, err := public.New(
 		public.WithCustomDailySessionLimit(dailyLimit),
 		public.WithService(sessionServiceBase),
-		public.WithIntrospector(authClient),
 		public.WithAccessor(acc),
 	)
 	if err != nil {
@@ -200,7 +200,7 @@ func (app *App) initPublicPort(
 	httpPort, err := httpport.NewPort(
 		httpport.Config{Addr: addr, Timeout: timeout},
 		httpport.WithType(public.PortType),
-		httpport.WithMiddleware(server.IntrospectMiddleware),
+		httpport.WithMiddleware(middleware.NewIntrospectMiddleware(authClient)),
 		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {

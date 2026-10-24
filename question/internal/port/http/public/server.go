@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/parta4ok/kvs/question/internal/entities"
 	"github.com/parta4ok/kvs/question/pkg/dto"
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
+	"github.com/parta4ok/kvs/toolkit/pkg/middleware"
 	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
@@ -36,7 +36,6 @@ const (
 
 type Server struct {
 	service      Service
-	introspector Introspector
 	accessor     Accessor
 	sessionLimit int
 }
@@ -46,12 +45,6 @@ type ServerOption func(*Server)
 func WithService(srv Service) ServerOption {
 	return func(s *Server) {
 		s.service = srv
-	}
-}
-
-func WithIntrospector(introspector Introspector) ServerOption {
-	return func(s *Server) {
-		s.introspector = introspector
 	}
 }
 
@@ -81,12 +74,6 @@ func New(opts ...ServerOption) (*Server, error) {
 	if serv.service == nil {
 		err := errors.Wrap(entities.ErrInternal, "service not set")
 		slog.Error("service not set", "error", err.Error())
-		return nil, err
-	}
-
-	if serv.introspector == nil {
-		err := errors.Wrap(entities.ErrInternal, "introspector not set")
-		slog.Error("introspector not set", "error", err.Error())
 		return nil, err
 	}
 
@@ -483,6 +470,8 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 		errDTO.StatusCode = http.StatusForbidden
 	case errors.Is(err, entities.ErrNotFound):
 		errDTO.StatusCode = http.StatusNotFound
+	case errors.Is(err, middleware.ErrUnauthorized):
+		errDTO.StatusCode = http.StatusUnauthorized
 	}
 
 	errDtoData, err := json.Marshal(&errDTO)
@@ -495,46 +484,6 @@ func (s *Server) errProcessing(resp http.ResponseWriter, err error) {
 
 	resp.WriteHeader(errDTO.StatusCode)
 	resp.Write(errDtoData) //nolint:errcheck,gosec //ok
-}
-
-func (s *Server) IntrospectMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
-		authHeader := req.Header.Get("Authorization")
-		if authHeader == "" {
-			err := errors.Wrap(entities.ErrForbidden, "authoriztion header not set")
-			slog.Error("authoriztion header not set", "error", err.Error())
-			s.errProcessing(resp, err)
-			return
-		}
-
-		const prefix = "Bearer "
-		authorizationData := strings.Split(authHeader, prefix)
-		if len(authorizationData) != 2 {
-			err := errors.Wrap(entities.ErrForbidden, "authoriztion header invalid")
-			slog.Error("authoriztion header invalid", "error", err.Error())
-			s.errProcessing(resp, err)
-			return
-		}
-
-		jwt := authorizationData[1]
-
-		claims, err := s.introspector.Introspect(req.Context(), jwt)
-		if err != nil {
-			err := errors.Wrap(entities.ErrForbidden, "introspection failure")
-			slog.Error("introspection failure", "error", err.Error())
-			s.errProcessing(resp, err)
-			return
-		}
-
-		ctx := context.WithValue(req.Context(), accessor.UserClaims, &accessor.Claims{
-			Username: claims.Username,
-			Issuer:   claims.Issuer,
-			Subject:  claims.Subject,
-			Audience: claims.Audience,
-			Rights:   claims.Rights,
-		})
-		next.ServeHTTP(resp, req.WithContext(ctx))
-	})
 }
 
 func (s *Server) checkUserRights(ctx context.Context, requiredRights []string) error {

@@ -94,18 +94,3 @@ func (mr *MockAuthClientMockRecorder) GetUserByID(ctx, id interface{}) *gomock.C
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockAuthClient)(nil).GetUserByID), ctx, id)
 }
-
-// Introspect mocks base method.
-func (m *MockAuthClient) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Introspect", ctx, jwt)
-	ret0, _ := ret[0].(*entities.Claims)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Introspect indicates an expected call of Introspect.
-func (mr *MockAuthClientMockRecorder) Introspect(ctx, jwt interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Introspect", reflect.TypeOf((*MockAuthClient)(nil).Introspect), ctx, jwt)
-}

@@ -68,7 +68,6 @@ func (x *IntrospectRequest) GetToken() string {
 type IntrospectResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Claims        *UserClaims            `protobuf:"bytes,1,opt,name=claims,proto3" json:"claims,omitempty"`
-	Error         *Error                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -110,13 +109,6 @@ func (x *IntrospectResponse) GetClaims() *UserClaims {
 	return nil
 }
 
-func (x *IntrospectResponse) GetError() *Error {
-	if x != nil {
-		return x.Error
-	}
-	return nil
-}
-
 type UserClaims struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
@@ -124,6 +116,7 @@ type UserClaims struct {
 	Audience      []string               `protobuf:"bytes,3,rep,name=audience,proto3" json:"audience,omitempty"`
 	Subject       string                 `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
 	Rights        []string               `protobuf:"bytes,5,rep,name=rights,proto3" json:"rights,omitempty"`
+	GroupId       string                 `protobuf:"bytes,6,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -191,6 +184,13 @@ func (x *UserClaims) GetRights() []string {
 		return x.Rights
 	}
 	return nil
+}
+
+func (x *UserClaims) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
 }
 
 type Error struct {
@@ -839,17 +839,17 @@ const file_api_grpc_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"\x16api/grpc/v1/auth.proto\x12\x04auth\")\n" +
 	"\x11IntrospectRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"a\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\">\n" +
 	"\x12IntrospectResponse\x12(\n" +
-	"\x06claims\x18\x01 \x01(\v2\x10.auth.UserClaimsR\x06claims\x12!\n" +
-	"\x05error\x18\x02 \x01(\v2\v.auth.ErrorR\x05error\"\x8e\x01\n" +
+	"\x06claims\x18\x01 \x01(\v2\x10.auth.UserClaimsR\x06claims\"\xa9\x01\n" +
 	"\n" +
 	"UserClaims\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x16\n" +
 	"\x06issuer\x18\x02 \x01(\tR\x06issuer\x12\x1a\n" +
 	"\baudience\x18\x03 \x03(\tR\baudience\x12\x18\n" +
 	"\asubject\x18\x04 \x01(\tR\asubject\x12\x16\n" +
-	"\x06rights\x18\x05 \x03(\tR\x06rights\"!\n" +
+	"\x06rights\x18\x05 \x03(\tR\x06rights\x12\x19\n" +
+	"\bgroup_id\x18\x06 \x01(\tR\agroupId\"!\n" +
 	"\x05Error\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\"&\n" +
 	"\bLinkedID\x12\x1a\n" +
@@ -932,33 +932,32 @@ var file_api_grpc_v1_auth_proto_goTypes = []any{
 }
 var file_api_grpc_v1_auth_proto_depIdxs = []int32{
 	2,  // 0: auth.IntrospectResponse.claims:type_name -> auth.UserClaims
-	3,  // 1: auth.IntrospectResponse.error:type_name -> auth.Error
-	9,  // 2: auth.LinkedUsersResponse.Recipient:type_name -> auth.UserInfo
-	9,  // 3: auth.LinkedUsersResponse.Student:type_name -> auth.UserInfo
-	3,  // 4: auth.LinkedUsersResponse.error:type_name -> auth.Error
-	15, // 5: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
-	10, // 6: auth.Group.students:type_name -> auth.Student
-	11, // 7: auth.GroupResponse.Group:type_name -> auth.Group
-	3,  // 8: auth.GroupResponse.Error:type_name -> auth.Error
-	11, // 9: auth.GroupsResponse.groups:type_name -> auth.Group
-	3,  // 10: auth.GroupsResponse.error:type_name -> auth.Error
-	9,  // 11: auth.UserInfoResponse.User:type_name -> auth.UserInfo
-	3,  // 12: auth.UserInfoResponse.Error:type_name -> auth.Error
-	0,  // 13: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
-	4,  // 14: auth.AuthService.GetLinkedUsers:input_type -> auth.LinkedID
-	5,  // 15: auth.AuthService.GetMentorGroups:input_type -> auth.MentorID
-	6,  // 16: auth.AuthService.GetUserByID:input_type -> auth.UserID
-	7,  // 17: auth.AuthService.GetGroupTitleByID:input_type -> auth.GroupID
-	1,  // 18: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
-	8,  // 19: auth.AuthService.GetLinkedUsers:output_type -> auth.LinkedUsersResponse
-	13, // 20: auth.AuthService.GetMentorGroups:output_type -> auth.GroupsResponse
-	14, // 21: auth.AuthService.GetUserByID:output_type -> auth.UserInfoResponse
-	12, // 22: auth.AuthService.GetGroupTitleByID:output_type -> auth.GroupResponse
-	18, // [18:23] is the sub-list for method output_type
-	13, // [13:18] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	9,  // 1: auth.LinkedUsersResponse.Recipient:type_name -> auth.UserInfo
+	9,  // 2: auth.LinkedUsersResponse.Student:type_name -> auth.UserInfo
+	3,  // 3: auth.LinkedUsersResponse.error:type_name -> auth.Error
+	15, // 4: auth.UserInfo.contacts:type_name -> auth.UserInfo.ContactsEntry
+	10, // 5: auth.Group.students:type_name -> auth.Student
+	11, // 6: auth.GroupResponse.Group:type_name -> auth.Group
+	3,  // 7: auth.GroupResponse.Error:type_name -> auth.Error
+	11, // 8: auth.GroupsResponse.groups:type_name -> auth.Group
+	3,  // 9: auth.GroupsResponse.error:type_name -> auth.Error
+	9,  // 10: auth.UserInfoResponse.User:type_name -> auth.UserInfo
+	3,  // 11: auth.UserInfoResponse.Error:type_name -> auth.Error
+	0,  // 12: auth.AuthService.Introspect:input_type -> auth.IntrospectRequest
+	4,  // 13: auth.AuthService.GetLinkedUsers:input_type -> auth.LinkedID
+	5,  // 14: auth.AuthService.GetMentorGroups:input_type -> auth.MentorID
+	6,  // 15: auth.AuthService.GetUserByID:input_type -> auth.UserID
+	7,  // 16: auth.AuthService.GetGroupTitleByID:input_type -> auth.GroupID
+	1,  // 17: auth.AuthService.Introspect:output_type -> auth.IntrospectResponse
+	8,  // 18: auth.AuthService.GetLinkedUsers:output_type -> auth.LinkedUsersResponse
+	13, // 19: auth.AuthService.GetMentorGroups:output_type -> auth.GroupsResponse
+	14, // 20: auth.AuthService.GetUserByID:output_type -> auth.UserInfoResponse
+	12, // 21: auth.AuthService.GetGroupTitleByID:output_type -> auth.GroupResponse
+	17, // [17:22] is the sub-list for method output_type
+	12, // [12:17] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_api_grpc_v1_auth_proto_init() }

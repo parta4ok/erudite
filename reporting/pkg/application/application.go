@@ -19,6 +19,7 @@ import (
 	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	baseApplication "github.com/parta4ok/kvs/toolkit/pkg/application"
 	"github.com/parta4ok/kvs/toolkit/pkg/broker/nats/publisher"
+	"github.com/parta4ok/kvs/toolkit/pkg/middleware"
 	httpport "github.com/parta4ok/kvs/toolkit/pkg/port/http"
 	natsport "github.com/parta4ok/kvs/toolkit/pkg/port/nats"
 
@@ -84,7 +85,7 @@ func (app *App) initAccessor() public.Accessor {
 
 func (app *App) initPublicPort(
 	service port.Service,
-	introspector public.Introspector,
+	introspector middleware.Introspector,
 	acc public.Accessor,
 ) *httpport.Port {
 	slog.Info("init public port started")
@@ -94,7 +95,6 @@ func (app *App) initPublicPort(
 
 	server, err := public.New(
 		public.WithService(service),
-		public.WithIntrospector(introspector),
 		public.WithAccessor(acc),
 	)
 	if err != nil {
@@ -105,7 +105,7 @@ func (app *App) initPublicPort(
 	httpPort, err := httpport.NewPort(
 		httpport.Config{Addr: addr, Timeout: timeout},
 		httpport.WithType(public.PortType),
-		httpport.WithMiddleware(server.IntrospectMiddleware),
+		httpport.WithMiddleware(middleware.NewIntrospectMiddleware(introspector)),
 		httpport.WithRoutes(server.Routes()...),
 	)
 	if err != nil {

@@ -401,7 +401,7 @@ func (s *Storage) UpdateUser(ctx context.Context, user *entities.UserUpdate) err
 	return nil
 }
 
-func (s *Storage) getUpdatedValue [T any](arg *T) (T, bool) {
+func (s *Storage) getUpdatedValue[T any](arg *T) (T, bool) {
 	if arg == nil {
 		var defaultVal T
 		return defaultVal, false

@@ -5,6 +5,8 @@ import (
 	"log/slog"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authv1 "github.com/parta4ok/kvs/api/grpc/v1"
 	"github.com/parta4ok/kvs/auth/internal/entities"
@@ -32,44 +34,27 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 		err := errors.Wrap(entities.ErrInvalidJWT, "jwt token is empty")
 		slog.Error("jwt token is empty", "error", err.Error())
 		span.SetError(err)
-		return &authv1.IntrospectResponse{
-			Claims: nil,
-			Error:  &authv1.Error{Message: err.Error()},
-		}, nil
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	res, err := a.factory.NewIntrospectedCommand(token).Exec(ctx)
 	if err != nil {
-		err := errors.Wrap(err, "introspect command exec failure")
 		slog.Error("introspect command exec failure", "error", err.Error())
 		span.SetError(err)
-		return &authv1.IntrospectResponse{
-			Claims: nil,
-			Error:  &authv1.Error{Message: err.Error()},
-		}, nil
-	}
 
-	if res != nil {
-		if !res.Success {
-			err := errors.Wrap(entities.ErrInvalidJWT, "introspect command exec failure")
-			slog.Error("introspect command exec failure", "error", err.Error())
-			span.SetError(err)
-			return &authv1.IntrospectResponse{
-				Claims: nil,
-				Error:  &authv1.Error{Message: err.Error()},
-			}, nil
+		if errors.Is(err, entities.ErrInvalidJWT) ||
+			errors.Is(err, entities.ErrNotFound) {
+			return nil, status.Error(codes.Unauthenticated, err.Error())
 		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	userClaims, ok := res.Payload.(*entities.UserClaims)
 	if !ok {
-		err := errors.Wrap(entities.ErrInvalidJWT, "assert claims failure")
+		err := errors.Wrap(entities.ErrInternal, "assert claims failure")
 		slog.Error("assert claims failure", "error", err.Error())
 		span.SetError(err)
-		return &authv1.IntrospectResponse{
-			Claims: nil,
-			Error:  &authv1.Error{Message: err.Error()},
-		}, nil
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	resp := &authv1.IntrospectResponse{
@@ -79,8 +64,8 @@ func (a *AuthService) Introspect(ctx context.Context, req *authv1.IntrospectRequ
 			Audience: userClaims.Audience,
 			Subject:  userClaims.Subject,
 			Rights:   userClaims.Rights,
+			GroupId:  userClaims.GroupID,
 		},
-		Error: &authv1.Error{Message: ""},
 	}
 
 	return resp, nil

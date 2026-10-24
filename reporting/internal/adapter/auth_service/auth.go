@@ -8,13 +8,18 @@ import (
 	"github.com/parta4ok/kvs/reporting/internal/cases"
 	"github.com/parta4ok/kvs/reporting/internal/entities"
 
+	"github.com/parta4ok/kvs/toolkit/pkg/accessor"
 	"github.com/parta4ok/kvs/toolkit/pkg/auth/client"
+	"github.com/parta4ok/kvs/toolkit/pkg/middleware"
 	"github.com/parta4ok/kvs/toolkit/pkg/tracer"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
-	_ cases.AuthClient = (*AuthService)(nil)
+	_ cases.AuthClient        = (*AuthService)(nil)
+	_ middleware.Introspector = (*AuthService)(nil)
 )
 
 type AuthService struct {
@@ -186,7 +191,7 @@ func (srv *AuthService) GetGroupTitleByID(ctx context.Context, groupID string) (
 	return group.Group.GetName(), nil
 }
 
-func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.Claims, error) {
+func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*accessor.Claims, error) {
 	slog.Info("Introspect started")
 
 	ctx, span, cancel := tracer.Start(ctx, "Introspect")
@@ -198,33 +203,26 @@ func (srv *AuthService) Introspect(ctx context.Context, jwt string) (*entities.C
 
 	resp, err := srv.client.Introspect(ctx, req)
 	if err != nil {
+		if status.Code(err) == codes.Unauthenticated {
+			err = errors.Wrap(middleware.ErrUnauthorized, "introspect failure")
+			span.SetError(err)
+			slog.Error("introspect failure", "error", err.Error())
+			return nil, err
+		}
 		err = errors.Wrapf(entities.ErrInternal, "introspect failure: %v", err)
 		span.SetError(err)
-		slog.Error("introspect failure", "error", err.Error())
-		return nil, err
-	}
-
-	if resp.Error.Message != "" {
-		err := errors.Wrapf(entities.ErrForbidden, "error message: %s", resp.Error.Message)
-		span.SetError(err)
-		slog.Error("error message", "error", err.Error())
-		return nil, err
-	}
-
-	if resp.Claims == nil {
-		err := errors.Wrap(entities.ErrForbidden, "nil claims")
-		span.SetError(err)
-		slog.Error("nil claims", "error", err.Error())
+		slog.Error("introspection failure", "error", err.Error())
 		return nil, err
 	}
 
 	slog.Info("Introspect completed")
 
-	return &entities.Claims{
+	return &accessor.Claims{
 		Username: resp.Claims.Username,
 		Subject:  resp.Claims.Subject,
 		Rights:   resp.Claims.Rights,
 		Audience: resp.Claims.Audience,
 		Issuer:   resp.Claims.Issuer,
+		GroupID:  resp.Claims.GroupId,
 	}, nil
 }

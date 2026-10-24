@@ -18,7 +18,6 @@ message IntrospectRequest {
 
 message IntrospectResponse {
     UserClaims claims = 1;
-    Error error = 2;
 }
 
 message UserClaims {
@@ -27,6 +26,7 @@ message UserClaims {
   repeated string audience = 3;
   string subject = 4;
   repeated string rights = 5;
+  string group_id = 6;
 }
 
 message Error {
